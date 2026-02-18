@@ -88,10 +88,10 @@ export function logout() {
 
 interface AuthContextType {
     user: UserSession | null;
-    login: (role: string, region: string) => void;
+    login: (email: string) => Promise<void>;
     logout: () => void;
     isLoading: boolean;
-    demo?: (role: string) => void;
+    demo?: (role: string, region: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -106,8 +106,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
     }, []);
 
-    const handleLogin = (role: string, region: string) => {
-        const session = login(role, region);
+    const handleLogin = async (email: string) => {
+        // In real app, this would authenticate with backend
+        // For demo, we'll just set a mock session
+        const session = login('technician', 'Harare');
         setUser(session);
     };
 
