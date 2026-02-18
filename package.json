@@ -2,6 +2,7 @@
   "name": "coolpro",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -18,6 +19,7 @@
     "tailwind-merge": "^3.4.1"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.24",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
