@@ -54,13 +54,13 @@ export const MOCK_USERS: Record<string, UserSession> = {
     },
 };
 
-function getSession(): UserSession | null {
+export function getSession(): UserSession | null {
     if (typeof window === 'undefined') return null;
     const stored = localStorage.getItem('coolpro_session');
     return stored ? JSON.parse(stored) : null;
 }
 
-function login(role: string, region: string): UserSession {
+export function login(role: string, region: string): UserSession {
     const baseUser = MOCK_USERS[role] || MOCK_USERS.technician;
     const session: UserSession = {
         ...baseUser,
@@ -77,7 +77,7 @@ function login(role: string, region: string): UserSession {
     return session;
 }
 
-function logout() {
+export function logout() {
     if (typeof window !== 'undefined') {
         localStorage.removeItem('coolpro_session');
         document.cookie = 'coolpro_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
