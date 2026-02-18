@@ -91,6 +91,7 @@ interface AuthContextType {
     login: (role: string, region: string) => void;
     logout: () => void;
     isLoading: boolean;
+    demo?: (role: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -115,8 +116,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     };
 
+    const demoLogin = (role: string) => {
+        login(role, '');
+    };
+
     return (
-        <AuthContext.Provider value={{ user: user, login: handleLogin, logout: handleLogout, isLoading }}>
+        <AuthContext.Provider value={{ user: user, login: handleLogin, logout: handleLogout, isLoading, demo: demoLogin }}>
             {children}
         </AuthContext.Provider>
     );
