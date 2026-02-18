@@ -1,0 +1,43 @@
+
+/
+├── app/
+│   ├── (app)/
+│   │   ├── admin/
+│   │   │   └── page.tsx
+│   │   ├── certifications/
+│   │   │   └── page.tsx
+│   │   ├── dashboard/
+│   │   │   └── page.tsx
+│   │   ├── field-toolkit/
+│   │   │   └── page.tsx
+│   │   ├── jobs/
+│   │   │   └── page.tsx
+│   │   ├── layout.tsx
+│   │   ├── learn/
+│   │   │   └── page.tsx
+│   │   ├── rewards/
+│   │   │   └── page.tsx
+│   │   ├── settings/
+│   │   │   └── page.tsx
+│   │   └── sizing-tool/
+│   │       └── page.tsx
+│   ├── (auth)/
+│   │   └── login/
+│   │       └── page.tsx
+│   ├── layout.tsx
+│   └── page.tsx
+├── components/
+│   ├── OfflineBanner.tsx
+│   ├── RoleGate.tsx
+│   ├── Sidebar.tsx
+│   └── Topbar.tsx
+├── lib/
+│   ├── auth.tsx
+│   ├── nav.ts
+│   ├── pwa.ts
+│   ├── roles.ts
+│   └── utils.ts
+├── types/
+│   └── index.ts
+├── middleware.ts
+└── tailwind.config.js
