@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Demo Specific State
-  const [selectedRole, setSelectedRole] = useState<UserRole>('technician');
+  const [selectedRole, setSelectedRole] = useState<UserRole>('technician' as UserRole);
   const [selectedRegion, setSelectedRegion] = useState('Harare');
 
   const REGIONS = ["Harare", "Bulawayo", "Mutare", "Gweru", "Masvingo", "Other"];
