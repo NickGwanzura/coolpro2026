@@ -41,13 +41,10 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
-    // Redirect root to dashboard if auth, else login
+    // Root path shows landing page
     if (pathname === '/') {
-        if (isAuthenticated) {
-            return NextResponse.redirect(new URL('/dashboard', request.url));
-        } else {
-            return NextResponse.redirect(new URL('/login', request.url));
-        }
+        // Show landing page for all users (authenticated or not)
+        return NextResponse.next();
     }
 
     return NextResponse.next();
