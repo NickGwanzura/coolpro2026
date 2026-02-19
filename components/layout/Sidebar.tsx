@@ -13,7 +13,8 @@ import {
     Gift,
     ShieldCheck,
     LogOut,
-    Menu
+    Thermometer,
+    Users
 } from 'lucide-react';
 import { getSession, logout } from '@/lib/auth';
 import { useEffect, useState } from 'react';
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
     { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
     { name: 'Certifications', href: '/certifications', icon: Award, roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
     { name: 'Rewards', href: '/rewards', icon: Gift, roles: ['technician', 'trainer', 'vendor', 'org_admin', 'program_admin'] },
+    { name: 'Technician Registry', href: '/technician-registry', icon: Users, roles: ['program_admin', 'org_admin', 'trainer'] },
     { name: 'Admin', href: '/admin', icon: ShieldCheck, roles: ['program_admin'] },
 ];
 
@@ -46,13 +48,22 @@ export function Sidebar({ className }: { className?: string }) {
 
     return (
         <div className={cn("flex flex-col h-full bg-white border-r border-gray-200", className)}>
-            <div className="p-6 border-b border-gray-200">
-                <h1 className="text-xl font-bold text-blue-600">CoolPro Toolkit</h1>
-                <p className="text-xs text-gray-400 mt-1">v1.0.0</p>
+            {/* Logo Section */}
+            <div className="p-5 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
+                        <Thermometer className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                        <h1 className="text-lg font-bold text-gray-900">CoolPro</h1>
+                        <p className="text-xs text-gray-400">v1.0.0</p>
+                    </div>
+                </div>
             </div>
 
-            <nav className="flex-1 overflow-y-auto py-4">
-                <ul className="space-y-1 px-3">
+            {/* Navigation */}
+            <nav className="flex-1 overflow-y-auto py-4 px-3">
+                <ul className="space-y-1">
                     {filteredNav.map((item) => {
                         const isActive = pathname.startsWith(item.href);
                         return (
@@ -60,14 +71,14 @@ export function Sidebar({ className }: { className?: string }) {
                                 <Link
                                     href={item.href}
                                     className={cn(
-                                        "flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                                        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                                         isActive
-                                            ? "bg-blue-50 text-blue-700"
-                                            : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                                            ? "bg-blue-50 text-blue-700 shadow-sm"
+                                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                                     )}
                                 >
-                                    <item.icon className={cn("h-5 w-5 mr-3", isActive ? "text-blue-600" : "text-gray-400")} />
-                                    {item.name}
+                                    <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive ? "text-blue-600" : "text-gray-400")} />
+                                    <span>{item.name}</span>
                                 </Link>
                             </li>
                         );
@@ -75,13 +86,14 @@ export function Sidebar({ className }: { className?: string }) {
                 </ul>
             </nav>
 
-            <div className="p-4 border-t border-gray-200">
+            {/* Footer / Logout */}
+            <div className="p-3 border-t border-gray-100">
                 <button
                     onClick={() => logout()}
-                    className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
                 >
-                    <LogOut className="h-5 w-5 mr-3" />
-                    Sign Out
+                    <LogOut className="h-5 w-5" />
+                    <span>Sign Out</span>
                 </button>
             </div>
         </div>

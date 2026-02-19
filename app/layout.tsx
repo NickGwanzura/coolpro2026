@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { GeistSans } from 'geist/font/sans';
 import './globals.css';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { AuthProvider } from '@/lib/auth';
@@ -15,8 +14,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={GeistSans.className}>
-      <body className="font-sans antialiased bg-gray-50 text-gray-900">
+    <html lang="en" className="font-sans">
+      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
         <AuthProvider>
           <OfflineBanner />
           {children}

@@ -1,8 +1,17 @@
+'use client';
+
+import LMS from '@/components/LMS';
+
 export default function LearnPage() {
     return (
-        <div className="text-center py-20">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Learning Center</h1>
-            <p className="text-gray-500">Modules and training content will appear here.</p>
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Learning Center</h1>
+                    <p className="text-gray-500 mt-1">Continue your training and certification courses</p>
+                </div>
+            </div>
+            <LMS />
         </div>
     );
 }
