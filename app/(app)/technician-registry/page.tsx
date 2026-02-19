@@ -7,7 +7,7 @@ import { Technician } from '@/types/index';
 import { MOCK_TECHNICIANS, ZIMBABWE_PROVINCES, TECHNICIAN_SPECIALIZATIONS } from '@/constants/registry';
 import { getSession, UserSession } from '@/lib/auth';
 
-export default function TechnicianRegistryPage() {
+export default function TechnicianRegistryPage({ searchParams }: { searchParams: URLSearchParams }) {
   const router = useRouter();
   const [session, setSession] = useState<UserSession | null>(null);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -21,7 +21,19 @@ export default function TechnicianRegistryPage() {
     setSession(getSession());
     setTechnicians(MOCK_TECHNICIANS);
     setFilteredTechnicians(MOCK_TECHNICIANS);
-  }, []);
+
+    // Get search parameters from URL
+    const search = searchParams.get('search');
+    const specialization = searchParams.get('specialization');
+    
+    if (search) {
+      setSearchTerm(search);
+    }
+    
+    if (specialization) {
+      setSelectedSpecialization(specialization);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     let filtered = [...technicians];
