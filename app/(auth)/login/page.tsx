@@ -27,7 +27,9 @@ export default function LoginPage() {
 
   const handleDemoAccess = async () => {
     setIsLoading(true);
-    await demo(selectedRole, selectedRegion);
+    if (demo) {
+      await demo(selectedRole, selectedRegion);
+    }
   };
 
   return (

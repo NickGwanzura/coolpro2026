@@ -84,9 +84,9 @@ const SizingTool: React.FC = () => {
               <div className="space-y-8">
                 <h3 className="text-2xl font-black text-slate-900">Room Dimensions & Build</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  <InputGroup label="Width (m)" value={inputs.roomWidth} onChange={v => setInputs({...inputs, roomWidth: v})} />
-                  <InputGroup label="Length (m)" value={inputs.roomLength} onChange={v => setInputs({...inputs, roomLength: v})} />
-                  <InputGroup label="Height (m)" value={inputs.roomHeight} onChange={v => setInputs({...inputs, roomHeight: v})} />
+                  <InputGroup label="Width (m)" value={inputs.roomWidth} onChange={(v: string) => setInputs({...inputs, roomWidth: Number(v)})} />
+                  <InputGroup label="Length (m)" value={inputs.roomLength} onChange={(v: string) => setInputs({...inputs, roomLength: Number(v)})} />
+                  <InputGroup label="Height (m)" value={inputs.roomHeight} onChange={(v: string) => setInputs({...inputs, roomHeight: Number(v)})} />
                 </div>
                 <div className="space-y-4 pt-6 border-t border-slate-100">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Insulation System</label>
@@ -120,10 +120,10 @@ const SizingTool: React.FC = () => {
               <div className="space-y-8">
                 <h3 className="text-2xl font-black text-slate-900">Operating Conditions</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                  <InputGroup label="Ambient Outdoor Temp (°C)" value={inputs.ambientTemp} onChange={v => setInputs({...inputs, ambientTemp: v})} />
-                  <InputGroup label="Internal Target Temp (°C)" value={inputs.targetTemp} onChange={v => setInputs({...inputs, targetTemp: v})} />
-                  <InputGroup label="Product Mass (kg)" value={inputs.productMass} onChange={v => setInputs({...inputs, productMass: v})} />
-                  <InputGroup label="Pull-down Time (Hours)" value={inputs.loadingTimeHours} onChange={v => setInputs({...inputs, loadingTimeHours: v})} />
+                  <InputGroup label="Ambient Outdoor Temp (°C)" value={inputs.ambientTemp} onChange={(v: string) => setInputs({...inputs, ambientTemp: Number(v)})} />
+                  <InputGroup label="Internal Target Temp (°C)" value={inputs.targetTemp} onChange={(v: string) => setInputs({...inputs, targetTemp: Number(v)})} />
+                  <InputGroup label="Product Mass (kg)" value={inputs.productMass} onChange={(v: string) => setInputs({...inputs, productMass: Number(v)})} />
+                  <InputGroup label="Pull-down Time (Hours)" value={inputs.loadingTimeHours} onChange={(v: string) => setInputs({...inputs, loadingTimeHours: Number(v)})} />
                 </div>
               </div>
             )}

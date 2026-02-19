@@ -118,8 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     };
 
-    const demoLogin = (role: string) => {
-        login(role, '');
+    const demoLogin = (role: string, region: string) => {
+        const session = login(role, region);
+        setUser(session);
     };
 
     return (

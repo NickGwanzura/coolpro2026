@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import './globals.css';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { AuthProvider } from '@/lib/auth';
 
 export const metadata: Metadata = {
   title: 'CoolPro Toolkit',
@@ -16,8 +17,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={GeistSans.className}>
       <body className="font-sans antialiased bg-gray-50 text-gray-900">
-        <OfflineBanner />
-        {children}
+        <AuthProvider>
+          <OfflineBanner />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

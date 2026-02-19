@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { SyncStatus } from '../types';
+import { SyncStatus } from '../types/index';
 
 export function usePWA() {
   const [isOnline, setIsOnline] = useState(true);

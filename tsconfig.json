@@ -38,6 +38,7 @@
   ],
   "exclude": [
     "node_modules",
-    "_backup_vite"
+    "_backup_vite",
+    "vite.config.ts"
   ]
 }

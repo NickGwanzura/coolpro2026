@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { useAuth } from '../lib/auth';
-import { UserRole } from '../types';
+import { UserRole } from '../types/index';
 
 interface RoleGateProps {
   children: React.ReactNode;
