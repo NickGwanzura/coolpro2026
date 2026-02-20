@@ -2,393 +2,321 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, ShieldCheck, Users, MapPin, Clock, CheckCircle, ArrowRight, Menu, X, ChevronRight } from 'lucide-react';
-import { getSession } from '@/lib/auth';
+import { ShieldCheck, Users, BookOpen, Search, MapPin, Clock, CheckCircle, ArrowRight, Menu, X } from 'lucide-react';
 
-export default function LandingPage() {
+export default function HEVACRAZ_LandingPage() {
   const router = useRouter();
-  const [session, setSession] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searching, setSearching] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    setSession(getSession());
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchTerm.trim()) {
-      setSearching(true);
-      // Simulate search delay
-      setTimeout(() => {
-        setSearching(false);
-        router.push(`/technician-registry?search=${encodeURIComponent(searchTerm.trim())}`);
-      }, 1000);
-    }
-  };
+  const navLinks = [
+    { name: 'Home', href: '/' },
+    { name: 'About', href: '#about' },
+    { name: 'Membership', href: '#membership' },
+    { name: 'Training & Certification', href: '#training' },
+    { name: 'Technician Registry', href: '#registry' },
+    { name: 'Contact', href: '#contact' },
+  ];
 
-  const handleQuickSearch = (category: string) => {
-    router.push(`/technician-registry?specialization=${encodeURIComponent(category)}`);
-  };
+  const services = [
+    {
+      icon: <ShieldCheck className="h-8 w-8 text-blue-600" />,
+      title: 'Certification',
+      description: 'Industry-recognized certifications for HVAC-R professionals ensuring compliance with Zimbabwean standards.',
+    },
+    {
+      icon: <BookOpen className="h-8 w-8 text-blue-600" />,
+      title: 'Training Programs',
+      description: 'Comprehensive training courses designed to enhance technical skills and professional development.',
+    },
+    {
+      icon: <CheckCircle className="h-8 w-8 text-blue-600" />,
+      title: 'Industry Standards',
+      description: 'Establishing and promoting best practices and safety standards for the HVAC-R industry.',
+    },
+    {
+      icon: <Search className="h-8 w-8 text-blue-600" />,
+      title: 'Technician Registry',
+      description: 'Verified database of certified HVAC-R technicians for consumer and business verification.',
+    },
+  ];
+
+  const membershipBenefits = [
+    'Industry recognition and credibility',
+    'Access to exclusive training programs',
+    'Networking opportunities with peers',
+    'Technical support and resources',
+    'Listing in the national technician registry',
+    'Advocacy and representation',
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
-      <nav className="bg-white shadow-sm fixed w-full z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+      <nav 
+        className={`fixed w-full z-50 transition-all duration-300 ${
+          scrolled ? 'bg-white shadow-md py-3' : 'bg-white shadow-sm py-5'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+          <div className="flex justify-between items-center">
             {/* Logo */}
             <div className="flex items-center cursor-pointer" onClick={() => router.push('/')}>
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <ShieldCheck className="h-6 w-6 text-white" />
+              <div className="bg-blue-600 p-3 rounded-lg">
+                <ShieldCheck className="h-7 w-7 text-white" />
               </div>
-              <span className="ml-3 text-xl font-bold text-gray-900">TechReg Zimbabwe</span>
+              <span className="ml-4 text-2xl font-bold text-blue-900">HEVACRAZ</span>
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-8">
-              <a href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">Features</a>
-              <a href="#how-it-works" className="text-gray-600 hover:text-blue-600 transition-colors">How It Works</a>
-              <a href="#search" className="text-gray-600 hover:text-blue-600 transition-colors">Search</a>
-              {session ? (
-                <button 
-                  onClick={() => router.push('/dashboard')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            <div className="hidden md:flex items-center space-x-12">
+              {navLinks.map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  className="text-gray-700 hover:text-blue-600 transition-colors font-medium text-lg"
                 >
-                  Dashboard
-                </button>
-              ) : (
-                <button 
-                  onClick={() => router.push('/login')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Login
-                </button>
-              )}
+                  {link.name}
+                </a>
+              ))}
             </div>
 
             {/* Mobile Menu Button */}
             <div className="md:hidden">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-gray-600 hover:text-gray-900"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
               >
-                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                {mobileMenuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
-              <a href="#features" className="block text-gray-600 hover:text-blue-600 transition-colors">Features</a>
-              <a href="#how-it-works" className="block text-gray-600 hover:text-blue-600 transition-colors">How It Works</a>
-              <a href="#search" className="block text-gray-600 hover:text-blue-600 transition-colors">Search</a>
-              {session ? (
-                <button 
-                  onClick={() => router.push('/dashboard')}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-6 space-y-4">
+              {navLinks.map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  className="block text-gray-700 hover:text-blue-600 transition-colors font-medium py-3 text-lg"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
-                  Dashboard
-                </button>
-              ) : (
-                <button 
-                  onClick={() => router.push('/login')}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Login
-                </button>
-              )}
+                  {link.name}
+                </a>
+              ))}
             </div>
           </div>
         )}
       </nav>
 
-      <main>
-        {/* Hero Section */}
-        <section className="pt-24 pb-16 bg-gradient-to-br from-blue-600 to-blue-700 text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-              <div>
-                <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
-                  Verified Technicians<br />at Your Fingertips
-                </h1>
-                <p className="text-xl mb-8 text-blue-100">
-                  Zimbabwe's national technician registry. Search, verify, and connect with certified professionals across all provinces.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <button 
-                    onClick={() => router.push('/technician-registry')}
-                    className="px-8 py-3 bg-white text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
-                  >
-                    Search Technicians <ArrowRight className="h-5 w-5" />
-                  </button>
-                  <button 
-                    onClick={() => router.push(session ? '/dashboard' : '/login')}
-                    className="px-8 py-3 bg-blue-800 text-white font-semibold rounded-xl hover:bg-blue-900 transition-colors"
-                  >
-                    {session ? 'My Dashboard' : 'Register Now'}
-                  </button>
-                </div>
-              </div>
-              <div className="relative">
-                <div className="absolute -inset-4 bg-blue-500 rounded-2xl blur-2xl opacity-50"></div>
-                <div className="relative bg-white rounded-2xl p-8 shadow-2xl">
-                  <div className="flex items-center gap-3 mb-6">
-                    <ShieldCheck className="h-8 w-8 text-blue-600" />
-                    <h3 className="text-xl font-bold text-gray-900">Trusted Verification</h3>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                      <span className="text-gray-700">National ID verification</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                      <span className="text-gray-700">Professional certifications</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                      <span className="text-gray-700">Province and district mapping</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                      <span className="text-gray-700">Up-to-date registration status</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Search Section */}
-        <section id="search" className="py-16 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Find a Technician</h2>
-              <p className="text-lg text-gray-600">Quick search by name, registration number, or specialization</p>
-            </div>
-
-            <div className="max-w-2xl mx-auto">
-              <form onSubmit={handleSearch} className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search by name, national ID, registration number, or specialization..."
-                  className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  disabled={searching}
-                />
-                <button
-                  type="submit"
-                  disabled={searching}
-                  className="absolute inset-y-0 right-2 flex items-center px-6 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
-                >
-                  {searching ? 'Searching...' : 'Search'}
-                </button>
-              </form>
-
-              {/* Quick Search Categories */}
-              <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { name: 'Electrical', specialization: 'Electrical' },
-                  { name: 'Solar Installation', specialization: 'Solar Installation' },
-                  { name: 'Refrigeration', specialization: 'Refrigeration & Air Conditioning' },
-                  { name: 'Plumbing', specialization: 'Plumbing' }
-                ].map((category) => (
-                  <button
-                    key={category.name}
-                    onClick={() => handleQuickSearch(category.specialization)}
-                    className="px-4 py-3 bg-gray-50 rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span className="text-sm font-medium text-gray-700">{category.name}</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Features Section */}
-        <section id="features" className="py-16 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose TechReg?</h2>
-              <p className="text-lg text-gray-600">A comprehensive registry for all your technician needs</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow">
-                <div className="bg-blue-100 w-16 h-16 rounded-xl flex items-center justify-center mb-6">
-                  <Users className="h-8 w-8 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Verified Profiles</h3>
-                <p className="text-gray-600">Every technician in our registry is verified with national ID and professional certifications.</p>
-              </div>
-
-              <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow">
-                <div className="bg-blue-100 w-16 h-16 rounded-xl flex items-center justify-center mb-6">
-                  <MapPin className="h-8 w-8 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Location Based</h3>
-                <p className="text-gray-600">Find technicians in your province and district with detailed location information.</p>
-              </div>
-
-              <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow">
-                <div className="bg-blue-100 w-16 h-16 rounded-xl flex items-center justify-center mb-6">
-                  <ShieldCheck className="h-8 w-8 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Regulatory Compliance</h3>
-                <p className="text-gray-600">All registered technicians comply with Zimbabwe's industry regulations and standards.</p>
-              </div>
-
-              <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow">
-                <div className="bg-blue-100 w-16 h-16 rounded-xl flex items-center justify-center mb-6">
-                  <Clock className="h-8 w-8 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Real-time Updates</h3>
-                <p className="text-gray-600">Stay informed with up-to-date registration status and renewal reminders.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* How It Works Section */}
-        <section id="how-it-works" className="py-16 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">How It Works</h2>
-              <p className="text-lg text-gray-600">Simple steps to register and verify technicians</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-white text-2xl font-bold">1</span>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Register</h3>
-                <p className="text-gray-600">Complete the registration form with personal details, national ID, and professional information.</p>
-              </div>
-
-              <div className="text-center">
-                <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-white text-2xl font-bold">2</span>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Verification</h3>
-                <p className="text-gray-600">Submit your national ID for verification. Our system ensures each technician is uniquely identified.</p>
-              </div>
-
-              <div className="text-center">
-                <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-white text-2xl font-bold">3</span>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Access</h3>
-                <p className="text-gray-600">Once approved, your profile becomes searchable by the public and other stakeholders.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Call to Action Section */}
-        <section className="py-16 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Get Started?</h2>
-            <p className="text-xl mb-8 text-blue-100">
-              Join thousands of verified technicians and service providers across Zimbabwe
+      {/* Hero Section */}
+      <section className="pt-40 pb-28 bg-gradient-to-b from-blue-50 to-white">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+          <div className="text-center max-w-4xl mx-auto">
+            <h1 className="text-5xl md:text-6xl font-bold text-blue-900 mb-8 leading-tight">
+              Promoting Excellence in Zimbabwe's HVAC-R Industry
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-600 mb-12 leading-relaxed">
+              The Heating Energy Ventilation Air Conditioning and Refrigeration Association of Zimbabwe (HEVACRAZ) 
+              is dedicated to promoting professional standards, certification, and regulation in the HVAC-R sector.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <button 
-                onClick={() => router.push(session ? '/dashboard' : '/login')}
-                className="px-8 py-3 bg-white text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-colors"
+                onClick={() => router.push('/#membership')}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-10 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg text-lg"
               >
-                {session ? 'Access Dashboard' : 'Create Account'}
+                Become a Member
               </button>
               <button 
                 onClick={() => router.push('/technician-registry')}
-                className="px-8 py-3 bg-blue-800 text-white font-semibold rounded-xl hover:bg-blue-900 transition-colors"
+                className="bg-white hover:bg-gray-50 text-blue-600 font-semibold py-4 px-10 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg border border-blue-200 text-lg"
               >
-                Search Technicians
+                Verify a Technician
               </button>
             </div>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <ShieldCheck className="h-6 w-6 text-blue-400" />
-                <span className="text-xl font-bold">TechReg Zimbabwe</span>
+      {/* About Section */}
+      <section id="about" className="py-28 bg-white">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-blue-900 mb-6">About HEVACRAZ</h2>
+              <div className="w-24 h-1.5 bg-blue-600 mx-auto rounded-full"></div>
+            </div>
+            <p className="text-gray-700 text-xl leading-relaxed mb-6">
+              The Heating Energy Ventilation Air Conditioning and Refrigeration Association of Zimbabwe (HEVACRAZ) 
+              is the national industry association representing professionals in the HVAC-R sector. Established to 
+              promote excellence and standardization, HEVACRAZ plays a crucial role in regulating the industry, 
+              providing certification, and ensuring compliance with national and international standards.
+            </p>
+            <p className="text-gray-700 text-xl leading-relaxed">
+              Our mission is to advance the HVAC-R profession in Zimbabwe through education, certification, 
+              and advocacy, ensuring that consumers receive high-quality, safe, and reliable services from 
+              trained and certified professionals.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Services Section */}
+      <section id="services" className="py-28 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl font-bold text-blue-900 mb-6">Our Services</h2>
+            <div className="w-24 h-1.5 bg-blue-600 mx-auto rounded-full"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+            {services.map((service, index) => (
+              <div 
+                key={index}
+                className="bg-white p-10 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-blue-100"
+              >
+                <div className="bg-blue-50 p-5 rounded-xl inline-block mb-8">
+                  {service.icon}
+                </div>
+                <h3 className="text-2xl font-bold text-blue-900 mb-4">{service.title}</h3>
+                <p className="text-gray-600 leading-relaxed text-lg">{service.description}</p>
               </div>
-              <p className="text-gray-400 mb-4">The official national technician registry of Zimbabwe, promoting professionalism and trust in technical services.</p>
-              <div className="flex gap-4">
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  <span className="sr-only">Facebook</span>
-                  <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center">f</div>
-                </a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  <span className="sr-only">Twitter</span>
-                  <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center">t</div>
-                </a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  <span className="sr-only">LinkedIn</span>
-                  <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center">in</div>
-                </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Membership Benefits Section */}
+      <section id="membership" className="py-28 bg-white">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+            <div>
+              <h2 className="text-4xl font-bold text-blue-900 mb-8">Membership Benefits</h2>
+              <div className="w-24 h-1.5 bg-blue-600 mb-10 rounded-full"></div>
+              <ul className="space-y-6">
+                {membershipBenefits.map((benefit, index) => (
+                  <li key={index} className="flex items-start space-x-4">
+                    <CheckCircle className="h-8 w-8 text-blue-600 flex-shrink-0 mt-1" />
+                    <span className="text-gray-700 text-xl">{benefit}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-12 rounded-3xl">
+              <div className="text-center">
+                <Users className="h-20 w-20 text-blue-600 mx-auto mb-8" />
+                <h3 className="text-3xl font-bold text-blue-900 mb-6">Join Our Community</h3>
+                <p className="text-gray-600 mb-10 text-lg">
+                  Become part of the premier HVAC-R professional community in Zimbabwe and take your career to new heights.
+                </p>
+                <button 
+                  onClick={() => router.push('/#contact')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-10 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg text-lg"
+                >
+                  Learn More
+                </button>
               </div>
-            </div>
-
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-              <ul className="space-y-2">
-                <li><a href="#search" className="text-gray-400 hover:text-white transition-colors">Search Technicians</a></li>
-                <li><a href="#features" className="text-gray-400 hover:text-white transition-colors">Features</a></li>
-                <li><a href="#how-it-works" className="text-gray-400 hover:text-white transition-colors">How It Works</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">About Us</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Services</h4>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Registration</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Verification</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Renewal</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Support</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Contact</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  <span>Harare, Zimbabwe</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-4 h-4 flex items-center justify-center">📧</span>
-                  <span>info@techreg.gov.zw</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-4 h-4 flex items-center justify-center">📞</span>
-                  <span>+263 242 700 000</span>
-                </li>
-              </ul>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500">
-            <p>&copy; 2024 TechReg Zimbabwe. All rights reserved.</p>
+      {/* CTA Banner */}
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-blue-700">
+        <div className="max-w-4xl mx-auto px-6 sm:px-8 lg:px-12 text-center">
+          <h2 className="text-4xl font-bold text-white mb-6">Ready to Get Involved?</h2>
+          <p className="text-blue-100 text-xl mb-10">
+            Join HEVACRAZ today and be part of the solution to elevate Zimbabwe's HVAC-R industry.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <button 
+              onClick={() => router.push('/#membership')}
+              className="bg-white hover:bg-gray-50 text-blue-600 font-semibold py-4 px-10 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg text-lg"
+            >
+              Become a Member
+            </button>
+            <button 
+              onClick={() => router.push('/#contact')}
+              className="bg-transparent hover:bg-blue-800 text-white font-semibold py-4 px-10 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg border border-white text-lg"
+            >
+              Contact Us
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer id="contact" className="bg-blue-900 text-white py-16">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+            <div>
+              <div className="flex items-center mb-6">
+                <div className="bg-blue-600 p-3 rounded-lg">
+                  <ShieldCheck className="h-7 w-7 text-white" />
+                </div>
+                <span className="ml-4 text-2xl font-bold">HEVACRAZ</span>
+              </div>
+              <p className="text-blue-200 mb-6 text-lg">
+                Promoting excellence in Zimbabwe's HVAC-R industry through certification, training, and regulation.
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="text-xl font-semibold mb-6">Quick Links</h4>
+              <ul className="space-y-3">
+                {navLinks.slice(1).map((link) => (
+                  <li key={link.name}>
+                    <a href={link.href} className="text-blue-200 hover:text-white transition-colors text-lg">
+                      {link.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="text-xl font-semibold mb-6">Contact Us</h4>
+              <address className="text-blue-200 not-italic text-lg">
+                <p className="flex items-center space-x-2 mb-3">
+                  <MapPin className="h-5 w-5" />
+                  <span>Harare, Zimbabwe</span>
+                </p>
+                <p className="mb-3">Email: info@hevacraz.org.zw</p>
+                <p className="mb-3">Phone: +263 24 7000 000</p>
+              </address>
+            </div>
+            
+            <div>
+              <h4 className="text-xl font-semibold mb-6">Follow Us</h4>
+              <div className="flex space-x-5">
+                <a href="#" className="text-blue-200 hover:text-white transition-colors">
+                  <span className="sr-only">Facebook</span>
+                  <div className="w-10 h-10 bg-blue-800 rounded-full flex items-center justify-center">
+                    <span className="text-base">F</span>
+                  </div>
+                </a>
+                <a href="#" className="text-blue-200 hover:text-white transition-colors">
+                  <span className="sr-only">LinkedIn</span>
+                  <div className="w-10 h-10 bg-blue-800 rounded-full flex items-center justify-center">
+                    <span className="text-base">L</span>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-blue-800 mt-12 pt-12 text-center text-blue-200">
+            <p className="text-lg">&copy; {new Date().getFullYear()} Heating Energy Ventilation Air Conditioning and Refrigeration Association of Zimbabwe (HEVACRAZ). All rights reserved.</p>
           </div>
         </div>
       </footer>
