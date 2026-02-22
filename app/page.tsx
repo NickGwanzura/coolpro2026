@@ -20,6 +20,7 @@ export default function HEVACRAZ_LandingPage() {
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'About', href: '#about' },
+    { name: 'Technician Portal', href: '#technician' },
     { name: 'Membership', href: '#membership' },
     { name: 'Training & Certification', href: '#training' },
     { name: 'Technician Registry', href: '#registry' },
@@ -58,6 +59,29 @@ export default function HEVACRAZ_LandingPage() {
     'Advocacy and representation',
   ];
 
+  const technicianFeatures = [
+    {
+      icon: <ShieldCheck className="h-8 w-8 text-blue-600" />,
+      title: 'COC Certifications',
+      description: 'Request and manage Certificates of Conformity for installed systems.',
+    },
+    {
+      icon: <BookOpen className="h-8 w-8 text-blue-600" />,
+      title: 'Sizing Tool',
+      description: 'Calculate cooling capacity requirements for cold rooms and freezers.',
+    },
+    {
+      icon: <CheckCircle className="h-8 w-8 text-blue-600" />,
+      title: 'Job Logging',
+      description: 'Log installations, maintenance, and repairs with full documentation.',
+    },
+    {
+      icon: <Users className="h-8 w-8 text-blue-600" />,
+      title: 'Technician Registry',
+      description: 'Manage your profile and verify your certification status.',
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
@@ -77,16 +101,22 @@ export default function HEVACRAZ_LandingPage() {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-12">
+            <div className="hidden md:flex items-center space-x-6 ml-8">
               {navLinks.map((link) => (
                 <a
                   key={link.name}
                   href={link.href}
-                  className="text-gray-700 hover:text-blue-600 transition-colors font-medium text-lg"
+                  className="text-gray-700 hover:text-blue-600 transition-colors font-medium text-sm"
                 >
                   {link.name}
                 </a>
               ))}
+              <a
+                href="/login"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md text-sm inline-block"
+              >
+                Login
+              </a>
             </div>
 
             {/* Mobile Menu Button */}
@@ -115,6 +145,15 @@ export default function HEVACRAZ_LandingPage() {
                   {link.name}
                 </a>
               ))}
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  router.push('/login');
+                }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md"
+              >
+                Login
+              </button>
             </div>
           </div>
         )}
@@ -139,7 +178,7 @@ export default function HEVACRAZ_LandingPage() {
                 Become a Member
               </button>
               <button 
-                onClick={() => router.push('/technician-registry')}
+                onClick={() => router.push('/verify-technician')}
                 className="bg-white hover:bg-gray-50 text-blue-600 font-semibold py-4 px-10 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg border border-blue-200 text-lg"
               >
                 Verify a Technician
@@ -168,6 +207,45 @@ export default function HEVACRAZ_LandingPage() {
               and advocacy, ensuring that consumers receive high-quality, safe, and reliable services from 
               trained and certified professionals.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Technician Portal Section */}
+      <section id="technician" className="py-28 bg-gradient-to-br from-blue-900 to-blue-800">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-white mb-6">Technician Portal</h2>
+            <p className="text-blue-100 text-xl max-w-3xl mx-auto">
+              Access all the tools you need as a certified HVAC-R professional in Zimbabwe.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {technicianFeatures.map((feature, index) => (
+              <div 
+                key={index}
+                className="bg-white/10 backdrop-blur-sm p-8 rounded-2xl hover:bg-white/20 transition-all duration-300 border border-white/20 cursor-pointer group"
+                onClick={() => router.push('/login')}
+              >
+                <div className="bg-white/20 p-4 rounded-xl inline-block mb-6">
+                  {feature.icon}
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-blue-200 transition-colors">{feature.title}</h3>
+                <p className="text-blue-100 leading-relaxed text-lg">{feature.description}</p>
+                <div className="mt-6 flex items-center text-blue-200 group-hover:text-white transition-colors">
+                  <span className="font-semibold">Click to access</span>
+                  <ArrowRight className="h-5 w-5 ml-2" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-12">
+            <button 
+              onClick={() => router.push('/login')}
+              className="bg-white hover:bg-blue-50 text-blue-900 font-semibold py-4 px-10 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg text-lg"
+            >
+              Login to Technician Portal
+            </button>
           </div>
         </div>
       </section>

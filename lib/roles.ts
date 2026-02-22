@@ -16,4 +16,5 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   vendor: 'Vendor/Supplier',
   org_admin: 'Organization Admin',
   program_admin: 'National Admin',
+  regulator: 'Regulator/Verifier',
 };

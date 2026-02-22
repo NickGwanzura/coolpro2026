@@ -9,10 +9,9 @@ export const REFRIGERANTS = [
 ];
 
 export const INSULATION_U_VALUES = {
-  PUR: 0.022,
-  PIR: 0.020,
-  EPS: 0.038,
-  ROCKWOOL: 0.040
+  Polyurethane: 0.022,
+  Polystyrene: 0.033,
+  Mineral_Wool: 0.040
 };
 
 export const Icons = {

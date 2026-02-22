@@ -54,20 +54,20 @@ export const ZIMBABWE_PROVINCES: Province[] = [
   }
 ];
 
-// Technician Specializations
+// Technician Specializations - Refrigeration & Air Conditioning only
 export const TECHNICIAN_SPECIALIZATIONS = [
   'Refrigeration & Air Conditioning',
-  'Electrical',
-  'Plumbing',
-  'Solar Installation',
-  'Mechanical',
-  'Automotive',
-  'Welding',
-  'Carpentry',
-  'Masonry',
-  'Electronics',
   'HVAC',
-  'Appliance Repair'
+  'Cold Room Installation',
+  'Commercial Refrigeration',
+  'Domestic Refrigeration',
+  'Air Conditioning',
+  'Split System Installation',
+  'Central Air Conditioning',
+  'Refrigerant Handling',
+  'Heat Pump Systems',
+  'Chiller Systems',
+  'Industrial Refrigeration'
 ];
 
 // Issuing Bodies for Certifications
@@ -133,30 +133,30 @@ export const MOCK_TECHNICIANS: Technician[] = [
     district: 'Bulawayo South',
     contactNumber: '+263 71 234 5678',
     email: 'nyasha.chikomo@example.com',
-    specialization: 'Solar Installation',
+    specialization: 'Commercial Refrigeration',
     certifications: [
       {
         id: 'cert2',
-        name: 'Solar Photovoltaic Installation',
-        issuingBody: 'Zimbabwe Energy Regulatory Authority (ZERA)',
+        name: 'Certificate in Commercial Refrigeration',
+        issuingBody: 'Bulawayo Polytechnic',
         dateIssued: '2023-09-10',
         expiryDate: '2026-09-10',
-        certificateNumber: 'ZERA/2023/SOL/045',
+        certificateNumber: 'BP/2023/REF/045',
         status: 'valid' as const
       }
     ],
     trainingHistory: [
       {
         id: 'train2',
-        courseName: 'Solar System Design & Installation',
-        provider: 'Renewable Energy Training Institute',
+        courseName: 'Commercial Refrigeration Systems',
+        provider: 'Cooling Systems Zimbabwe',
         dateCompleted: '2023-08-15',
         duration: '60 hours',
-        certificateNumber: 'RET/2023/TRN/123'
+        certificateNumber: 'CSZ/2023/TRN/123'
       }
     ],
     employmentStatus: 'self-employed' as const,
-    employer: 'Chikomo Solar Services',
+    employer: 'Chikomo Cooling Services',
     registrationDate: '2023-10-01',
     expiryDate: '2026-09-30',
     status: 'active' as const,
@@ -173,30 +173,30 @@ export const MOCK_TECHNICIANS: Technician[] = [
     district: 'Gweru',
     contactNumber: '+263 73 345 6789',
     email: 'munyaradzi.dube@example.com',
-    specialization: 'Electrical',
+    specialization: 'Air Conditioning',
     certifications: [
       {
         id: 'cert3',
-        name: 'Electrical Installation License',
-        issuingBody: 'Zimbabwe Electricity Supply Authority (ZESA)',
+        name: 'Certificate in Air Conditioning',
+        issuingBody: 'Gweru Technical College',
         dateIssued: '2024-01-20',
         expiryDate: '2029-01-20',
-        certificateNumber: 'ZESA/2024/ELEC/078',
+        certificateNumber: 'GTC/2024/AC/078',
         status: 'valid' as const
       }
     ],
     trainingHistory: [
       {
         id: 'train3',
-        courseName: 'Electrical Safety & Regulations',
-        provider: 'ZESA Training Academy',
+        courseName: 'Air Conditioning Installation & Maintenance',
+        provider: 'HVAC Training Institute',
         dateCompleted: '2023-12-15',
         duration: '30 hours',
-        certificateNumber: 'ZTA/2023/TRN/456'
+        certificateNumber: 'HTI/2023/TRN/456'
       }
     ],
     employmentStatus: 'employed' as const,
-    employer: 'ZESA Holdings',
+    employer: 'Dube Air Solutions',
     registrationDate: '2024-02-01',
     expiryDate: '2029-01-31',
     status: 'active' as const,

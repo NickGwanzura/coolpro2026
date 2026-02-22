@@ -195,11 +195,10 @@ export default function TechnicianDetailsPage() {
                           </div>
                         </div>
                       </div>
-                      <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                        cert.status === 'valid' ? 'bg-green-100 text-green-800' :
-                        cert.status === 'expired' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
+                      <span className={`px-3 py-1 text-xs font-medium rounded-full ${cert.status === 'valid' ? 'bg-green-100 text-green-800' :
+                          cert.status === 'expired' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {cert.status}
                       </span>
                     </div>
@@ -275,20 +274,81 @@ export default function TechnicianDetailsPage() {
             </div>
           </div>
 
+
           <div className="bg-blue-50 rounded-2xl border border-blue-200 p-6">
             <h3 className="text-lg font-semibold text-blue-900 mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              <button className="w-full px-4 py-2 bg-white text-blue-600 rounded-xl border border-blue-300 hover:bg-blue-50 transition-colors">
-                Download Certificate
+              <button
+                onClick={() => {
+                  const { jsPDF } = require('jspdf');
+                  const doc = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'mm',
+                    format: 'a4'
+                  });
+
+                  // Add border
+                  doc.setDrawColor(37, 99, 235);
+                  doc.setLineWidth(1);
+                  doc.rect(10, 10, 277, 190);
+                  doc.rect(12, 12, 273, 186);
+
+                  // Header
+                  doc.setFontSize(30);
+                  doc.setTextColor(37, 99, 235);
+                  doc.text('CERTIFICATE OF COMPETENCY', 148.5, 50, { align: 'center' });
+
+                  doc.setFontSize(14);
+                  doc.setTextColor(100, 100, 100);
+                  doc.text('This is to certify that', 148.5, 70, { align: 'center' });
+
+                  // Name
+                  doc.setFontSize(36);
+                  doc.setTextColor(15, 23, 42);
+                  doc.text(technician.name.toUpperCase(), 148.5, 90, { align: 'center' });
+
+                  // Description
+                  doc.setFontSize(14);
+                  doc.setTextColor(100, 100, 100);
+                  doc.text('Has successfully completed the national assessment for', 148.5, 110, { align: 'center' });
+
+                  doc.setFontSize(22);
+                  doc.setTextColor(37, 99, 235);
+                  doc.text(technician.specialization, 148.5, 125, { align: 'center' });
+
+                  // Details
+                  doc.setFontSize(10);
+                  doc.setTextColor(100, 100, 100);
+                  doc.text(`Registration No: ${technician.registrationNumber}`, 60, 155, { align: 'center' });
+                  doc.text(`Issue Date: ${new Date().toLocaleDateString()}`, 148.5, 155, { align: 'center' });
+                  doc.text(`Valid Until: ${technician.expiryDate}`, 237, 155, { align: 'center' });
+
+                  // Footer
+                  doc.setFontSize(14);
+                  doc.setTextColor(15, 23, 42);
+                  doc.text('National Refrigeration Program', 148.5, 180, { align: 'center' });
+                  doc.setFontSize(8);
+                  doc.text('REPUBLIC OF ZIMBABWE', 148.5, 185, { align: 'center' });
+
+                  doc.save(`${technician.name.replace(/\s+/g, '-')}-certificate.pdf`);
+                }}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+              >
+                <Award className="h-5 w-5" />
+                Generate National Certificate
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="w-full px-4 py-2 bg-white text-blue-600 rounded-xl border border-blue-300 hover:bg-blue-50 transition-colors"
+              >
+                Print Full Profile
               </button>
               <button className="w-full px-4 py-2 bg-white text-blue-600 rounded-xl border border-blue-300 hover:bg-blue-50 transition-colors">
-                View Full Profile
-              </button>
-              <button className="w-full px-4 py-2 bg-white text-blue-600 rounded-xl border border-blue-300 hover:bg-blue-50 transition-colors">
-                Send Notification
+                Send Digital ID Card
               </button>
             </div>
           </div>
+
         </div>
       </div>
     </div>

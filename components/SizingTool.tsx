@@ -1,22 +1,26 @@
 
-import React, { useState, useMemo } from 'react';
-import { SizingInputs } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { SizingInputs, JobType, JobTypeLabels, JobTypeDefaults } from '../types';
 import { INSULATION_U_VALUES, Icons, REFRIGERANTS } from '../constants';
 import { getTechnicalAdvice } from '../services/groq';
-import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download, Snowflake } from 'lucide-react';
+import { useAuth } from '../lib/auth';
 
 const SizingTool: React.FC = () => {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [inputs, setInputs] = useState<SizingInputs>({
     step: 1,
     facilityType: 'SUPERMARKET',
+    jobType: 'COLD_ROOM',
     roomWidth: 6,
     roomLength: 8,
     roomHeight: 3.5,
-    insulationType: 'PUR',
+    insulationType: 'Polyurethane',
     insulationThickness: 100,
     ambientTemp: 35,
-    targetTemp: -18,
+    targetTemp: 2,
+    productTemp: 20,
     productMass: 5000,
     productCp: 3.2,
     loadingTimeHours: 24
@@ -39,47 +43,64 @@ const SizingTool: React.FC = () => {
       doc.setFont('helvetica', 'normal');
       doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 30);
       
+      // Technician
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Technician', 20, 42);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Name: ${user?.name || 'Demo Technician'}`, 25, 52);
+      
+      // Job Type
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Job Type', 20, 68);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(JobTypeLabels[inputs.jobType as JobType] || 'Cold Room', 25, 60);
+      
       // Room Dimensions
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Room Dimensions', 20, 45);
+      doc.text('Room Dimensions', 20, 76);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       doc.text(`Width: ${inputs.roomWidth}m`, 25, 55);
-      doc.text(`Length: ${inputs.roomLength}m`, 25, 62);
-      doc.text(`Height: ${inputs.roomHeight}m`, 25, 69);
+      doc.text(`Length: ${inputs.roomLength}m`, 25, 69);
+      doc.text(`Height: ${inputs.roomHeight}m`, 25, 76);
       
       // Insulation
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Insulation', 20, 85);
+      doc.text('Insulation', 20, 92);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Type: ${inputs.insulationType}`, 25, 95);
-      doc.text(`Thickness: ${inputs.insulationThickness}mm`, 25, 102);
+      doc.text(`Type: ${inputs.insulationType}`, 25, 102);
+      doc.text(`Thickness: ${inputs.insulationThickness}mm`, 25, 109);
       
       // Operating Conditions
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Operating Conditions', 20, 118);
+      doc.text('Operating Conditions', 20, 125);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Ambient Temperature: ${inputs.ambientTemp}°C`, 25, 128);
-      doc.text(`Target Temperature: ${inputs.targetTemp}°C`, 25, 135);
-      doc.text(`Product Mass: ${inputs.productMass}kg`, 25, 142);
-      doc.text(`Pull-down Time: ${inputs.loadingTimeHours} hours`, 25, 149);
+      doc.text(`Ambient Temperature: ${inputs.ambientTemp}°C`, 25, 135);
+      doc.text(`Target Temperature: ${inputs.targetTemp}°C`, 25, 142);
+      doc.text(`Product Temperature: ${inputs.productTemp}°C`, 25, 149);
+      doc.text(`Product Mass: ${inputs.productMass}kg`, 25, 156);
+      doc.text(`Pull-down Time: ${inputs.loadingTimeHours} hours`, 25, 163);
       
       // Calculated Results
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Calculated Results', 20, 165);
+      doc.text('Calculated Results', 20, 172);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Total Load: ${results.total.toFixed(2)} kW`, 25, 175);
-      doc.text(`Transmission Load: ${results.transmission.toFixed(2)} kW`, 25, 182);
-      doc.text(`Product Load: ${results.product.toFixed(2)} kW`, 25, 189);
-      doc.text(`Infiltration Load: ${results.infiltration.toFixed(2)} kW`, 25, 196);
-      doc.text(`Safety Margin (15%): ${(results.total * 0.15).toFixed(2)} kW`, 25, 203);
+      doc.text(`Total Load: ${results.total.toFixed(2)} kW`, 25, 182);
+      doc.text(`Transmission Load: ${results.transmission.toFixed(2)} kW`, 25, 189);
+      doc.text(`Product Load: ${results.product.toFixed(2)} kW`, 25, 196);
+      doc.text(`Infiltration Load: ${results.infiltration.toFixed(2)} kW`, 25, 203);
+      doc.text(`Safety Margin (${inputs.jobType === 'C90_FREEZER' ? '25' : inputs.jobType === 'C60_FREEZER' ? '20' : '15'}%): ${(results.total * (inputs.jobType === 'C90_FREEZER' ? 0.25 : inputs.jobType === 'C60_FREEZER' ? 0.20 : 0.15)).toFixed(2)} kW`, 25, 210);
       
       // Refrigerants
       doc.setFontSize(14);
@@ -117,23 +138,37 @@ const SizingTool: React.FC = () => {
     const area = 2 * (inputs.roomWidth * inputs.roomHeight + inputs.roomLength * inputs.roomHeight) + (inputs.roomWidth * inputs.roomLength);
     const uValue = (INSULATION_U_VALUES[inputs.insulationType as keyof typeof INSULATION_U_VALUES] || 0.022) / (inputs.insulationThickness / 1000);
     const tempDiff = inputs.ambientTemp - inputs.targetTemp;
+    const productTempDiff = inputs.productTemp - inputs.targetTemp;
+    
+    // Job type specific multipliers
+    const jobTypeMultipliers: Record<JobType, { infiltration: number; product: number; safety: number }> = {
+      C40_FREEZER: { infiltration: 1.2, product: 1.1, safety: 1.15 },
+      C60_FREEZER: { infiltration: 1.3, product: 1.15, safety: 1.20 },
+      C90_FREEZER: { infiltration: 1.5, product: 1.2, safety: 1.25 },
+      COLD_ROOM: { infiltration: 1.0, product: 1.0, safety: 1.15 },
+      FREEZER_ROOM: { infiltration: 1.1, product: 1.05, safety: 1.15 }
+    };
+    
+    const multipliers = jobTypeMultipliers[inputs.jobType as JobType] || jobTypeMultipliers.COLD_ROOM;
+    
     const transmissionLoad = area * uValue * tempDiff;
-    const productLoad = (inputs.productMass * inputs.productCp * tempDiff) / (inputs.loadingTimeHours * 3600);
+    const productLoad = (inputs.productMass * inputs.productCp * productTempDiff) / (inputs.loadingTimeHours * 3600);
     const volume = inputs.roomWidth * inputs.roomLength * inputs.roomHeight;
-    const infiltrationLoad = (volume * 10 * 0.3 * tempDiff) / 3600;
-    const totalLoad = (transmissionLoad + (productLoad * 1000) + infiltrationLoad) * 1.15;
+    const infiltrationLoad = (volume * 10 * multipliers.infiltration * tempDiff) / 3600;
+    const totalLoad = (transmissionLoad + (productLoad * multipliers.product * 1000) + infiltrationLoad) * multipliers.safety;
     
     return {
       transmission: transmissionLoad / 1000,
       product: productLoad,
       infiltration: infiltrationLoad,
-      total: totalLoad / 1000
+      total: totalLoad / 1000,
+      jobType: inputs.jobType
     };
   }, [inputs]);
 
   const handleAiConsult = async () => {
     setIsLoadingAi(true);
-    const prompt = `Review this commercial refrigeration sizing design for a ${inputs.facilityType}:
+    const prompt = `Review this commercial refrigeration sizing design for a ${JobTypeLabels[inputs.jobType as JobType] || 'Cold Room'}:
     Room: ${inputs.roomWidth}x${inputs.roomLength}x${inputs.roomHeight}m
     Insulation: ${inputs.insulationThickness}mm ${inputs.insulationType}
     Product: ${inputs.productMass}kg meat/produce
@@ -188,9 +223,40 @@ const SizingTool: React.FC = () => {
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="p-2 rounded-lg bg-blue-100">
-                    <Calculator className="h-5 w-5 text-blue-600" />
+                    <Snowflake className="h-5 w-5 text-blue-600" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900">Room Dimensions & Build</h3>
+                  <h3 className="text-xl font-bold text-gray-900">Job Type & Dimensions</h3>
+                </div>
+                
+                {/* Job Type Selection */}
+                <div className="space-y-4">
+                  <label className="text-sm font-semibold text-gray-700">Select Job Type</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(Object.keys(JobTypeLabels) as JobType[]).map((type) => (
+                      <button 
+                        key={type}
+                        onClick={() => {
+                          const defaults = JobTypeDefaults[type];
+                          setInputs({
+                            ...inputs, 
+                            jobType: type,
+                            targetTemp: defaults.targetTemp,
+                            loadingTimeHours: defaults.defaultLoadingTime
+                          });
+                        }}
+                        className={`p-4 rounded-xl border-2 text-sm font-semibold transition-all ${
+                          inputs.jobType === type 
+                            ? 'border-blue-600 bg-blue-50 text-blue-700' 
+                            : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Snowflake className="h-4 w-4" />
+                          {JobTypeLabels[type]}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-3 gap-4">
@@ -201,8 +267,8 @@ const SizingTool: React.FC = () => {
                 
                 <div className="space-y-4 pt-4 border-t border-gray-100">
                   <label className="text-sm font-semibold text-gray-700">Insulation System</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {['PUR', 'PIR', 'EPS'].map(type => (
+                  <div className="grid grid-cols-2 gap-3">
+                    {['Polyurethane', 'Polystyrene'].map(type => (
                       <button 
                         key={type}
                         onClick={() => setInputs({...inputs, insulationType: type as any})}
@@ -212,7 +278,7 @@ const SizingTool: React.FC = () => {
                             : 'border-gray-200 text-gray-500 hover:border-gray-300'
                         }`}
                       >
-                        {type} Core
+                        {type}
                       </button>
                     ))}
                   </div>
@@ -244,8 +310,10 @@ const SizingTool: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <InputGroup label="Ambient Temp (°C)" value={inputs.ambientTemp} onChange={(v: number) => setInputs({...inputs, ambientTemp: v})} />
                   <InputGroup label="Target Temp (°C)" value={inputs.targetTemp} onChange={(v: number) => setInputs({...inputs, targetTemp: v})} />
-                  <InputGroup label="Product Mass (kg)" value={inputs.productMass} onChange={(v: number) => setInputs({...inputs, productMass: v})} />
+                  <InputGroup label="Product Temp (°C)" value={inputs.productTemp} onChange={(v: number) => setInputs({...inputs, productTemp: v})} />
                   <InputGroup label="Pull-down Time (hrs)" value={inputs.loadingTimeHours} onChange={(v: number) => setInputs({...inputs, loadingTimeHours: v})} />
+                  <InputGroup label="Product Mass (kg)" value={inputs.productMass} onChange={(v: number) => setInputs({...inputs, productMass: v})} />
+                  <InputGroup label="Product Cp (kJ/kg·K)" value={inputs.productCp} onChange={(v: number) => setInputs({...inputs, productCp: v})} />
                 </div>
               </div>
             )}
@@ -255,7 +323,7 @@ const SizingTool: React.FC = () => {
                 {/* Results Card */}
                 <div className="flex items-center gap-6 p-6 bg-gray-900 rounded-2xl text-white">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-400 mb-1">Total System Load</p>
+                    <p className="text-sm font-medium text-gray-400 mb-1">{JobTypeLabels[inputs.jobType as JobType] || 'Cold Room'} - Total System Load</p>
                     <div className="flex items-baseline gap-2">
                       <span className="text-4xl sm:text-5xl font-bold text-blue-400">{results.total.toFixed(2)}</span>
                       <span className="text-lg font-medium text-gray-400">kW</span>
@@ -274,7 +342,7 @@ const SizingTool: React.FC = () => {
                       <BreakdownLine label="Transmission" value={results.transmission} />
                       <BreakdownLine label="Product Load" value={results.product} />
                       <BreakdownLine label="Infiltration" value={results.infiltration} />
-                      <BreakdownLine label="Safety Margin (15%)" value={results.total * 0.15} />
+                      <BreakdownLine label={`Safety Margin (${inputs.jobType === 'C90_FREEZER' ? '25' : inputs.jobType === 'C60_FREEZER' ? '20' : '15'}%)`} value={results.total * (inputs.jobType === 'C90_FREEZER' ? 0.25 : inputs.jobType === 'C60_FREEZER' ? 0.20 : 0.15)} />
                     </div>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col justify-center">

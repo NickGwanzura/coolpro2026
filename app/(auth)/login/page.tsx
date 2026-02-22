@@ -154,7 +154,7 @@ export default function LoginPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label htmlFor="role" className="block text-sm font-semibold text-gray-700">
-                    Select Persona
+                    Select Role
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -166,9 +166,8 @@ export default function LoginPage() {
                       onChange={(e) => setSelectedRole(e.target.value as UserRole)}
                       className="block w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
                     >
-                      {Object.entries(ROLE_LABELS).map(([val, label]) => (
-                        <option key={val} value={val}>{label}</option>
-                      ))}
+                      <option value="org_admin">Admin</option>
+                      <option value="technician">Technician</option>
                     </select>
                   </div>
                 </div>

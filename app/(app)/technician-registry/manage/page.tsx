@@ -16,6 +16,7 @@ export default function ManageTechniciansPage() {
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [activeTab, setActiveTab] = useState<'technicians' | 'certifications'>('technicians');
 
   useEffect(() => {
     setSession(getSession());
@@ -28,7 +29,7 @@ export default function ManageTechniciansPage() {
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(tech => 
+      filtered = filtered.filter(tech =>
         tech.name.toLowerCase().includes(term) ||
         tech.registrationNumber.toLowerCase().includes(term) ||
         tech.nationalId.toLowerCase().includes(term) ||
@@ -84,7 +85,7 @@ export default function ManageTechniciansPage() {
   };
 
   const handleStatusChange = (id: string, newStatus: string) => {
-    const updated = technicians.map(tech => 
+    const updated = technicians.map(tech =>
       tech.id === id ? { ...tech, status: newStatus as any } : tech
     );
     setTechnicians(updated);
@@ -101,189 +102,213 @@ export default function ManageTechniciansPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manage Technicians</h1>
-          <p className="text-gray-500 mt-1">Verify, approve, and manage registered technicians</p>
+          <h1 className="text-2xl font-bold text-gray-900">Program Administration</h1>
+          <p className="text-gray-500 mt-1">Verify credentials, approve certifications, and manage the national registry</p>
         </div>
-        <button 
-          onClick={() => router.push('/technician-registry/add')}
-          className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors flex items-center gap-2"
+        <div className="flex gap-2">
+          <button
+            onClick={() => router.push('/technician-registry/add')}
+            className="px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2 font-semibold"
+          >
+            <UserPlus className="h-4 w-4" />
+            Direct Entry
+          </button>
+          <button
+            className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors flex items-center gap-2 font-semibold shadow-lg shadow-green-500/20"
+          >
+            <Plus className="h-4 w-4" />
+            Export Registry
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 bg-white rounded-t-2xl overflow-hidden">
+        <button
+          onClick={() => setActiveTab('technicians')}
+          className={`px-8 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'technicians'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/30'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
         >
-          <UserPlus className="h-4 w-4" />
-          Add New Technician
+          Technician Registry
+        </button>
+        <button
+          onClick={() => setActiveTab('certifications')}
+          className={`px-8 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'certifications'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/30'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+        >
+          Certification Approvals
+          <span className="ml-2 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px]">3 New</span>
         </button>
       </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="lg:col-span-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by name, registration number, national ID, or specialization..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <select
-            className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={selectedProvince}
-            onChange={(e) => setSelectedProvince(e.target.value)}
-          >
-            <option value="">All Provinces</option>
-            {ZIMBABWE_PROVINCES.map(province => (
-              <option key={province.id} value={province.name}>{province.name}</option>
-            ))}
-          </select>
-
-          <select
-            className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={selectedSpecialization}
-            onChange={(e) => setSelectedSpecialization(e.target.value)}
-          >
-            <option value="">All Specializations</option>
-            {TECHNICIAN_SPECIALIZATIONS.map(specialization => (
-              <option key={specialization} value={specialization}>{specialization}</option>
-            ))}
-          </select>
-
-          <select
-            className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-          >
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="suspended">Suspended</option>
-            <option value="pending">Pending</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">Total Technicians</p>
-          <p className="text-2xl font-bold text-gray-900">{filteredTechnicians.length}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">Pending Approval</p>
-          <p className="text-2xl font-bold text-yellow-600">
-            {filteredTechnicians.filter(tech => tech.status === 'pending').length}
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">Active Technicians</p>
-          <p className="text-2xl font-bold text-green-600">
-            {filteredTechnicians.filter(tech => tech.status === 'active').length}
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">Suspended</p>
-          <p className="text-2xl font-bold text-red-600">
-            {filteredTechnicians.filter(tech => tech.status === 'suspended').length}
-          </p>
-        </div>
-      </div>
-
-      {/* Technician List */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="divide-y divide-gray-200">
-          {filteredTechnicians.map((technician) => (
-            <div key={technician.id} className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{technician.name}</h3>
-                    {getStatusBadge(technician.status)}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">Reg. No:</span>
-                      <span>{technician.registrationNumber}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">Specialization:</span>
-                      <span>{technician.specialization}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">Province:</span>
-                      <span>{technician.province}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">Status:</span>
-                      <span className="capitalize">{technician.employmentStatus.replace('-', ' ')}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={() => router.push(`/technician-registry/${technician.id}`)}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                    Edit
-                  </button>
-                  
-                  {technician.status === 'pending' ? (
-                    <button 
-                      onClick={() => handleStatusChange(technician.id, 'active')}
-                      className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      Approve
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={() => handleStatusChange(technician.id, technician.status === 'active' ? 'suspended' : 'active')}
-                      className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-1 ${
-                        technician.status === 'active' 
-                          ? 'bg-red-600 text-white hover:bg-red-700' 
-                          : 'bg-green-600 text-white hover:bg-green-700'
-                      }`}
-                    >
-                      {technician.status === 'active' ? (
-                        <>
-                          <XCircle className="h-4 w-4" />
-                          Suspend
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-4 w-4" />
-                          Activate
-                        </>
-                      )}
-                    </button>
-                  )}
-
-                  <button 
-                    onClick={() => handleDelete(technician.id)}
-                    className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </button>
+      {activeTab === 'technicians' ? (
+        <>
+          {/* Search and Filters */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="lg:col-span-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search registry..."
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
 
-        {filteredTechnicians.length === 0 && (
-          <div className="p-12 text-center">
-            <Search className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No technicians found</h3>
-            <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+              <select
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                value={selectedProvince}
+                onChange={(e) => setSelectedProvince(e.target.value)}
+              >
+                <option value="">All Provinces</option>
+                {ZIMBABWE_PROVINCES.map(province => (
+                  <option key={province.id} value={province.name}>{province.name}</option>
+                ))}
+              </select>
+
+              <select
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+              >
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="suspended">Suspended</option>
+                <option value="pending">Pending</option>
+              </select>
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Technician List */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="divide-y divide-gray-200">
+              {filteredTechnicians.map((technician) => (
+                <div key={technician.id} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-bold text-gray-900">{technician.name}</h3>
+                        {getStatusBadge(technician.status)}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-semibold text-gray-500 uppercase tracking-tight">
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-400">REG:</span>
+                          <span className="text-gray-900">{technician.registrationNumber}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-400">FIELD:</span>
+                          <span className="text-gray-900">{technician.specialization}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-400">EXP:</span>
+                          <span className="text-gray-900">{technician.expiryDate}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => router.push(`/technician-registry/${technician.id}`)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit Profile"
+                      >
+                        <Edit2 className="h-5 w-5" />
+                      </button>
+
+                      {technician.status === 'pending' ? (
+                        <button
+                          onClick={() => handleStatusChange(technician.id, 'active')}
+                          className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold text-sm shadow-sm"
+                        >
+                          Approve
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleStatusChange(technician.id, technician.status === 'active' ? 'suspended' : 'active')}
+                          className={`p-2 rounded-lg transition-colors ${technician.status === 'active'
+                              ? 'text-red-500 hover:bg-red-50'
+                              : 'text-green-500 hover:bg-green-50'
+                            }`}
+                        >
+                          {technician.status === 'active' ? <XCircle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleDelete(technician.id)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {filteredTechnicians.length === 0 && (
+              <div className="p-12 text-center">
+                <Search className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No technicians found</h3>
+                <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="font-bold text-gray-900 uppercase text-xs tracking-widest">Pending Certification Reviews</h2>
+              <div className="text-xs font-bold text-blue-600">3 assessments awaiting verifier</div>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {[
+                { id: 'appr-1', tech: 'Tapiwa Moyo', cert: 'Low GWP Refrigerants Safety', date: '2026-02-22', score: '95%' },
+                { id: 'appr-2', tech: 'John Sithole', cert: 'R-744 Transcritical Systems', date: '2026-02-21', score: '88%' },
+                { id: 'appr-3', tech: 'Sarah Dhlamini', cert: 'Hydrocarbon Safety Specialist', date: '2026-02-21', score: '92%' },
+              ].map((item) => (
+                <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-gray-900">{item.tech}</h3>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">EXAM SUBMISSION</span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-500">{item.cert}</p>
+                    <div className="flex items-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                      <span>Submitted: {item.date}</span>
+                      <span className="text-green-600">Score: {item.score}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button className="px-4 py-2 text-sm font-bold border border-gray-200 rounded-xl hover:bg-white transition-colors">View Exam</button>
+                    <button className="px-4 py-2 text-sm font-bold bg-gray-900 text-white rounded-xl hover:bg-blue-600 transition-colors">Approve & Issue</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl flex items-start gap-4">
+            <div className="bg-amber-100 p-2 rounded-xl">
+              <Clock className="h-6 w-6 text-amber-600" />
+            </div>
+            <div>
+              <h4 className="font-bold text-amber-900">Compliance Deadline Approaching</h4>
+              <p className="text-sm text-amber-700 mt-1">There are 12 technicians whose GWP certifications expire in the next 30 days. Auto-notifications have been queued for dispatch.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Filter, ChevronRight, CheckCircle, AlertTriangle, Clock, MapPin, Phone, Mail, Briefcase } from 'lucide-react';
 import { Technician } from '@/types/index';
 import { MOCK_TECHNICIANS, ZIMBABWE_PROVINCES, TECHNICIAN_SPECIALIZATIONS } from '@/constants/registry';
 import { getSession, UserSession } from '@/lib/auth';
 
-export default function TechnicianRegistryPage({ searchParams }: { searchParams: URLSearchParams }) {
+function TechnicianRegistryContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [session, setSession] = useState<UserSession | null>(null);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [filteredTechnicians, setFilteredTechnicians] = useState<Technician[]>([]);
@@ -25,13 +26,18 @@ export default function TechnicianRegistryPage({ searchParams }: { searchParams:
     // Get search parameters from URL
     const search = searchParams.get('search');
     const specialization = searchParams.get('specialization');
-    
+    const province = searchParams.get('province');
+
     if (search) {
       setSearchTerm(search);
     }
-    
+
     if (specialization) {
       setSelectedSpecialization(specialization);
+    }
+
+    if (province) {
+      setSelectedProvince(province);
     }
   }, [searchParams]);
 
@@ -40,7 +46,7 @@ export default function TechnicianRegistryPage({ searchParams }: { searchParams:
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(tech => 
+      filtered = filtered.filter(tech =>
         tech.name.toLowerCase().includes(term) ||
         tech.registrationNumber.toLowerCase().includes(term) ||
         tech.nationalId.toLowerCase().includes(term) ||
@@ -204,35 +210,36 @@ export default function TechnicianRegistryPage({ searchParams }: { searchParams:
                     <h3 className="text-lg font-semibold text-gray-900">{technician.name}</h3>
                     {getStatusBadge(technician.status)}
                   </div>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-600">
                     <div className="flex items-center gap-1">
-                      <span className="font-medium">Reg. No:</span>
-                      <span>{technician.registrationNumber}</span>
+                      <span className="font-medium text-gray-400">REG:</span>
+                      <span className="font-bold">{technician.registrationNumber}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="font-medium">Specialization:</span>
-                      <span>{technician.specialization}</span>
+                      <span className="font-medium text-gray-400">SPECIALTY:</span>
+                      <span className="font-bold">{technician.specialization}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="font-medium">Province:</span>
-                      <span>{technician.province}</span>
+                      <span className="font-medium text-gray-400">CERTS:</span>
+                      <span className="font-bold text-blue-600 px-2 py-0.5 bg-blue-50 rounded-lg">{technician.certifications.length} Verified</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="font-medium">Status:</span>
-                      <span className="capitalize">{technician.employmentStatus.replace('-', ' ')}</span>
+                      <span className="font-medium text-gray-400">PROVINCE:</span>
+                      <span className="font-bold">{technician.province}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     onClick={() => router.push(`/technician-registry/${technician.id}`)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-blue-600 transition-all flex items-center gap-2 font-bold text-sm shadow-lg shadow-gray-200"
                   >
-                    View Details <ChevronRight className="h-4 w-4" />
+                    Verify Profile <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
+
               </div>
             </div>
           ))}
@@ -247,5 +254,17 @@ export default function TechnicianRegistryPage({ searchParams }: { searchParams:
         )}
       </div>
     </div>
+  );
+}
+
+export default function TechnicianRegistryPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <TechnicianRegistryContent />
+    </Suspense>
   );
 }
