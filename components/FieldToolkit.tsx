@@ -12,7 +12,8 @@ import {
   Archive,
   Upload,
   FileCheck,
-  ClipboardCheck
+  ClipboardCheck,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { RefrigerantLog, Installation, JobType, JobTypeLabels } from '../types';
@@ -43,7 +44,7 @@ const FieldToolkit: React.FC = () => {
       clientName: 'Shoprite Downtown',
       location: 'Store 4, Aisle 2',
       jobType: 'COLD_ROOM',
-      refrigerantType: 'R-410A',
+      refrigerantType: 'R-290',
       amount: 15.5,
       actionType: 'Charge',
       timestamp: new Date(Date.now() - 86400000).toISOString(),
@@ -66,7 +67,7 @@ const FieldToolkit: React.FC = () => {
     clientName: '',
     location: '',
     jobType: 'COLD_ROOM' as JobType,
-    refrigerantType: 'R-410A',
+    refrigerantType: 'R-290',
     amount: '',
     actionType: 'Charge' as 'Charge' | 'Recovery' | 'Leak Repair'
   });
@@ -243,9 +244,9 @@ const FieldToolkit: React.FC = () => {
     setFormData({
       clientName: '',
       location: '',
-      jobType: 'COLD_ROOM',
-      refrigerantType: 'R-410A',
-      amount: '',
+    jobType: 'COLD_ROOM' as JobType,
+    refrigerantType: 'R-290',
+    amount: '',
       actionType: 'Charge'
     });
   };
@@ -524,6 +525,18 @@ const FieldToolkit: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-8">
+            {/* Compliance Notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <ShieldCheck className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Compliance Notice</p>
+                <p className="text-xs text-amber-700 mt-1">
+                  COOLPRO supports only refrigerants compliant with SI 49 of 2023 and the Kigali Amendment. 
+                  Only R-290, R-744 (CO₂), and R-32 are permitted for new entries.
+                </p>
+              </div>
+            </div>
+
             {/* Form Section */}
             <div className="space-y-6 bg-gray-50/50 p-6 rounded-2xl border border-gray-200">
               <div className="flex items-center gap-2 text-blue-700 font-semibold mb-2">
@@ -580,11 +593,9 @@ const FieldToolkit: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, refrigerantType: e.target.value })}
                     className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
                   >
-                    <option>R-410A</option>
                     <option>R-290</option>
                     <option>R-744 (CO2)</option>
                     <option>R-32</option>
-                    <option>R-134a</option>
                   </select>
                 </div>
                 <div className="space-y-2 col-span-full">

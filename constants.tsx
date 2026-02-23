@@ -5,7 +5,6 @@ export const REFRIGERANTS = [
   { name: 'R-290 (Propane)', gwp: 3, type: 'Natural', safety: 'A3' },
   { name: 'R-744 (CO2)', gwp: 1, type: 'Natural', safety: 'A1' },
   { name: 'R-32', gwp: 675, type: 'HFC', safety: 'A2L' },
-  { name: 'R-404A', gwp: 3922, type: 'HFC', safety: 'A1' },
 ];
 
 export const INSULATION_U_VALUES = {

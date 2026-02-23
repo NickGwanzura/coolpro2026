@@ -91,7 +91,7 @@ export default function DashboardPage() {
     // Admin KPIs
     const adminStats = [
         { 
-            label: 'Active Technicians', 
+            label: 'Active Techs', 
             value: '24', 
             icon: Users,
             color: 'blue',
@@ -105,18 +105,18 @@ export default function DashboardPage() {
             trend: dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : 'This month'
         },
         { 
-            label: 'Pending Certifications', 
+            label: 'Pending COCs', 
             value: '8', 
             icon: Award,
             color: 'amber',
             trend: '3 need review'
         },
         { 
-            label: 'Regions Covered', 
+            label: 'Regions', 
             value: '5', 
             icon: MapPin,
             color: 'purple',
-            trend: 'Harare, Bulawayo, Mutare'
+            trend: 'Harare, Bulawayo'
         },
     ];
 

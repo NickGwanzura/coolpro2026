@@ -246,8 +246,8 @@ COOLPRO is a comprehensive digital toolkit specifically for **Refrigeration and 
 | R-290 | Natural (Propane) | 3 | A3 |
 | R-744 | Natural (CO2) | 1 | A1 |
 | R-32 | HFC | 675 | A2L |
-| R-410A | HFC | 2088 | A1 |
-| R-134a | HFC | 1430 | A1 |
+
+**Note:** R-410A, R-134a, and R-404A have been removed per SI 49 of 2023 and Kigali Amendment compliance.
 | R-404A | HFC | 3922 | A1 |
 
 ---

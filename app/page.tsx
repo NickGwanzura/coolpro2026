@@ -160,17 +160,17 @@ export default function HEVACRAZ_LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-40 pb-28 bg-gradient-to-b from-blue-50 to-white">
-        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+      <section className="pt-28 sm:pt-32 md:pt-40 pb-16 sm:pb-20 md:pb-28 bg-gradient-to-b from-blue-50 to-white">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-12">
           <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-5xl md:text-6xl font-bold text-blue-900 mb-8 leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-blue-900 mb-6 sm:mb-8 leading-tight">
               Promoting Excellence in Zimbabwe's HVAC-R Industry
             </h1>
-            <p className="text-xl md:text-2xl text-gray-600 mb-12 leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-8 sm:mb-10 md:mb-12 leading-relaxed px-2 sm:px-0">
               The Heating Energy Ventilation Air Conditioning and Refrigeration Association of Zimbabwe (HEVACRAZ) 
               is dedicated to promoting professional standards, certification, and regulation in the HVAC-R sector.
             </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-6 justify-center px-2 sm:px-0">
               <button 
                 onClick={() => router.push('/#membership')}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-10 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg text-lg"

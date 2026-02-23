@@ -348,9 +348,11 @@ const SizingTool: React.FC = () => {
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col justify-center">
                     <p className="text-sm font-semibold text-gray-700 mb-3">Recommended Refrigerants</p>
                     <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold">R-744 (CO2)</span>
+                      <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold">R-744 (CO₂)</span>
                       <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold">R-290 (Propane)</span>
+                      <span className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold">R-32</span>
                     </div>
+                    <p className="text-xs text-gray-500 mt-2">SI 49 of 2023 Compliant</p>
                   </div>
                 </div>
               </div>
