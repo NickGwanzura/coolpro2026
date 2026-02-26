@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { getSession, UserSession, logout } from '@/lib/auth';
-import { 
-    ClipboardCheck, 
-    Award, 
-    Gift, 
-    TrendingUp, 
+import {
+    ClipboardCheck,
+    Award,
+    Gift,
+    TrendingUp,
     ArrowRight,
     RefreshCw,
     Users,
@@ -15,9 +15,13 @@ import {
     CheckCircle,
     Clock,
     Wrench,
-    Thermometer
+    Thermometer,
+    ShieldAlert,
+    Plus
 } from 'lucide-react';
 import Link from 'next/link';
+import OccupationalAccidentSection from '@/components/OccupationalAccidentSection';
+import { OccupationalAccident } from '@/types';
 
 export default function DashboardPage() {
     const [session, setSession] = useState<UserSession | null>(null);
@@ -42,8 +46,8 @@ export default function DashboardPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
                 <p className="text-gray-500">Please log in to view the dashboard</p>
-                <a 
-                    href="/login" 
+                <a
+                    href="/login"
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                     Go to Login
@@ -58,30 +62,30 @@ export default function DashboardPage() {
 
     // Technician KPIs
     const technicianStats = [
-        { 
-            label: 'Jobs Completed', 
-            value: dateRange === 'today' ? '3' : dateRange === 'week' ? '12' : '48', 
+        {
+            label: 'Jobs Completed',
+            value: dateRange === 'today' ? '3' : dateRange === 'week' ? '12' : '48',
             icon: ClipboardCheck,
             color: 'blue',
             trend: dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : 'This month'
         },
-        { 
-            label: 'Pending COCs', 
-            value: '2', 
+        {
+            label: 'Pending COCs',
+            value: '2',
             icon: Clock,
             color: 'amber',
             trend: '1 awaiting approval'
         },
-        { 
-            label: 'Rewards Points', 
-            value: '450', 
+        {
+            label: 'Rewards Points',
+            value: '450',
             icon: Gift,
             color: 'emerald',
             trend: '+50 this month'
         },
-        { 
-            label: 'Certifications', 
-            value: '5', 
+        {
+            label: 'Certifications',
+            value: '5',
             icon: Award,
             color: 'purple',
             trend: '2 expiring soon'
@@ -90,33 +94,40 @@ export default function DashboardPage() {
 
     // Admin KPIs
     const adminStats = [
-        { 
-            label: 'Active Techs', 
-            value: '24', 
+        {
+            label: 'Active Techs',
+            value: '24',
             icon: Users,
             color: 'blue',
             trend: '8 online now'
         },
-        { 
-            label: 'Total Jobs', 
-            value: dateRange === 'today' ? '15' : dateRange === 'week' ? '89' : '342', 
+        {
+            label: 'Total Jobs',
+            value: dateRange === 'today' ? '15' : dateRange === 'week' ? '89' : '342',
             icon: Wrench,
             color: 'emerald',
             trend: dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : 'This month'
         },
-        { 
-            label: 'Pending COCs', 
-            value: '8', 
+        {
+            label: 'Pending COCs',
+            value: '8',
             icon: Award,
             color: 'amber',
             trend: '3 need review'
         },
-        { 
-            label: 'Regions', 
-            value: '5', 
+        {
+            label: 'Regions',
+            value: '5',
             icon: MapPin,
             color: 'purple',
             trend: 'Harare, Bulawayo'
+        },
+        {
+            label: 'Safety Incidents',
+            value: '2',
+            icon: ShieldAlert,
+            color: 'red',
+            trend: '1 critical this week'
         },
     ];
 
@@ -137,31 +148,28 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2 bg-white rounded-xl border border-gray-200 p-1">
                         <button
                             onClick={() => setDateRange('today')}
-                            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                                dateRange === 'today' 
-                                    ? 'bg-blue-600 text-white' 
-                                    : 'text-gray-600 hover:bg-gray-50'
-                            }`}
+                            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${dateRange === 'today'
+                                ? 'bg-blue-600 text-white'
+                                : 'text-gray-600 hover:bg-gray-50'
+                                }`}
                         >
                             Today
                         </button>
                         <button
                             onClick={() => setDateRange('week')}
-                            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                                dateRange === 'week' 
-                                    ? 'bg-blue-600 text-white' 
-                                    : 'text-gray-600 hover:bg-gray-50'
-                            }`}
+                            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${dateRange === 'week'
+                                ? 'bg-blue-600 text-white'
+                                : 'text-gray-600 hover:bg-gray-50'
+                                }`}
                         >
                             This Week
                         </button>
                         <button
                             onClick={() => setDateRange('month')}
-                            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                                dateRange === 'month' 
-                                    ? 'bg-blue-600 text-white' 
-                                    : 'text-gray-600 hover:bg-gray-50'
-                            }`}
+                            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${dateRange === 'month'
+                                ? 'bg-blue-600 text-white'
+                                : 'text-gray-600 hover:bg-gray-50'
+                                }`}
                         >
                             This Month
                         </button>
@@ -201,10 +209,11 @@ export default function DashboardPage() {
                         amber: 'bg-amber-50 text-amber-600',
                         emerald: 'bg-emerald-50 text-emerald-600',
                         purple: 'bg-purple-50 text-purple-600',
+                        red: 'bg-red-50 text-red-600',
                     };
-                    
+
                     return (
-                        <div 
+                        <div
                             key={index}
                             className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
                         >
@@ -228,7 +237,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <Link 
+                    <Link
                         href="/sizing-tool"
                         className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
                     >
@@ -241,7 +250,7 @@ export default function DashboardPage() {
                         </div>
                         <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
                     </Link>
-                    <Link 
+                    <Link
                         href="/field-toolkit"
                         className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
                     >
@@ -254,7 +263,7 @@ export default function DashboardPage() {
                         </div>
                         <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
                     </Link>
-                    <Link 
+                    <Link
                         href="/jobs"
                         className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
                     >
@@ -267,7 +276,7 @@ export default function DashboardPage() {
                         </div>
                         <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
                     </Link>
-                    <Link 
+                    <Link
                         href="/certifications"
                         className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
                     >
@@ -280,8 +289,45 @@ export default function DashboardPage() {
                         </div>
                         <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
                     </Link>
+                    {!isAdmin && (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors group cursor-pointer border border-red-100">
+                            <div className="p-2 rounded-lg bg-red-100 text-red-600">
+                                <ShieldAlert className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold text-red-900">Log Accident</p>
+                                <p className="text-xs text-red-500">Report safety incident</p>
+                            </div>
+                            <Plus className="h-4 w-4 text-red-400 group-hover:text-red-600 transition-colors" />
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* Occupational Accident Section */}
+            <OccupationalAccidentSection
+                isAdmin={isAdmin}
+                initialAccidents={isAdmin ? [
+                    {
+                        id: 'acc1',
+                        date: '2026-02-24',
+                        jobSite: 'Harare Central Substation',
+                        clientName: 'ZESA Holdings',
+                        severity: 'High',
+                        description: 'Electrical arc flash during maintenance. No injuries reported.',
+                        technicianName: 'John Moyo'
+                    },
+                    {
+                        id: 'acc2',
+                        date: '2026-02-25',
+                        jobSite: 'Bulawayo Cold Storage',
+                        clientName: 'Cold Storage Commission',
+                        severity: 'Critical',
+                        description: 'Major refrigerant leak (R-717) detected. Site evacuated.',
+                        technicianName: 'Sarah Miller'
+                    }
+                ] : []}
+            />
 
             {/* Admin-only: Technician Performance Table */}
             {isAdmin && (

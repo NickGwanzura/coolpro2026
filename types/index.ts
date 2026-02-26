@@ -188,4 +188,12 @@ export interface CertificateOfConformity {
   approvalDate: string;
   technicianName: string;
 }
-
+export interface OccupationalAccident {
+  id: string;
+  date: string;
+  jobSite: string;
+  clientName: string;
+  severity: 'Critical' | 'High' | 'Medium' | 'Low';
+  description: string;
+  technicianName: string;
+}

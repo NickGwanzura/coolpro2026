@@ -3,6 +3,7 @@ import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area } from 'recharts';
 import { UserRole } from '../types';
 import { TrendingDown, TrendingUp, AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import OccupationalAccidentSection from './OccupationalAccidentSection';
 
 const usageData = [
   { month: 'Jan', consumption: 1200, leaks: 15 },
@@ -26,9 +27,8 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, unit, trend, positive, 
   <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-default">
     <div className="flex justify-between items-start mb-3">
       <p className="text-sm font-semibold text-gray-500">{label}</p>
-      <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
-        positive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-      }`}>
+      <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${positive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+        }`}>
         {positive ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
         {trend}
       </span>
@@ -53,7 +53,7 @@ const AlertItem: React.FC<AlertItemProps> = ({ severity, label, info }) => {
     warning: 'bg-amber-50 border-amber-400',
     info: 'bg-blue-50 border-blue-400',
   };
-  
+
   const textStyles = {
     critical: 'text-red-800',
     warning: 'text-amber-800',
@@ -82,36 +82,36 @@ const ComplianceDashboard: React.FC<{ role: UserRole }> = ({ role }) => {
     <div className="space-y-6">
       {/* KPI Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard 
-          label="Total GWP Impact" 
-          value="4,250" 
-          unit="tCO2e" 
-          trend="-18%" 
-          positive={false} 
+        <KpiCard
+          label="Total GWP Impact"
+          value="4,250"
+          unit="tCO2e"
+          trend="-18%"
+          positive={false}
           description="Cumulative emissions for Region A"
         />
-        <KpiCard 
-          label="Leak Rate" 
-          value="4.2" 
-          unit="%" 
-          trend="-2.1%" 
-          positive={true} 
+        <KpiCard
+          label="Leak Rate"
+          value="4.2"
+          unit="%"
+          trend="-2.1%"
+          positive={true}
           description="Target: < 5% (Kigali Limit)"
         />
-        <KpiCard 
-          label="Active Technicians" 
-          value="156" 
-          unit="Certified" 
-          trend="+12" 
-          positive={true} 
+        <KpiCard
+          label="Active Technicians"
+          value="156"
+          unit="Certified"
+          trend="+12"
+          positive={true}
           description="Q2 Training progress"
         />
-        <KpiCard 
-          label="Natural Gas Transition" 
-          value="24" 
-          unit="%" 
-          trend="+5%" 
-          positive={true} 
+        <KpiCard
+          label="Natural Gas Transition"
+          value="24"
+          unit="%"
+          trend="+5%"
+          positive={true}
           description="Sites using R-290/R-744"
         />
       </div>
@@ -133,15 +133,15 @@ const ComplianceDashboard: React.FC<{ role: UserRole }> = ({ role }) => {
               <AreaChart data={usageData}>
                 <defs>
                   <linearGradient id="colorCons" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
-                <Tooltip 
-                  contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
                 <Area type="monotone" dataKey="consumption" stroke="#0ea5e9" strokeWidth={2} fillOpacity={1} fill="url(#colorCons)" />
               </AreaChart>
@@ -179,6 +179,30 @@ const ComplianceDashboard: React.FC<{ role: UserRole }> = ({ role }) => {
           </div>
         </div>
       </div>
+
+      <OccupationalAccidentSection
+        isAdmin={true}
+        initialAccidents={[
+          {
+            id: 'acc1',
+            date: '2026-02-24',
+            jobSite: 'Harare Central Substation',
+            clientName: 'ZESA Holdings',
+            severity: 'High',
+            description: 'Electrical arc flash during maintenance. No injuries reported.',
+            technicianName: 'John Moyo'
+          },
+          {
+            id: 'acc2',
+            date: '2026-02-25',
+            jobSite: 'Bulawayo Cold Storage',
+            clientName: 'Cold Storage Commission',
+            severity: 'Critical',
+            description: 'Major refrigerant leak (R-717) detected. Site evacuated.',
+            technicianName: 'Sarah Miller'
+          }
+        ]}
+      />
     </div>
   );
 };
