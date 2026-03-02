@@ -22,7 +22,8 @@ import { jsPDF } from 'jspdf';
 const FieldToolkit: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'checklist' | 'installations' | 'leaks'>('checklist');
-  const [checkedItems, setCheckedItems] = useState<number[]>([]);
+  const [checklistType, setChecklistType] = useState<'installation' | 'regassing'>('installation');
+  const [checkedItems, setCheckedItems] = useState<string[]>([]);
 
   // Installation State
   const [installations, setInstallations] = useState<Installation[]>([]);
@@ -72,7 +73,7 @@ const FieldToolkit: React.FC = () => {
     actionType: 'Charge' as 'Charge' | 'Recovery' | 'Leak Repair'
   });
 
-  const toggleCheck = (index: number) => {
+  const toggleCheck = (index: string) => {
     setCheckedItems(prev =>
       prev.includes(index)
         ? prev.filter(i => i !== index)
@@ -81,10 +82,74 @@ const FieldToolkit: React.FC = () => {
   };
 
   const checklistItems = [
-    "NEW INSTALLATION OF NITROGEN INERT GAS BRAZING",
-    "PRESSURE TEST WITH FREE DRY NITROGEN",
-    "EVACUATION",
-    "Charging system according to manufacturer's spec and instructions"
+    // Pre-Installation Checks
+    { category: 'PRE-INSTALLATION', items: [
+      { text: 'Site survey completed and documented', source: 'Industry Standard', url: null },
+      { text: 'Equipment specification matches site requirements', source: 'Manufacturer Manual', url: null },
+      { text: 'Adequate ventilation assessed', source: 'SANS 5001-1', url: 'https://www.sabs.co.za' },
+      { text: 'Electrical supply verified (voltage, phase, earth)', source: 'SANS 10142-1', url: 'https://www.sabs.co.za' },
+    ]},
+    // Nitrogen Inert Gas Brazing
+    { category: 'NITROGEN INERT GAS BRAZING', items: [
+      { text: 'Nitrogen cylinder with regulator in place', source: 'F-Gas Regulation', url: 'https://unece.org/environment-policy/air/environment-management-gases-fluoro-greenhouse-gases' },
+      { text: 'Nitrogen flow rate set to 3-5 SCFH (slow bubble)', source: 'Manufacturer Guidelines', url: null },
+      { text: 'All joints purged with nitrogen during brazing', source: 'Industry Best Practice', url: null },
+      { text: 'No open flame without nitrogen protection', source: 'Safety Protocol', url: null },
+    ]},
+    // Pressure Testing
+    { category: 'PRESSURE TEST WITH DRY NITROGEN', items: [
+      { text: 'System isolated from compressors', source: 'SANS 5001-1', url: 'https://www.sabs.co.za' },
+      { text: 'High-side test pressure: 1.5x working pressure (min 300 psi)', source: 'Manufacturer Spec', url: null },
+      { text: 'Low-side test pressure: 150-200 psi', source: 'Manufacturer Spec', url: null },
+      { text: 'Pressure hold test: 24 hours minimum', source: 'Industry Standard', url: null },
+      { text: 'No pressure drop recorded', source: 'SANS 5001-1', url: 'https://www.sabs.co.za' },
+    ]},
+    // Evacuation
+    { category: 'EVACUATION', items: [
+      { text: 'Deep vacuum pump connected (2-stage)', source: 'Equipment Manual', url: null },
+      { text: 'Evacuation to 500 microns or lower', source: 'SANS 5001-1', url: 'https://www.sabs.co.za' },
+      { text: 'Vacuum hold test: 30 minutes minimum', source: 'Manufacturer Guidelines', url: null },
+      { text: 'Triple evacuation performed for systems >5m line set', source: 'Best Practice', url: null },
+    ]},
+    // Charging
+    { category: 'CHARGING SYSTEM', items: [
+      { text: 'Weighed charging method used (for HFC systems)', source: 'SANS 5001-1', url: 'https://www.sabs.co.za' },
+      { text: 'Manufacturer-specified charge quantity verified', source: 'Nameplate Data', url: null },
+      { text: 'Superheat and subcooling checked and adjusted', source: 'Manufacturer Guidelines', url: null },
+      { text: 'System operating within design parameters', source: 'Commissioning Standard', url: null },
+    ]},
+  ];
+
+  // Regassing Checklist
+  const regassingChecklistItems = [
+    // Pre-Service Checks
+    { category: 'PRE-SERVICE ASSESSMENT', items: [
+      { text: 'Leak test performed and any leaks repaired', source: 'SANS 5001-1', url: 'https://www.sabs.co.za' },
+      { text: 'System operating history reviewed', source: 'Service Protocol', url: null },
+      { text: 'Correct refrigerant type confirmed from nameplate', source: 'Manufacturer Spec', url: null },
+      { text: 'Recovery equipment tested and functional', source: 'F-Gas Certification', url: 'https://unece.org/environment-policy/air/environment-management-gases-fluoro-greenhouse-gases' },
+    ]},
+    // Recovery
+    { category: 'RECOVERY', items: [
+      { text: 'Old refrigerant recovered using certified equipment', source: 'F-Gas Regulation', url: 'https://unece.org/environment-policy/air/environment-management-gases-fluoro-greenhouse-gases' },
+      { text: 'Recovery cylinder labeled with refrigerant type and date', source: 'Environmental Act', url: 'https://www.dmr.gov.zw' },
+      { text: 'Refrigerant recovered to 80% cylinder capacity', source: 'Best Practice', url: null },
+      { text: 'Recovery log completed with weight recovered', source: 'Compliance Record', url: null },
+    ]},
+    // Vacuum & Charging
+    { category: 'VACUUM & RECHARGE', items: [
+      { text: 'System evacuated to 500 microns', source: 'SANS 5001-1', url: 'https://www.sabs.co.za' },
+      { text: 'Leak check performed after vacuum', source: 'Manufacturer Guidelines', url: null },
+      { text: 'Weighed charging method used', source: 'SANS 5001-1', url: 'https://www.sabs.co.za' },
+      { text: 'Charge quantity matches manufacturer specification', source: 'Nameplate', url: null },
+    ]},
+    // Post-Service
+    { category: 'POST-SERVICE VERIFICATION', items: [
+      { text: 'System performance tested (amps, pressures, temps)', source: 'Commissioning', url: null },
+      { text: 'Leak detection spray applied to all connections', source: 'Best Practice', url: null },
+      { text: 'Customer briefed on system operation', source: 'Service Standard', url: null },
+      { text: 'Service record completed and signed', source: 'Compliance', url: null },
+    ]},
   ];
 
   // Handle image upload
@@ -169,7 +234,9 @@ const FieldToolkit: React.FC = () => {
     
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text('COOLPRO Refrigeration Services', 105, 35, { align: 'center' });
+    doc.text('HEVACRAZ', 105, 35, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('HVAC-R Association of Zimbabwe', 105, 42, { align: 'center' });
     
     // Certificate Number
     doc.setFontSize(10);
@@ -214,11 +281,20 @@ const FieldToolkit: React.FC = () => {
       doc.text(`Approval Date: ${installation.cocApprovalDate ? new Date(installation.cocApprovalDate).toLocaleDateString() : 'N/A'}`, 25, 195);
     }
     
+    // References
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text('References & Standards:', 20, 220);
+    doc.setFontSize(8);
+    doc.text('• SANS 5001-1: South African National Standard for Refrigeration', 25, 230);
+    doc.text('• SANS 10142-1: Wiring of Premises (Electrical)', 25, 238);
+    doc.text('• ASHRAE Standards: American Society of Heating, Refrigerating and Air-Conditioning Engineers', 25, 246);
+    
     // Footer
     doc.setFontSize(8);
     doc.setTextColor(128);
-    doc.text('This certificate is issued subject to COOLPRO terms and conditions', 105, 270, { align: 'center' });
-    doc.text('Generated by COOLPRO Digital Toolkit', 105, 278, { align: 'center' });
+    doc.text('This certificate is issued subject to HEVACRAZ terms and conditions', 105, 270, { align: 'center' });
+    doc.text('Generated by HEVACRAZ Digital Field Toolkit', 105, 278, { align: 'center' });
     
     doc.save(`COC-Certificate-${installation.id}.pdf`);
   };
@@ -325,22 +401,72 @@ const FieldToolkit: React.FC = () => {
 
       <div className="p-6">
         {activeTab === 'checklist' ? (
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">New Installation Verification</h4>
-            <div className="space-y-3">
-              {checklistItems.map((item, i) => (
-                <label
-                  key={i}
-                  className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checkedItems.includes(i)}
-                    onChange={() => toggleCheck(i)}
-                    className="mt-0.5 w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-gray-700 font-medium">{item}</span>
-                </label>
+          <div className="space-y-6">
+            {/* Checklist Type Switcher */}
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+              <button
+                onClick={() => { setChecklistType('installation'); setCheckedItems([]); }}
+                className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+                  checklistType === 'installation' ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                New Installation
+              </button>
+              <button
+                onClick={() => { setChecklistType('regassing'); setCheckedItems([]); }}
+                className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+                  checklistType === 'regassing' ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Regassing / Service
+              </button>
+            </div>
+
+            <h4 className="text-lg font-semibold text-gray-900">
+              {checklistType === 'installation' ? 'New Installation Verification' : 'Regassing & Service Checklist'}
+            </h4>
+            
+            <div className="space-y-6">
+              {(checklistType === 'installation' ? checklistItems : regassingChecklistItems).map((category, catIndex) => (
+                <div key={catIndex} className="space-y-3">
+                  <h5 className="text-sm font-bold text-gray-900 bg-gray-100 px-3 py-2 rounded-lg">
+                    {category.category}
+                  </h5>
+                  {category.items.map((item, itemIndex) => {
+                    const itemId = `${checklistType}-${catIndex}-${itemIndex}`;
+                    return (
+                      <label
+                        key={itemIndex}
+                        className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checkedItems.includes(itemId)}
+                          onChange={() => toggleCheck(itemId)}
+                          className="mt-0.5 w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div className="flex-1">
+                          <span className="text-gray-700 font-medium">{item.text}</span>
+                          {item.source && (
+                            item.url ? (
+                              <a 
+                                href={item.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                📄 Source: {item.source} ↗
+                              </a>
+                            ) : (
+                              <p className="text-xs text-gray-400 mt-1">Source: {item.source}</p>
+                            )
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
               ))}
             </div>
             <div className="pt-6">
@@ -698,7 +824,7 @@ const FieldToolkit: React.FC = () => {
                   Offline Mode Active
                 </p>
                 <p className="text-xs text-amber-700 mt-0.5 mt-1">
-                  Logs are saved locally on your device and will automatically sync to the central CoolPro database once you return to internet coverage.
+                  Logs are saved locally on your device and will automatically sync to the central HEVACRAZ database once you return to internet coverage.
                 </p>
               </div>
             </div>

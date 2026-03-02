@@ -38,7 +38,7 @@ export default function Sidebar() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-cyan-500 rounded-xl flex items-center justify-center font-black text-xl shadow-lg shadow-cyan-500/20">CP</div>
               <div>
-                <h1 className="text-lg font-bold tracking-tight">CoolPro</h1>
+                <h1 className="text-lg font-bold tracking-tight">HEVACRAZ</h1>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none">Toolkit v1.0</p>
               </div>
             </div>

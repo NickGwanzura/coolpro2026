@@ -7,7 +7,7 @@ const Documentation: React.FC = () => {
     <div className="space-y-8">
       {/* Header */}
       <div className="border-b border-gray-200 pb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">CoolPro Platform Blueprint</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">HEVACRAZ Platform Blueprint</h1>
         <p className="text-gray-500 mt-2">Technical documentation and architecture overview</p>
       </div>
       

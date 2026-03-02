@@ -23,6 +23,15 @@ import Link from 'next/link';
 import OccupationalAccidentSection from '@/components/OccupationalAccidentSection';
 import { OccupationalAccident } from '@/types';
 
+// HEVACRAZ Color Scheme (matching landing page)
+const colors = {
+    primary: '#2C2420', // Rich charcoal
+    secondary: '#D4A574', // Warm terracotta
+    accent: '#5A7D5A', // Sage green
+    highlight: '#FF6B35', // Electric orange (CTAs only)
+    background: '#FDF8F3', // Warm off-white
+};
+
 export default function DashboardPage() {
     const [session, setSession] = useState<UserSession | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -134,42 +143,45 @@ export default function DashboardPage() {
     const stats = isAdmin ? adminStats : technicianStats;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" style={{ backgroundColor: colors.background, minHeight: '100vh' }}>
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 bg-white shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
+                    <h1 className="text-2xl font-bold" style={{ color: colors.primary }}>
                         {isAdmin ? 'Admin Dashboard' : 'My Dashboard'}
                     </h1>
                     <p className="text-gray-500 mt-1">Welcome back, {session.name}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {/* Date Filter */}
-                    <div className="flex items-center gap-2 bg-white rounded-xl border border-gray-200 p-1">
+                    <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
                         <button
                             onClick={() => setDateRange('today')}
                             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${dateRange === 'today'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-50'
+                                ? 'text-white'
+                                : 'text-gray-600 hover:bg-gray-200'
                                 }`}
+                            style={{ backgroundColor: dateRange === 'today' ? colors.highlight : 'transparent' }}
                         >
                             Today
                         </button>
                         <button
                             onClick={() => setDateRange('week')}
                             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${dateRange === 'week'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-50'
+                                ? 'text-white'
+                                : 'text-gray-600 hover:bg-gray-200'
                                 }`}
+                            style={{ backgroundColor: dateRange === 'week' ? colors.highlight : 'transparent' }}
                         >
                             This Week
                         </button>
                         <button
                             onClick={() => setDateRange('month')}
                             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${dateRange === 'month'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-50'
+                                ? 'text-white'
+                                : 'text-gray-600 hover:bg-gray-200'
                                 }`}
+                            style={{ backgroundColor: dateRange === 'month' ? colors.highlight : 'transparent' }}
                         >
                             This Month
                         </button>
@@ -235,17 +247,17 @@ export default function DashboardPage() {
 
             {/* Quick Actions - Role-based */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+                <h2 className="text-lg font-semibold mb-4" style={{ color: colors.primary }}>Quick Actions</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <Link
                         href="/sizing-tool"
                         className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
                     >
-                        <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+                        <div className="p-2 rounded-lg" style={{ backgroundColor: colors.secondary + '20', color: colors.secondary }}>
                             <Thermometer className="h-5 w-5" />
                         </div>
                         <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-900">Sizing Tool</p>
+                            <p className="text-sm font-semibold" style={{ color: colors.primary }}>Sizing Tool</p>
                             <p className="text-xs text-gray-500">Calculate capacity</p>
                         </div>
                         <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
@@ -254,11 +266,11 @@ export default function DashboardPage() {
                         href="/field-toolkit"
                         className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
                     >
-                        <div className="p-2 rounded-lg bg-emerald-100 text-emerald-600">
+                        <div className="p-2 rounded-lg" style={{ backgroundColor: colors.accent + '20', color: colors.accent }}>
                             <Wrench className="h-5 w-5" />
                         </div>
                         <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-900">Field Toolkit</p>
+                            <p className="text-sm font-semibold" style={{ color: colors.primary }}>Field Toolkit</p>
                             <p className="text-xs text-gray-500">Installations & Logs</p>
                         </div>
                         <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />

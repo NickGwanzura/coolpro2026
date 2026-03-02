@@ -8,6 +8,7 @@ const courses: Course[] = [
   { id: '1', title: 'Intro to Natural Refrigerants (R-290)', description: 'Safe handling of flammable refrigerants in light commercial units.', modules: 5, progress: 100, level: 'BASIC', isDownloaded: true },
   { id: '2', title: 'Transcritical CO2 Systems', description: 'Advanced cycle design, high pressure components, and safety controls.', modules: 12, progress: 45, level: 'ADVANCED', isDownloaded: false },
   { id: '3', title: 'Kigali Amendment & Compliance', description: 'Reporting requirements, leak rate calculations, and global quotas.', modules: 4, progress: 0, level: 'GWP_SPECIALIST', isDownloaded: false },
+  { id: '4', title: 'Workplace Safety Essentials', description: 'Personal protective equipment, hazard identification, and emergency procedures for HVAC-R technicians.', modules: 8, progress: 0, level: 'BASIC', isDownloaded: false },
 ];
 
 const levelColors = {

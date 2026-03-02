@@ -41,8 +41,8 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-cyan-500 rounded-xl flex items-center justify-center font-black text-xl shadow-lg shadow-cyan-500/20">CP</div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight">CoolPro Toolkit</h1>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Global Refrigeration Platform</p>
+              <h1 className="text-lg font-bold tracking-tight">HEVACRAZ</h1>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">HVAC-R Association Zimbabwe</p>
             </div>
           </div>
         </div>

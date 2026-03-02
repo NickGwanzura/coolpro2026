@@ -5,7 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/auth';
 import { UserRole } from '../../../types';
 import { ROLE_LABELS } from '../../../lib/roles';
-import { Thermometer, Lock, Mail, ArrowRight, User, MapPin } from 'lucide-react';
+import { Thermometer, Lock, Mail, ArrowRight, User, MapPin, ShieldCheck } from 'lucide-react';
+
+// HEVACRAZ Color Scheme (matching landing page)
+const colors = {
+    primary: '#2C2420', // Rich charcoal
+    secondary: '#D4A574', // Warm terracotta
+    accent: '#5A7D5A', // Sage green
+    highlight: '#FF6B35', // Electric orange
+    background: '#FDF8F3', // Warm off-white
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,32 +47,39 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8" style={{ backgroundColor: colors.background }}>
       <div className="w-full max-w-md">
         
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-xl shadow-blue-500/20 mb-5">
-            <Thermometer className="h-8 w-8 text-white" />
+          <div 
+            className="inline-flex h-16 w-16 items-center justify-center rounded-2xl shadow-xl mb-5"
+            style={{ backgroundColor: colors.highlight }}
+          >
+            <ShieldCheck className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">CoolPro Toolkit</h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Commercial Refrigeration Training &<br className="hidden sm:block" />
-            Low-GWP Compliance Platform
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: colors.primary }}>HEVACRAZ</h1>
+          <p className="mt-2 text-sm" style={{ color: colors.secondary }}>
+            HVAC-R Professionals Zimbabwe<br className="hidden sm:block" />
+            Member Portal
           </p>
         </div>
 
         {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8 space-y-6">
           {/* Tab Switcher */}
-          <div className="flex rounded-xl bg-slate-100 p-1">
+          <div className="flex rounded-xl p-1" style={{ backgroundColor: colors.background }}>
             <button 
               onClick={() => setIsDemoView(false)}
               className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg transition-all ${
                 !isDemoView 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'text-white shadow-sm' 
+                  : ''
               }`}
+              style={{ 
+                backgroundColor: !isDemoView ? colors.highlight : 'transparent',
+                color: !isDemoView ? 'white' : colors.primary
+              }}
             >
               Sign In
             </button>
@@ -71,9 +87,13 @@ export default function LoginPage() {
               onClick={() => setIsDemoView(true)}
               className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg transition-all ${
                 isDemoView 
-                  ? 'bg-white text-blue-600 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'text-white shadow-sm' 
+                  : ''
               }`}
+              style={{ 
+                backgroundColor: isDemoView ? colors.highlight : 'transparent',
+                color: isDemoView ? 'white' : colors.primary
+              }}
             >
               Demo Access
             </button>
@@ -130,7 +150,8 @@ export default function LoginPage() {
               <button 
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98]"
+                className="w-full flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg active:scale-[0.98]"
+                style={{ backgroundColor: colors.highlight }}
               >
                 {isLoading ? (
                   <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -145,8 +166,8 @@ export default function LoginPage() {
           ) : (
             // Demo Access Form
             <div className="space-y-5">
-              <div className="rounded-xl bg-blue-50 p-4 border border-blue-100">
-                <p className="text-sm text-blue-700">
+              <div className="rounded-xl p-4 border" style={{ backgroundColor: colors.secondary + '20', borderColor: colors.secondary }}>
+                <p className="text-sm" style={{ color: colors.primary }}>
                   <strong className="font-semibold">Demo Mode:</strong> No password required. Select a persona to test role-specific tools and dashboards.
                 </p>
               </div>
@@ -196,7 +217,8 @@ export default function LoginPage() {
                 <button 
                   onClick={handleDemoAccess}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg active:scale-[0.98]"
+                  style={{ backgroundColor: colors.highlight }}
                 >
                   {isLoading ? (
                     <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

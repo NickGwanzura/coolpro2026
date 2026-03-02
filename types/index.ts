@@ -27,6 +27,7 @@ export interface NavItem {
   href: string;
   icon: React.ComponentType<any>;
   roles: (UserRole | string)[];
+  children?: NavItem[];
 }
 
 // Job Types for Sizing Tool
@@ -38,6 +39,22 @@ export const JobTypeLabels: Record<JobType, string> = {
   C90_FREEZER: 'C90 Freezer',
   COLD_ROOM: 'Cold Room',
   FREEZER_ROOM: 'Freezer Room'
+};
+
+export const JobTypeImages: Record<JobType, string> = {
+  C40_FREEZER: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop',
+  C60_FREEZER: 'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?w=300&h=200&fit=crop',
+  C90_FREEZER: 'https://images.unsplash.com/photo-1626806819282-2c1dc01a5e0c?w=300&h=200&fit=crop',
+  COLD_ROOM: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&h=200&fit=crop',
+  FREEZER_ROOM: 'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?w=300&h=200&fit=crop'
+};
+
+export const JobTypeDescriptions: Record<JobType, string> = {
+  C40_FREEZER: 'Light commercial freezer up to -20°C',
+  C60_FREEZER: 'Medium commercial freezer up to -25°C',
+  C90_FREEZER: 'Heavy duty freezer up to -35°C',
+  COLD_ROOM: 'Positive temperature cold storage (0°C to +10°C)',
+  FREEZER_ROOM: 'Negative temperature storage (-18°C to -25°C)'
 };
 
 export const JobTypeDefaults: Record<JobType, { targetTemp: number; defaultLoadingTime: number }> = {
@@ -196,4 +213,81 @@ export interface OccupationalAccident {
   severity: 'Critical' | 'High' | 'Medium' | 'Low';
   description: string;
   technicianName: string;
+  // Investigation fields
+  rootCause?: string;
+  investigationDate?: string;
+  investigatorName?: string;
+  correctiveActions?: string;
+  preventiveMeasures?: string;
+  status?: 'Open' | 'Under Investigation' | 'Closed';
 }
+
+export const RootCauseCategories = {
+  LACK_OF_TRAINING: {
+    label: 'Lack of Training',
+    color: '#dc2626',
+    description: 'Insufficient or inadequate safety training',
+    examples: ['No formal HVAC-R safety certification', 'Missing site-specific induction', 'Inadequate PPE training']
+  },
+  NEGLIGENCE: {
+    label: 'Negligence',
+    color: '#ea580c',
+    description: 'Failure to follow established safety procedures',
+    examples: ['Skipped safety checks', 'PPE not worn', 'Shortcuts taken', 'Rushing to complete job']
+  },
+  SYSTEM_FAILURE: {
+    label: 'System Failure',
+    color: '#7c3aed',
+    description: 'Equipment, process, or procedural failures',
+    examples: ['Equipment malfunction', 'Inadequate safety systems', 'Poor maintenance', 'Design defects']
+  },
+  ENVIRONMENTAL: {
+    label: 'Environmental Factors',
+    color: '#0891b2',
+    description: 'External conditions beyond control',
+    examples: ['Extreme weather', 'Poor lighting', 'Confined space hazards', 'Noise exposure']
+  },
+  COMMUNICATION: {
+    label: 'Communication Failure',
+    color: '#ca8a04',
+    description: 'Information gaps or miscommunication',
+    examples: ['Missing handover', 'Unclear instructions', 'Language barriers', 'No warning signs']
+  },
+  EQUIPMENT: {
+    label: 'Equipment Issue',
+    color: '#16a34a',
+    description: 'Tool, machinery, or material problems',
+    examples: ['Faulty tools', 'Worn-out equipment', 'Wrong equipment used', 'Missing equipment']
+  }
+};
+
+export const SeverityCategories = {
+  Critical: {
+    label: 'Critical',
+    color: '#dc2626',
+    bgColor: '#fef2f2',
+    description: 'Fatality, permanent disability, or major environmental damage. Requires immediate regulatory notification.',
+    examples: ['Worker fatality', 'Amputation', 'Major refrigerant release', 'Building collapse']
+  },
+  High: {
+    label: 'High',
+    color: '#ea580c',
+    bgColor: '#fff7ed',
+    description: 'Serious injury requiring hospitalization, or significant property/equipment damage.',
+    examples: ['Fractures', 'Electrical shock', 'Major refrigerant leak', 'Fire']
+  },
+  Medium: {
+    label: 'Medium',
+    color: '#ca8a04',
+    bgColor: '#fefce8',
+    description: 'Minor injury requiring first aid, or minor property damage. No lost time.',
+    examples: ['Cuts/abrasions', 'Minor burns', 'Small refrigerant leak', 'Slip/trip']
+  },
+  Low: {
+    label: 'Low',
+    color: '#16a34a',
+    bgColor: '#f0fdf4',
+    description: 'Near-miss incident or minor issue. No injury or damage.',
+    examples: ['Near miss', 'Potential hazard identified', 'Minor oil spill cleaned immediately']
+  }
+};

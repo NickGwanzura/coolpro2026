@@ -16,13 +16,24 @@ import {
     Thermometer,
     Users,
     MapPin,
-    X
+    X,
+    AlertTriangle,
+    ChevronDown
 } from 'lucide-react';
 import { getSession, logout } from '@/lib/auth';
 import { useEffect, useState } from 'react';
 
+// Define navigation items with optional children
+interface NavItem {
+    name: string;
+    href: string;
+    icon: React.ComponentType<any>;
+    roles: string[];
+    children?: NavItem[];
+}
+
 // Define navigation items
-const NAV_ITEMS = [
+const NAV_ITEMS: NavItem[] = [
     { name: 'My Stats', href: '/dashboard', icon: LayoutDashboard, roles: ['technician', 'trainer', 'vendor', 'org_admin', 'program_admin'] },
     { name: 'Learn', href: '/learn', icon: BookOpen, roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
     { name: 'Sizing Tool', href: '/sizing-tool', icon: Calculator, roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
@@ -43,6 +54,7 @@ interface SidebarProps {
 export function Sidebar({ className, onClose }: SidebarProps & { className?: string }) {
     const pathname = usePathname();
     const [role, setRole] = useState<string>('technician');
+    const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['/learn']));
 
     useEffect(() => {
         // Client-side session check for sidebar role
@@ -52,6 +64,18 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
         }
     }, []);
 
+    const toggleExpanded = (href: string) => {
+        setExpandedItems(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(href)) {
+                newSet.delete(href);
+            } else {
+                newSet.add(href);
+            }
+            return newSet;
+        });
+    };
+
     const filteredNav = NAV_ITEMS.filter(item => item.roles.includes(role));
 
     return (
@@ -60,12 +84,12 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
             <div className="p-4 sm:p-5 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
+                        <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-[#5A7D5A] to-[#4a6b4a] flex items-center justify-center shadow-sm">
                             <Thermometer className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-bold text-gray-900">CoolPro</h1>
-                            <p className="text-xs text-gray-400">HVAC-R Toolkit</p>
+                            <h1 className="text-lg font-bold text-gray-900">HEVACRAZ</h1>
+                            <p className="text-xs text-gray-400">HVAC-R Association Zimbabwe</p>
                         </div>
                     </div>
                     {/* Close button for mobile */}
@@ -85,21 +109,68 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
                 <ul className="space-y-1">
                     {filteredNav.map((item) => {
                         const isActive = pathname.startsWith(item.href);
+                        const hasChildren = item.children && item.children.length > 0;
+                        const isExpanded = expandedItems.has(item.href);
+                        
                         return (
                             <li key={item.href}>
-                                <Link
-                                    href={item.href}
-                                    onClick={onClose}
-                                    className={cn(
-                                        "flex items-center gap-3 px-3 py-2.5 sm:py-3 rounded-xl text-sm font-medium transition-all duration-200",
-                                        isActive
-                                            ? "bg-blue-50 text-blue-700 shadow-sm"
-                                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                                    )}
-                                >
-                                    <item.icon className={cn("h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0", isActive ? "text-blue-600" : "text-gray-400")} />
-                                    <span className="truncate">{item.name}</span>
-                                </Link>
+                                {hasChildren ? (
+                                    <>
+                                        <button
+                                            onClick={() => toggleExpanded(item.href)}
+                                            className={cn(
+                                                "flex items-center justify-between gap-3 w-full px-3 py-2.5 sm:py-3 rounded-xl text-sm font-medium transition-all duration-200",
+                                                isActive
+                                                    ? "bg-[#5A7D5A]/10 text-[#5A7D5A] shadow-sm"
+                                                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <item.icon className={cn("h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0", isActive ? "text-blue-600" : "text-gray-400")} />
+                                                <span className="truncate">{item.name}</span>
+                                            </div>
+                                            <ChevronDown className={cn("h-4 w-4 flex-shrink-0 transition-transform", isExpanded && "rotate-180")} />
+                                        </button>
+                                        {isExpanded && item.children && (
+                                            <ul className="ml-4 mt-1 space-y-1">
+                                                {item.children.map((child) => {
+                                                    const childIsActive = pathname.startsWith(child.href);
+                                                    return (
+                                                        <li key={child.href}>
+                                                            <Link
+                                                                href={child.href}
+                                                                onClick={onClose}
+                                                                className={cn(
+                                                                    "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200",
+                                                                    childIsActive
+                                                                        ? "bg-[#5A7D5A]/10 text-[#5A7D5A] shadow-sm"
+                                                                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                                                )}
+                                                            >
+                                                                <child.icon className={cn("h-4 w-4 flex-shrink-0", childIsActive ? "text-blue-600" : "text-gray-400")} />
+                                                                <span className="truncate">{child.name}</span>
+                                                            </Link>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        )}
+                                    </>
+                                ) : (
+                                    <Link
+                                        href={item.href}
+                                        onClick={onClose}
+                                        className={cn(
+                                            "flex items-center gap-3 px-3 py-2.5 sm:py-3 rounded-xl text-sm font-medium transition-all duration-200",
+                                            isActive
+                                                ? "bg-[#5A7D5A]/10 text-[#5A7D5A] shadow-sm"
+                                                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                        )}
+                                    >
+                                        <item.icon className={cn("h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0", isActive ? "text-blue-600" : "text-gray-400")} />
+                                        <span className="truncate">{item.name}</span>
+                                    </Link>
+                                )}
                             </li>
                         );
                     })}

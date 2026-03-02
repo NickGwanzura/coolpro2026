@@ -35,7 +35,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                     >
                         <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
                     </button>
-                    <span className="lg:hidden font-bold text-gray-900 text-base sm:text-lg tracking-tight">CoolPro</span>
+                    <span className="lg:hidden font-bold text-gray-900 text-base sm:text-lg tracking-tight">HEVACRAZ</span>
                 </div>
 
                 <div className="flex items-center gap-1 sm:gap-3">

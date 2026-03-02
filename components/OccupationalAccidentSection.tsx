@@ -1,7 +1,16 @@
 
 import React, { useState } from 'react';
-import { AlertTriangle, Clock, MapPin, User, ChevronDown, ChevronUp, Download, Plus, X } from 'lucide-react';
-import { OccupationalAccident } from '../types';
+import { AlertTriangle, Clock, MapPin, User, ChevronDown, ChevronUp, Download, Plus, X, Search, ClipboardCheck } from 'lucide-react';
+import { OccupationalAccident, SeverityCategories, RootCauseCategories } from '../types';
+
+interface InvestigationData {
+    rootCause: keyof typeof RootCauseCategories;
+    investigationDate: string;
+    investigatorName: string;
+    correctiveActions: string;
+    preventiveMeasures: string;
+    status: 'Open' | 'Under Investigation' | 'Closed';
+}
 
 interface OccupationalAccidentSectionProps {
     isAdmin?: boolean;
@@ -42,6 +51,16 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
 }) => {
     const [accidents, setAccidents] = useState<OccupationalAccident[]>(initialAccidents);
     const [showForm, setShowForm] = useState(false);
+    const [selectedAccident, setSelectedAccident] = useState<OccupationalAccident | null>(null);
+    const [showInvestigation, setShowInvestigation] = useState(false);
+    const [investigationData, setInvestigationData] = useState<InvestigationData>({
+        rootCause: 'NEGLIGENCE',
+        investigationDate: new Date().toISOString().split('T')[0],
+        investigatorName: '',
+        correctiveActions: '',
+        preventiveMeasures: '',
+        status: 'Open'
+    });
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
         jobSite: '',
@@ -49,6 +68,20 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
         severity: 'Medium' as OccupationalAccident['severity'],
         description: ''
     });
+
+    const handleInvestigationSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (selectedAccident) {
+            const updatedAccidents = accidents.map(acc => 
+                acc.id === selectedAccident.id 
+                    ? { ...acc, ...investigationData }
+                    : acc
+            );
+            setAccidents(updatedAccidents);
+            setShowInvestigation(false);
+            setSelectedAccident(null);
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -76,7 +109,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
 
         // Header
         doc.setFontSize(18);
-        doc.text('CoolPro 2026 - Occupational Accident Report', 14, 22);
+        doc.text('HEVACRAZ 2026 - Occupational Accident Report', 14, 22);
 
         doc.setFontSize(11);
         doc.setTextColor(100);
@@ -184,6 +217,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                     <option value="High">High</option>
                                     <option value="Critical">Critical</option>
                                 </select>
+                                <p className="text-xs text-gray-500 mt-1">{SeverityCategories[formData.severity as keyof typeof SeverityCategories]?.description}</p>
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Job Site / Location</label>
@@ -229,6 +263,25 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                 </div>
             )}
 
+            {/* Severity Legend */}
+            <div className="p-6 bg-gray-50 border-b border-gray-100">
+                <p className="text-sm font-bold text-gray-700 mb-4">Severity Classification Guide</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {Object.entries(SeverityCategories).map(([key, category]) => (
+                        <div 
+                            key={key} 
+                            className="p-3 rounded-lg border"
+                            style={{ backgroundColor: category.bgColor, borderColor: category.color }}
+                        >
+                            <p className="font-bold text-sm" style={{ color: category.color }}>{category.label}</p>
+                            <p className="text-xs mt-1 text-gray-600">{category.description}</p>
+                            <p className="text-xs mt-2 font-semibold text-gray-500">Examples:</p>
+                            <p className="text-xs text-gray-500 italic">{category.examples.join(', ')}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                     <thead>
@@ -239,12 +292,13 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Client</th>
                             {isAdmin && <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reported By</th>}
                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Description</th>
+                            {isAdmin && <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Investigation</th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                         {accidents.length === 0 ? (
                             <tr>
-                                <td colSpan={isAdmin ? 6 : 5} className="px-6 py-12 text-center text-gray-400">
+                                <td colSpan={isAdmin ? 7 : 5} className="px-6 py-12 text-center text-gray-400">
                                     <AlertTriangle className="h-8 w-8 mx-auto mb-3 opacity-20" />
                                     No accidents recorded for this period
                                 </td>
@@ -283,11 +337,172 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={accident.description}>
                                         {accident.description}
                                     </td>
+                                    {isAdmin && (
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedAccident(accident);
+                                                    setInvestigationData({
+                                                        rootCause: (accident.rootCause as keyof typeof RootCauseCategories) || 'NEGLIGENCE',
+                                                        investigationDate: accident.investigationDate || new Date().toISOString().split('T')[0],
+                                                        investigatorName: accident.investigatorName || '',
+                                                        correctiveActions: accident.correctiveActions || '',
+                                                        preventiveMeasures: accident.preventiveMeasures || '',
+                                                        status: accident.status || 'Open'
+                                                    });
+                                                    setShowInvestigation(true);
+                                                }}
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+                                            >
+                                                <ClipboardCheck className="h-3 w-3" />
+                                                {accident.status ? 'View' : 'Investigate'}
+                                            </button>
+                                        </td>
+                                    )}
                                 </tr>
                             ))
                         )}
                     </tbody>
                 </table>
+            </div>
+            
+            {/* Investigation Modal */}
+            {selectedAccident && (
+                <InvestigationModal
+                    accident={selectedAccident}
+                    isOpen={showInvestigation}
+                    onClose={() => {
+                        setShowInvestigation(false);
+                        setSelectedAccident(null);
+                    }}
+                    data={investigationData}
+                    setData={setInvestigationData}
+                    onSubmit={handleInvestigationSubmit}
+                />
+            )}
+        </div>
+    );
+};
+
+// Investigation Modal
+const InvestigationModal = ({ 
+    accident, 
+    isOpen, 
+    onClose, 
+    data, 
+    setData, 
+    onSubmit 
+}: {
+    accident: OccupationalAccident;
+    isOpen: boolean;
+    onClose: () => void;
+    data: InvestigationData;
+    setData: React.Dispatch<React.SetStateAction<InvestigationData>>;
+    onSubmit: (e: React.FormEvent) => void;
+}) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-900">Incident Investigation</h3>
+                        <p className="text-sm text-gray-500">{accident.jobSite} - {accident.date}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                        <X className="h-5 w-5 text-gray-500" />
+                    </button>
+                </div>
+                
+                <form onSubmit={onSubmit} className="p-6 space-y-6">
+                    {/* Root Cause Analysis */}
+                    <div className="space-y-3">
+                        <label className="text-sm font-bold text-gray-700">Root Cause Category</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {Object.entries(RootCauseCategories).map(([key, category]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setData({ ...data, rootCause: key as any })}
+                                    className={`p-3 rounded-lg border-2 text-left transition-all ${
+                                        data.rootCause === key 
+                                            ? 'border-purple-500 bg-purple-50' 
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <p className="font-semibold text-sm" style={{ color: category.color }}>{category.label}</p>
+                                    <p className="text-xs text-gray-500 mt-1">{category.description}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Investigation Details */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-gray-600 uppercase">Investigation Date</label>
+                            <input
+                                type="date"
+                                value={data.investigationDate}
+                                onChange={e => setData({ ...data, investigationDate: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-gray-600 uppercase">Status</label>
+                            <select
+                                value={data.status}
+                                onChange={e => setData({ ...data, status: e.target.value as any })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                            >
+                                <option value="Open">Open</option>
+                                <option value="Under Investigation">Under Investigation</option>
+                                <option value="Closed">Closed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-600 uppercase">Investigator Name</label>
+                        <input
+                            type="text"
+                            placeholder="e.g. Safety Manager"
+                            value={data.investigatorName}
+                            onChange={e => setData({ ...data, investigatorName: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-600 uppercase">Immediate Corrective Actions</label>
+                        <textarea
+                            placeholder="What immediate actions were taken?"
+                            rows={3}
+                            value={data.correctiveActions}
+                            onChange={e => setData({ ...data, correctiveActions: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-600 uppercase">Preventive Measures (Long-term Solutions)</label>
+                        <textarea
+                            placeholder="What will prevent this from happening again?"
+                            rows={3}
+                            value={data.preventiveMeasures}
+                            onChange={e => setData({ ...data, preventiveMeasures: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        className="w-full py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200"
+                    >
+                        Save Investigation Report
+                    </button>
+                </form>
             </div>
         </div>
     );

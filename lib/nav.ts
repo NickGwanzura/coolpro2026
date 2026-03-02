@@ -15,6 +15,20 @@ export const NAV_ITEMS: NavItem[] = [
     href: '/learn',
     icon: Icons.Book,
     roles: ['technician', 'trainer', 'program_admin'],
+    children: [
+      {
+        label: 'LMS Courses',
+        href: '/learn',
+        icon: Icons.Book,
+        roles: ['technician', 'trainer', 'program_admin'],
+      },
+      {
+        label: 'Safety',
+        href: '/safety',
+        icon: Icons.Shield,
+        roles: ['technician', 'trainer', 'program_admin'],
+      },
+    ],
   },
   {
     label: 'Sizing Engine',
