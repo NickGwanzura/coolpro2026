@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Users, BookOpen, Search, MapPin, Clock, CheckCircle, ArrowRight, Menu, X, Award, Wrench, FileCheck, User, Star, Facebook, Linkedin, Instagram, Mail, ChevronDown, Calculator, ClipboardList, GraduationCap, Building2, Briefcase, Scale, Gift, Sparkles } from 'lucide-react';
+import { ShieldCheck, Users, BookOpen, Search, MapPin, Clock, CheckCircle, ArrowRight, Menu, X, Award, Wrench, FileCheck, User, Facebook, Linkedin, Mail, ChevronDown, Calculator, ClipboardList, GraduationCap, Building2, Scale, Gift, Sparkles } from 'lucide-react';
+import { MOCK_TRAINING_SESSIONS } from '@/constants/training';
+import { STORAGE_KEYS } from '@/lib/platformStore';
+import type { TrainingSession } from '@/types/index';
 
 export default function HEVACRAZ_LandingPage() {
   const router = useRouter();
@@ -11,6 +14,22 @@ export default function HEVACRAZ_LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [upcomingReferenceTime] = useState(() => Date.now());
+  const storedTrainingSessions = useSyncExternalStore(
+    () => () => undefined,
+    () => {
+      if (typeof window === 'undefined') return MOCK_TRAINING_SESSIONS;
+      const raw = window.localStorage.getItem(STORAGE_KEYS.trainingSessions);
+      if (!raw) return MOCK_TRAINING_SESSIONS;
+
+      try {
+        return JSON.parse(raw) as TrainingSession[];
+      } catch {
+        return MOCK_TRAINING_SESSIONS;
+      }
+    },
+    () => MOCK_TRAINING_SESSIONS
+  );
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,6 +52,14 @@ export default function HEVACRAZ_LandingPage() {
     }
     setMobileMenuOpen(false);
   };
+  const upcomingTrainingSessions = useMemo(
+    () =>
+      [...storedTrainingSessions]
+        .filter(session => new Date(session.startDate).getTime() >= upcomingReferenceTime)
+        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+        .slice(0, 3),
+    [storedTrainingSessions, upcomingReferenceTime]
+  );
 
   const navLinks = [
     { 
@@ -51,12 +78,12 @@ export default function HEVACRAZ_LandingPage() {
       name: 'For Businesses', 
       href: '#',
       hasDropdown: true,
-      dropdown: [
-        { name: 'Enterprise Solutions', href: '#', icon: <Building2 className="w-4 h-4" /> },
-        { name: 'Bulk Certifications', href: '#', icon: <Briefcase className="w-4 h-4" /> },
-        { name: 'Compliance Consulting', href: '#', icon: <Scale className="w-4 h-4" /> },
-      ]
-    },
+        dropdown: [
+          { name: 'Enterprise Solutions', href: '#', icon: <Building2 className="w-4 h-4" /> },
+          { name: 'Register as Supplier', href: '/supplier-register', icon: <Building2 className="w-4 h-4" /> },
+          { name: 'NOU Compliance', href: '/nou-dashboard', icon: <Scale className="w-4 h-4" /> },
+        ]
+      },
     { name: 'About', href: '#about' },
     { name: 'Contact', href: '#contact' },
   ];
@@ -345,6 +372,13 @@ export default function HEVACRAZ_LandingPage() {
               >
                 Join Now →
               </button>
+              <button
+                onClick={() => router.push('/supplier-register')}
+                className="font-semibold py-2 px-5 rounded-lg transition-all duration-300 text-sm border"
+                style={{ borderColor: colors.secondary, color: colors.primary, backgroundColor: 'white' }}
+              >
+                Register as Supplier
+              </button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -409,6 +443,13 @@ export default function HEVACRAZ_LandingPage() {
               >
                 Join HEVACRAZ
               </button>
+              <button
+                onClick={() => router.push('/supplier-register')}
+                className="w-full font-semibold py-3 px-5 rounded-lg transition-all duration-300 border mt-2"
+                style={{ borderColor: colors.secondary, color: colors.primary, backgroundColor: 'white' }}
+              >
+                Register as Supplier
+              </button>
             </div>
           </div>
         )}
@@ -453,6 +494,12 @@ export default function HEVACRAZ_LandingPage() {
                 style={{ backgroundColor: colors.highlight }}
               >
                 Explore the Community →
+              </button>
+              <button 
+                onClick={() => router.push('/supplier-register')}
+                className="bg-white/10 backdrop-blur-sm hover:bg-white/20 border-2 border-white text-white font-semibold py-5 px-10 rounded-lg transition-all duration-300 text-xl"
+              >
+                Register as Supplier
               </button>
               <button 
                 onClick={() => router.push('/verify-technician')}
@@ -572,6 +619,78 @@ export default function HEVACRAZ_LandingPage() {
       </section>
 
       {/* Member Spotlights */}
+      <section className="py-20" style={{ backgroundColor: '#F5EDE5' }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-12">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em]" style={{ color: colors.accent }}>
+                Upcoming Trainings
+              </p>
+              <h2 className="text-3xl sm:text-4xl font-bold mt-2" style={{ color: colors.primary }}>
+                Public Training Calendar
+              </h2>
+              <p className="mt-3 max-w-3xl text-gray-600">
+                Trainers can schedule sessions with venue and fees, and this public calendar updates automatically.
+                Online payment will be wired in later, so reservations stay mocked for now.
+              </p>
+            </div>
+            <button
+              onClick={() => router.push('/learn')}
+              className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white"
+              style={{ backgroundColor: colors.primary }}
+            >
+              View Training Center
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {upcomingTrainingSessions.map((session) => (
+              <div
+                key={session.id}
+                className="rounded-2xl border bg-white p-6 shadow-sm"
+                style={{ borderColor: '#E5E0DB' }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                      {new Intl.DateTimeFormat('en-ZW', { month: 'short', day: 'numeric' }).format(new Date(session.startDate))}
+                    </p>
+                    <h3 className="mt-2 text-xl font-bold" style={{ color: colors.primary }}>{session.title}</h3>
+                  </div>
+                  <span className="rounded-full px-3 py-1 text-xs font-semibold text-white" style={{ backgroundColor: colors.highlight }}>
+                    ${session.feeUsd}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-gray-600">{session.summary}</p>
+                <div className="mt-4 space-y-2 text-sm text-gray-600">
+                  <p className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {session.venue}, {session.province}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    {new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(session.startDate))}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    {session.seatsRemaining} seats left
+                  </p>
+                </div>
+                <button
+                  onClick={() => router.push('/login')}
+                  className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-white"
+                  style={{ backgroundColor: colors.highlight }}
+                >
+                  Reserve Seat (Mock)
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Member Spotlights */}
       <section className="py-20" style={{ backgroundColor: colors.background }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -601,7 +720,7 @@ export default function HEVACRAZ_LandingPage() {
                 
                 {/* Content */}
                 <div className="p-6">
-                  <p className="text-gray-600 mb-6 leading-relaxed italic">"{member.quote}"</p>
+                  <p className="text-gray-600 mb-6 leading-relaxed italic">&ldquo;{member.quote}&rdquo;</p>
                   
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div>
@@ -615,7 +734,7 @@ export default function HEVACRAZ_LandingPage() {
                   </div>
                   
                   <button className="mt-4 w-full text-center text-sm font-medium" style={{ color: colors.accent }}>
-                    View {member.name.split(' ')[0]}'s Registry Profile →
+                    View {member.name.split(' ')[0]}&rsquo;s Registry Profile →
                   </button>
                 </div>
               </div>
@@ -731,7 +850,7 @@ export default function HEVACRAZ_LandingPage() {
       <section className="py-20 text-white" style={{ backgroundColor: colors.primary }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-6">Ready to Advance Your HVAC-R Career?</h2>
-          <p className="text-xl text-gray-300 mb-10">Join Zimbabwe's leading professional association today</p>
+          <p className="text-xl text-gray-300 mb-10">Join Zimbabwe&apos;s leading professional association today</p>
           <button 
             onClick={() => router.push('/login')}
             className="font-semibold py-4 px-10 rounded-lg transition-all duration-300 text-lg shadow-lg hover:shadow-xl text-white"

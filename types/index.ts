@@ -25,7 +25,7 @@ export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'failed' | 'pending' | 
 export interface NavItem {
   label: string;
   href: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   roles: (UserRole | string)[];
   children?: NavItem[];
 }
@@ -75,6 +75,215 @@ export interface Job {
   refrigerantUsage: number;
 }
 
+export type PlannerJobStatus = 'scheduled' | 'in-progress' | 'completed' | 'follow-up';
+export type RefrigerantSafetyClass = 'A1' | 'A2L' | 'A3';
+export type EquipmentStatus = 'normal' | 'due-soon' | 'overdue';
+export type SupplierQuotaStatus = 'within-quota' | 'near-limit' | 'exceeded';
+
+export interface PlannerServiceRecord {
+  id: string;
+  date: string;
+  notes: string;
+  technicianName: string;
+  status: PlannerJobStatus;
+}
+
+export interface PlannerClient {
+  id: string;
+  name: string;
+  location: string;
+  province: string;
+  contactPerson: string;
+  contactNumber: string;
+  serviceHistory: PlannerServiceRecord[];
+}
+
+export interface PlannerSafetyChecklistItem {
+  id: string;
+  label: string;
+  required: boolean;
+  completed: boolean;
+  appliesTo: RefrigerantSafetyClass[] | 'all';
+}
+
+export interface PlannerJob {
+  id: string;
+  clientId: string;
+  clientName: string;
+  location: string;
+  province: string;
+  district?: string;
+  technicianId: string;
+  technicianName: string;
+  jobType: JobType;
+  refrigerantClass: RefrigerantSafetyClass;
+  scheduledDate: string;
+  status: PlannerJobStatus;
+  preJobChecklistComplete: boolean;
+  checklistItems: PlannerSafetyChecklistItem[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EquipmentRecord {
+  id: string;
+  equipmentId: string;
+  clientName: string;
+  province: string;
+  refrigerantType: string;
+  ashraeSafetyClass: RefrigerantSafetyClass;
+  lastServiceDate: string;
+  nextServiceDue: string;
+  status: EquipmentStatus;
+  technicianName: string;
+  serviceHistory: PlannerServiceRecord[];
+  predictedFailureReason?: string;
+  recommendedAction?: string;
+}
+
+export interface PredictiveAlert {
+  id: string;
+  equipmentId: string;
+  clientName: string;
+  province: string;
+  predictedFailureReason: string;
+  recommendedAction: string;
+  urgency: 'low' | 'medium' | 'high';
+  status: EquipmentStatus;
+}
+
+export interface ApprovedSupplier {
+  id: string;
+  name: string;
+  refrigerants: string[];
+  totalSalesKg: number;
+  importQuotaKg: number;
+  usagePercent: number;
+  quotaStatus: SupplierQuotaStatus;
+  nouApproved: boolean;
+  region: string;
+}
+
+export type SupplierRegistrationStatus = 'submitted' | 'under-review' | 'approved' | 'rejected';
+
+export interface SupplierRegistration {
+  id: string;
+  companyName: string;
+  tradingName?: string;
+  registrationNumber: string;
+  supplierType: 'importer' | 'wholesaler' | 'distributor' | 'manufacturer' | 'service-partner';
+  contactName: string;
+  email: string;
+  phone: string;
+  province: string;
+  city: string;
+  address: string;
+  refrigerantsSupplied: string[];
+  taxNumber?: string;
+  pesepayMerchantId?: string;
+  website?: string;
+  notes?: string;
+  status: SupplierRegistrationStatus;
+  submittedAt: string;
+}
+
+export type SupplierLedgerDirection = 'purchase' | 'sale';
+
+export interface SupplierLedgerEntry {
+  id: string;
+  supplierEmail: string;
+  supplierName: string;
+  direction: SupplierLedgerDirection;
+  technicianId?: string;
+  technicianRegistrationNumber?: string;
+  counterpartyName: string;
+  counterpartyCompany?: string;
+  counterpartyType: 'importer' | 'distributor' | 'technician' | 'contractor' | 'retailer' | 'cold-chain-client';
+  province: string;
+  refrigerant: string;
+  quantityKg: number;
+  unitPriceUsd: number;
+  totalValueUsd: number;
+  invoiceNumber: string;
+  transactionDate: string;
+  referenceMonth: string;
+  reportedToNou: boolean;
+  clientReported: boolean;
+  notes?: string;
+}
+
+export type SupplierComplianceStatus = 'draft' | 'submitted' | 'under-review' | 'approved' | 'rejected';
+
+export interface SupplierComplianceApplication {
+  id: string;
+  supplierEmail: string;
+  supplierName: string;
+  certificateType: 'distribution-compliance' | 'nou-reporting' | 'traceability-audit';
+  monthCoverage: string;
+  sitesCovered: number;
+  contactPerson: string;
+  supportingSummary: string;
+  status: SupplierComplianceStatus;
+  submittedAt: string;
+  notes?: string;
+}
+
+export interface RefrigerantDefinition {
+  code: string;
+  name: string;
+  ashraeSafetyClass: RefrigerantSafetyClass;
+  alertLevel: 'green' | 'orange' | 'red';
+  odp: number;
+  gwp: number;
+  nouApproved: boolean;
+  ppeRequired: string[];
+  handlingPrecautions: string[];
+}
+
+export interface NOUStats {
+  totalTechnicians: number;
+  totalPurchasedKg: number;
+  totalRecoveredKg: number;
+  emissionsAvoidedTonnes: number;
+  flaggedDiscrepancies: number;
+  greyMarketAlerts: number;
+}
+
+export interface NOURefrigerantBreakdown {
+  refrigerant: string;
+  purchasedKg: number;
+  percentage: number;
+}
+
+export interface NOUMonthlyTrendPoint {
+  month: string;
+  purchasedKg: number;
+  usedKg: number;
+}
+
+export interface NOUDiscrepancyAlert {
+  id: string;
+  technicianId: string;
+  technicianName: string;
+  province: string;
+  purchasedKg: number;
+  loggedUsageKg: number;
+  ratio: number;
+  flagReason: string;
+  action: 'view-profile' | 'investigate' | 'clear-flag';
+}
+
+export interface NOUGreyMarketAlert {
+  id: string;
+  technicianId: string;
+  technicianName: string;
+  province: string;
+  loggedUsageKg: number;
+  alertReason: string;
+  action: 'view-profile' | 'investigate' | 'clear-flag';
+}
+
 // SizingInputs from old types.ts
 export interface SizingInputs {
   step: number;
@@ -102,6 +311,50 @@ export interface Course {
   progress: number;
   level: 'BASIC' | 'ADVANCED' | 'GWP_SPECIALIST';
   isDownloaded: boolean;
+}
+
+export interface TrainingSession {
+  id: string;
+  title: string;
+  summary: string;
+  venue: string;
+  province: string;
+  startDate: string;
+  endDate: string;
+  feeUsd: number;
+  seats: number;
+  seatsRemaining: number;
+  trainerName: string;
+  trainerEmail: string;
+  status: 'scheduled' | 'open' | 'completed' | 'full';
+}
+
+export type TrainerCertificateStatus =
+  | 'draft'
+  | 'submitted-for-admin-approval'
+  | 'admin-approved'
+  | 'rejected'
+  | 'issued';
+
+export interface TrainerCertificateRequest {
+  id: string;
+  technicianId: string;
+  technicianName: string;
+  technicianRegistrationNumber: string;
+  technicianCompany: string;
+  trainerName: string;
+  trainerEmail: string;
+  courseTitle: string;
+  examDate: string;
+  theoryScore: number;
+  practicalScore: number;
+  overallScore: number;
+  notes?: string;
+  status: TrainerCertificateStatus;
+  submittedAt: string;
+  reviewedAt?: string;
+  adminReviewer?: string;
+  certificateNumber?: string;
 }
 
 // RewardItem from old types.ts
@@ -172,6 +425,10 @@ export interface RefrigerantLog {
   amount: number;
   actionType: 'Charge' | 'Recovery' | 'Leak Repair';
   timestamp: string;
+  approvedSupplierId?: string;
+  approvedSupplierName?: string;
+  supplierVerified?: boolean;
+  pesepayTransactionId?: string;
 }
 
 // Installation Types

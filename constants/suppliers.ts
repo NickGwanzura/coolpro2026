@@ -1,0 +1,48 @@
+import { ApprovedSupplier } from '@/types/index';
+
+export const MOCK_APPROVED_SUPPLIERS: ApprovedSupplier[] = [
+  {
+    id: 'sup-001',
+    name: 'Zimbabwe Refrigeration Supplies',
+    refrigerants: ['R-290', 'R-32', 'R-744'],
+    totalSalesKg: 2840,
+    importQuotaKg: 3000,
+    usagePercent: 94.7,
+    quotaStatus: 'near-limit',
+    nouApproved: true,
+    region: 'Harare',
+  },
+  {
+    id: 'sup-002',
+    name: 'CoolTech Zimbabwe',
+    refrigerants: ['R-32', 'R-134a'],
+    totalSalesKg: 2990,
+    importQuotaKg: 3000,
+    usagePercent: 99.7,
+    quotaStatus: 'near-limit',
+    nouApproved: true,
+    region: 'Bulawayo',
+  },
+  {
+    id: 'sup-003',
+    name: 'African HVAC Distributors',
+    refrigerants: ['R-290', 'R-744'],
+    totalSalesKg: 1200,
+    importQuotaKg: 2000,
+    usagePercent: 60,
+    quotaStatus: 'within-quota',
+    nouApproved: true,
+    region: 'Midlands',
+  },
+  {
+    id: 'sup-004',
+    name: 'GreenGas Zimbabwe',
+    refrigerants: ['R-290'],
+    totalSalesKg: 850,
+    importQuotaKg: 1500,
+    usagePercent: 56.7,
+    quotaStatus: 'within-quota',
+    nouApproved: true,
+    region: 'Harare',
+  },
+];

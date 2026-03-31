@@ -1,27 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import { getSession, UserSession, logout } from '@/lib/auth';
+import { STORAGE_KEYS, readCollection } from '@/lib/platformStore';
+import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import {
     ClipboardCheck,
     Award,
     Gift,
     TrendingUp,
     ArrowRight,
+    Download,
     RefreshCw,
     Users,
-    Calendar,
     MapPin,
-    CheckCircle,
     Clock,
     Wrench,
     Thermometer,
     ShieldAlert,
-    Plus
+    Plus,
+    Building2
 } from 'lucide-react';
 import Link from 'next/link';
 import OccupationalAccidentSection from '@/components/OccupationalAccidentSection';
-import { OccupationalAccident } from '@/types';
+import { SupplierRegistration } from '@/types/index';
 
 // HEVACRAZ Color Scheme (matching landing page)
 const colors = {
@@ -32,10 +34,34 @@ const colors = {
     background: '#FDF8F3', // Warm off-white
 };
 
+const ADMIN_REGION_MULTIPLIERS: Record<string, number> = {
+    all: 1,
+    Harare: 1,
+    Bulawayo: 0.68,
+    Manicaland: 0.54,
+    Masvingo: 0.48,
+    Midlands: 0.6,
+    'Matabeleland North': 0.42,
+    'Matabeleland South': 0.38,
+    'Mashonaland West': 0.5,
+    'Mashonaland Central': 0.44,
+    'Mashonaland East': 0.52,
+};
+
+const ADMIN_BASE_BY_RANGE = {
+    today: { activeTechs: 24, totalJobs: 15, pendingCocs: 8, regions: 5, safetyIncidents: 2 },
+    week: { activeTechs: 31, totalJobs: 89, pendingCocs: 14, regions: 8, safetyIncidents: 4 },
+    month: { activeTechs: 52, totalJobs: 342, pendingCocs: 27, regions: 10, safetyIncidents: 7 },
+} as const;
+
+const roundedMetric = (value: number, minimum = 1) => Math.max(minimum, Math.round(value));
+
 export default function DashboardPage() {
     const [session, setSession] = useState<UserSession | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [dateRange, setDateRange] = useState('today');
+    const [regionFilter, setRegionFilter] = useState('all');
+    const [supplierApplications, setSupplierApplications] = useState<SupplierRegistration[]>([]);
 
     useEffect(() => {
         const userSession = getSession();
@@ -43,31 +69,25 @@ export default function DashboardPage() {
         setIsLoading(false);
     }, []);
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
+    useEffect(() => {
+        setSupplierApplications(
+            readCollection<SupplierRegistration>(STORAGE_KEYS.supplierApplications, [], [
+                STORAGE_KEYS.supplierProfilesLegacy,
+            ])
         );
-    }
-
-    if (!session) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-                <p className="text-gray-500">Please log in to view the dashboard</p>
-                <a
-                    href="/login"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                    Go to Login
-                </a>
-            </div>
-        );
-    }
+    }, []);
 
     // Role-based KPI cards
-    const isAdmin = session.role === 'program_admin' || session.role === 'org_admin';
-    const isTechnician = session.role === 'technician';
+    const isAdmin = session?.role === 'program_admin' || session?.role === 'org_admin';
+    const pendingSupplierApplications = supplierApplications.filter(
+        application => application.status === 'submitted' || application.status === 'under-review'
+    );
+    const supplierSummary = {
+        pendingApplications: pendingSupplierApplications.length,
+        approvedApplications: supplierApplications.filter(application => application.status === 'approved').length,
+        rejectedApplications: supplierApplications.filter(application => application.status === 'rejected').length,
+        latestApplications: pendingSupplierApplications.slice(0, 3),
+    };
 
     // Technician KPIs
     const technicianStats = [
@@ -101,46 +121,208 @@ export default function DashboardPage() {
         },
     ];
 
+    const adminMetrics = useMemo(() => {
+        const rangeMetrics = ADMIN_BASE_BY_RANGE[dateRange as keyof typeof ADMIN_BASE_BY_RANGE] ?? ADMIN_BASE_BY_RANGE.today;
+        const multiplier = ADMIN_REGION_MULTIPLIERS[regionFilter] ?? 1;
+
+        return {
+            activeTechs: roundedMetric(rangeMetrics.activeTechs * multiplier),
+            totalJobs: roundedMetric(rangeMetrics.totalJobs * multiplier),
+            pendingCocs: roundedMetric(rangeMetrics.pendingCocs * multiplier),
+            regions: regionFilter === 'all' ? rangeMetrics.regions : 1,
+            safetyIncidents: roundedMetric(rangeMetrics.safetyIncidents * Math.max(multiplier, 0.5)),
+        };
+    }, [dateRange, regionFilter]);
+
     // Admin KPIs
     const adminStats = [
         {
             label: 'Active Techs',
-            value: '24',
+            value: String(adminMetrics.activeTechs),
             icon: Users,
             color: 'blue',
-            trend: '8 online now'
+            trend: regionFilter === 'all' ? 'All registered regions' : `${regionFilter} only`
         },
         {
             label: 'Total Jobs',
-            value: dateRange === 'today' ? '15' : dateRange === 'week' ? '89' : '342',
+            value: String(adminMetrics.totalJobs),
             icon: Wrench,
             color: 'emerald',
-            trend: dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : 'This month'
+            trend: regionFilter === 'all' ? 'Filtered by reporting range' : `Filtered to ${regionFilter}`
         },
         {
             label: 'Pending COCs',
-            value: '8',
+            value: String(adminMetrics.pendingCocs),
             icon: Award,
             color: 'amber',
-            trend: '3 need review'
+            trend: 'Awaiting review'
         },
         {
             label: 'Regions',
-            value: '5',
+            value: String(adminMetrics.regions),
             icon: MapPin,
             color: 'purple',
-            trend: 'Harare, Bulawayo'
+            trend: regionFilter === 'all' ? 'Coverage in current range' : 'Selected region'
         },
         {
             label: 'Safety Incidents',
-            value: '2',
+            value: String(adminMetrics.safetyIncidents),
             icon: ShieldAlert,
             color: 'red',
-            trend: '1 critical this week'
+            trend: 'Across logged incidents'
         },
     ];
 
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
+
+    if (!session) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+                <p className="text-gray-500">Please log in to view the dashboard</p>
+                <a
+                    href="/login"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                    Go to Login
+                </a>
+            </div>
+        );
+    }
+
     const stats = isAdmin ? adminStats : technicianStats;
+    type QuickAction = {
+        href: string;
+        title: string;
+        detail: string;
+        icon: typeof Users;
+        iconClassName: string;
+        iconStyle?: CSSProperties;
+    };
+
+    const adminQuickActions: QuickAction[] = [
+        {
+            href: '/technician-registry',
+            title: 'Tech Registry',
+            detail: 'Registered technicians & PDF reports',
+            icon: Users,
+            iconClassName: 'bg-sky-100 text-sky-600',
+        },
+        {
+            href: '/jobs',
+            title: 'Jobs & Logs',
+            detail: 'Operational records across technicians',
+            icon: ClipboardCheck,
+            iconClassName: 'bg-purple-100 text-purple-600',
+        },
+        {
+            href: '/certifications',
+            title: 'Certification Overview',
+            detail: 'Applications and processed certificates',
+            icon: Award,
+            iconClassName: 'bg-amber-100 text-amber-600',
+        },
+        {
+            href: '/rewards',
+            title: 'Rewards Overview',
+            detail: 'All active rewards and vendor coverage',
+            icon: Gift,
+            iconClassName: 'bg-emerald-100 text-emerald-600',
+        },
+        {
+            href: '/nou-dashboard',
+            title: 'Supplier Review',
+            detail: 'NOU queue and approvals',
+            icon: Building2,
+            iconClassName: 'bg-orange-100 text-orange-600',
+        },
+        {
+            href: '/safety',
+            title: 'Safety Oversight',
+            detail: 'Regional accident monitoring and reports',
+            icon: ShieldAlert,
+            iconClassName: 'bg-red-100 text-red-600',
+        },
+    ];
+    const technicianQuickActions: QuickAction[] = [
+        {
+            href: '/sizing-tool',
+            title: 'Sizing Tool',
+            detail: 'Calculate capacity',
+            icon: Thermometer,
+            iconClassName: '',
+            iconStyle: { backgroundColor: colors.secondary + '20', color: colors.secondary },
+        },
+        {
+            href: '/field-toolkit',
+            title: 'Field Toolkit',
+            detail: 'Installations & Logs',
+            icon: Wrench,
+            iconClassName: '',
+            iconStyle: { backgroundColor: colors.accent + '20', color: colors.accent },
+        },
+        {
+            href: '/jobs',
+            title: 'Jobs & Logs',
+            detail: 'View all records',
+            icon: ClipboardCheck,
+            iconClassName: 'bg-purple-100 text-purple-600',
+        },
+        {
+            href: '/certifications',
+            title: 'Certifications',
+            detail: 'Manage COCs',
+            icon: Award,
+            iconClassName: 'bg-amber-100 text-amber-600',
+        },
+    ];
+
+    const exportAdminCsv = () => {
+        if (!isAdmin) return;
+
+        const rows = [
+            ['Metric', 'Value', 'Range', 'Region'],
+            ...adminStats.map(stat => [stat.label, stat.value, dateRange, regionFilter]),
+        ];
+
+        const csv = rows.map(row => row.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `admin-kpis-${dateRange}-${regionFilter}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const exportAdminPdf = async () => {
+        if (!isAdmin) return;
+
+        const { jsPDF } = await import('jspdf');
+        const { default: autoTable } = await import('jspdf-autotable');
+        const doc = new jsPDF();
+
+        doc.setFontSize(18);
+        doc.text('HEVACRAZ Admin KPI Report', 14, 18);
+        doc.setFontSize(10);
+        doc.text(`Range: ${dateRange}`, 14, 26);
+        doc.text(`Region: ${regionFilter}`, 14, 32);
+        doc.text(`Generated: ${new Date().toLocaleString('en-ZW')}`, 14, 38);
+
+        autoTable(doc, {
+            startY: 46,
+            head: [['Metric', 'Value', 'Trend']],
+            body: adminStats.map(stat => [stat.label, stat.value, stat.trend]),
+            headStyles: { fillColor: [44, 36, 32] },
+        });
+
+        doc.save(`admin-kpis-${dateRange}-${regionFilter}.pdf`);
+    };
 
     return (
         <div className="space-y-6" style={{ backgroundColor: colors.background, minHeight: '100vh' }}>
@@ -152,7 +334,7 @@ export default function DashboardPage() {
                     </h1>
                     <p className="text-gray-500 mt-1">Welcome back, {session.name}</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     {/* Date Filter */}
                     <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
                         <button
@@ -186,6 +368,38 @@ export default function DashboardPage() {
                             This Month
                         </button>
                     </div>
+                    {isAdmin && (
+                        <select
+                            value={regionFilter}
+                            onChange={(event) => setRegionFilter(event.target.value)}
+                            className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="all">All Regions</option>
+                            {ZIMBABWE_PROVINCES.map((province) => (
+                                <option key={province.id} value={province.name}>
+                                    {province.name}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                    {isAdmin && (
+                        <button
+                            onClick={exportAdminCsv}
+                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                        >
+                            <Download className="h-4 w-4" />
+                            CSV
+                        </button>
+                    )}
+                    {isAdmin && (
+                        <button
+                            onClick={exportAdminPdf}
+                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                        >
+                            <Download className="h-4 w-4" />
+                            PDF
+                        </button>
+                    )}
                     <button
                         onClick={() => logout()}
                         className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
@@ -245,62 +459,107 @@ export default function DashboardPage() {
                 })}
             </div>
 
+            {/* Supplier Review - Admin */}
+            {isAdmin && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                        <div>
+                            <h2 className="text-lg font-semibold" style={{ color: colors.primary }}>
+                                Supplier Review Queue
+                            </h2>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Supplier applications from the mock intake flow are synced here for NOU review.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                            <Link
+                                href="/nou-dashboard"
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl transition-colors"
+                                style={{ backgroundColor: colors.highlight }}
+                            >
+                                Open NOU Dashboard
+                                <ArrowRight className="h-4 w-4" />
+                            </Link>
+                            <Link
+                                href="/suppliers"
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Supplier Management
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+                        <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Pending</p>
+                            <p className="mt-2 text-3xl font-bold text-gray-900">{supplierSummary.pendingApplications}</p>
+                        </div>
+                        <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Approved</p>
+                            <p className="mt-2 text-3xl font-bold text-gray-900">{supplierSummary.approvedApplications}</p>
+                        </div>
+                        <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Rejected</p>
+                            <p className="mt-2 text-3xl font-bold text-gray-900">{supplierSummary.rejectedApplications}</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 space-y-3">
+                        {supplierSummary.latestApplications.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                                No supplier applications are waiting for review yet.
+                            </div>
+                        ) : (
+                            supplierSummary.latestApplications.map((application) => (
+                                <div key={application.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="font-semibold text-gray-900">{application.companyName}</p>
+                                            <p className="text-sm text-gray-500">
+                                                {application.province} · {application.supplierType.replace('-', ' ')}
+                                            </p>
+                                        </div>
+                                        <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700">
+                                            {application.status.replace('-', ' ')}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Quick Actions - Role-based */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-lg font-semibold mb-4" style={{ color: colors.primary }}>Quick Actions</h2>
+                <h2 className="text-lg font-semibold mb-4" style={{ color: colors.primary }}>
+                    {isAdmin ? 'Admin Quick Actions' : 'Quick Actions'}
+                </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <Link
-                        href="/sizing-tool"
-                        className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
-                    >
-                        <div className="p-2 rounded-lg" style={{ backgroundColor: colors.secondary + '20', color: colors.secondary }}>
-                            <Thermometer className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-semibold" style={{ color: colors.primary }}>Sizing Tool</p>
-                            <p className="text-xs text-gray-500">Calculate capacity</p>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
-                    </Link>
-                    <Link
-                        href="/field-toolkit"
-                        className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
-                    >
-                        <div className="p-2 rounded-lg" style={{ backgroundColor: colors.accent + '20', color: colors.accent }}>
-                            <Wrench className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-semibold" style={{ color: colors.primary }}>Field Toolkit</p>
-                            <p className="text-xs text-gray-500">Installations & Logs</p>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
-                    </Link>
-                    <Link
-                        href="/jobs"
-                        className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
-                    >
-                        <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
-                            <ClipboardCheck className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-900">Jobs & Logs</p>
-                            <p className="text-xs text-gray-500">View all records</p>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
-                    </Link>
-                    <Link
-                        href="/certifications"
-                        className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
-                    >
-                        <div className="p-2 rounded-lg bg-amber-100 text-amber-600">
-                            <Award className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-900">Certifications</p>
-                            <p className="text-xs text-gray-500">Manage COCs</p>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
-                    </Link>
+                    {(isAdmin ? adminQuickActions : technicianQuickActions).map((action) => {
+                        const Icon = action.icon;
+
+                        return (
+                            <Link
+                                key={action.href}
+                                href={action.href}
+                                className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group"
+                            >
+                                <div
+                                    className={`p-2 rounded-lg ${action.iconClassName}`}
+                                    style={'iconStyle' in action ? action.iconStyle : undefined}
+                                >
+                                    <Icon className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-semibold text-gray-900">{action.title}</p>
+                                    <p className="text-xs text-gray-500">{action.detail}</p>
+                                </div>
+                                <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                            </Link>
+                        );
+                    })}
                     {!isAdmin && (
                         <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors group cursor-pointer border border-red-100">
                             <div className="p-2 rounded-lg bg-red-100 text-red-600">

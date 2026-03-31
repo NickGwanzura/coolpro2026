@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   CheckSquare,
   FileText,
@@ -18,6 +18,8 @@ import {
 import { useAuth } from '../lib/auth';
 import { RefrigerantLog, Installation, JobType, JobTypeLabels } from '../types';
 import { jsPDF } from 'jspdf';
+import { MOCK_APPROVED_SUPPLIERS } from '@/constants/suppliers';
+import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
 
 const FieldToolkit: React.FC = () => {
   const { user } = useAuth();
@@ -48,6 +50,10 @@ const FieldToolkit: React.FC = () => {
       refrigerantType: 'R-290',
       amount: 15.5,
       actionType: 'Charge',
+      approvedSupplierId: 'sup-001',
+      approvedSupplierName: 'Zimbabwe Refrigeration Supplies',
+      supplierVerified: true,
+      pesepayTransactionId: 'MOCK-284001',
       timestamp: new Date(Date.now() - 86400000).toISOString(),
     },
     {
@@ -60,6 +66,7 @@ const FieldToolkit: React.FC = () => {
       refrigerantType: 'R-744 (CO2)',
       amount: 45.0,
       actionType: 'Recovery',
+      supplierVerified: false,
       timestamp: new Date(Date.now() - 172800000).toISOString(),
     }
   ]);
@@ -70,8 +77,24 @@ const FieldToolkit: React.FC = () => {
     jobType: 'COLD_ROOM' as JobType,
     refrigerantType: 'R-290',
     amount: '',
-    actionType: 'Charge' as 'Charge' | 'Recovery' | 'Leak Repair'
+    actionType: 'Charge' as 'Charge' | 'Recovery' | 'Leak Repair',
+    approvedSupplierId: '',
+    pesepayTransactionId: '',
   });
+
+  useEffect(() => {
+    setInstallations(readCollection<Installation>(STORAGE_KEYS.fieldToolkitInstallations, []));
+    setLogs(readCollection<RefrigerantLog>(STORAGE_KEYS.fieldToolkitLogs, logs));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    writeCollection(STORAGE_KEYS.fieldToolkitInstallations, installations);
+  }, [installations]);
+
+  useEffect(() => {
+    writeCollection(STORAGE_KEYS.fieldToolkitLogs, logs);
+  }, [logs]);
 
   const toggleCheck = (index: string) => {
     setCheckedItems(prev =>
@@ -303,6 +326,10 @@ const FieldToolkit: React.FC = () => {
     e.preventDefault();
     if (!formData.clientName || !formData.amount) return;
 
+    const selectedSupplier = MOCK_APPROVED_SUPPLIERS.find(
+      supplier => supplier.id === formData.approvedSupplierId
+    );
+
     const newLog: RefrigerantLog = {
       id: Math.random().toString(36).substr(2, 9),
       technicianId: user?.id || 'unknown',
@@ -313,6 +340,10 @@ const FieldToolkit: React.FC = () => {
       refrigerantType: formData.refrigerantType,
       amount: parseFloat(formData.amount),
       actionType: formData.actionType,
+      approvedSupplierId: selectedSupplier?.id,
+      approvedSupplierName: selectedSupplier?.name,
+      supplierVerified: Boolean(selectedSupplier),
+      pesepayTransactionId: formData.pesepayTransactionId || undefined,
       timestamp: new Date().toISOString(),
     };
 
@@ -320,10 +351,12 @@ const FieldToolkit: React.FC = () => {
     setFormData({
       clientName: '',
       location: '',
-    jobType: 'COLD_ROOM' as JobType,
-    refrigerantType: 'R-290',
-    amount: '',
-      actionType: 'Charge'
+      jobType: 'COLD_ROOM' as JobType,
+      refrigerantType: 'R-290',
+      amount: '',
+      actionType: 'Charge',
+      approvedSupplierId: '',
+      pesepayTransactionId: '',
     });
   };
 
@@ -355,6 +388,8 @@ const FieldToolkit: React.FC = () => {
     doc.text(`Action: ${log.actionType}`, 20, 140);
     doc.text(`Refrigerant: ${log.refrigerantType}`, 20, 150);
     doc.text(`Amount: ${log.amount} kg`, 20, 160);
+    doc.text(`Approved Supplier: ${log.approvedSupplierName || 'Unverified / not selected'}`, 20, 170);
+    doc.text(`Pesepay Transaction ID: ${log.pesepayTransactionId || 'Not provided'}`, 20, 180);
 
     // Footer
     doc.setFontSize(10);
@@ -724,6 +759,33 @@ const FieldToolkit: React.FC = () => {
                     <option>R-32</option>
                   </select>
                 </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Approved Supplier</label>
+                  <select
+                    value={formData.approvedSupplierId}
+                    onChange={(e) => setFormData({ ...formData, approvedSupplierId: e.target.value })}
+                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
+                  >
+                    <option value="">Select approved supplier</option>
+                    {MOCK_APPROVED_SUPPLIERS.map((supplier) => (
+                      <option key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Pesepay Transaction ID
+                    <span className="ml-2 text-xs font-medium text-amber-700">Required for rewards</span>
+                  </label>
+                  <input
+                    value={formData.pesepayTransactionId}
+                    onChange={(e) => setFormData({ ...formData, pesepayTransactionId: e.target.value })}
+                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    placeholder="e.g. MOCK-20260331-001"
+                  />
+                </div>
                 <div className="space-y-2 col-span-full">
                   <label className="text-sm font-semibold text-gray-700">Action Type</label>
                   <div className="grid grid-cols-3 gap-3">
@@ -742,6 +804,12 @@ const FieldToolkit: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {!formData.approvedSupplierId && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Purchases from unapproved suppliers are not eligible for rewards points and will be flagged in the NOU compliance report.
+                </div>
+              )}
 
               <button
                 onClick={handleLogSubmit}
@@ -793,6 +861,23 @@ const FieldToolkit: React.FC = () => {
                             <span className="text-gray-300 mx-1">|</span>
                             <span>{JobTypeLabels[log.jobType] || log.jobType}</span>
                           </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                            <span
+                              className={`rounded-full px-2.5 py-1 font-semibold ${
+                                log.supplierVerified
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {log.supplierVerified ? 'Supplier verified' : 'Supplier unverified'}
+                            </span>
+                            {log.approvedSupplierName && (
+                              <span className="text-gray-500">{log.approvedSupplierName}</span>
+                            )}
+                            {log.pesepayTransactionId && (
+                              <span className="font-mono text-gray-400">{log.pesepayTransactionId}</span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button

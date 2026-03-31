@@ -1,14 +1,14 @@
 
 import { Icons } from '../constants';
 // Fixed: Updated import path to types/index which contains the NavItem interface definition.
-import { NavItem, UserRole } from '../types/index';
+import { NavItem } from '../types/index';
 
 export const NAV_ITEMS: NavItem[] = [
   {
     label: 'Dashboard',
     href: '/dashboard',
     icon: Icons.Dashboard,
-    roles: ['technician', 'trainer', 'vendor', 'org_admin', 'program_admin'],
+    roles: ['technician', 'org_admin', 'program_admin'],
   },
   {
     label: 'LMS Academy',
@@ -26,7 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
         label: 'Safety',
         href: '/safety',
         icon: Icons.Shield,
-        roles: ['technician', 'trainer', 'program_admin'],
+        roles: ['technician', 'program_admin'],
       },
     ],
   },
@@ -58,7 +58,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Rewards & Points',
     href: '/rewards',
     icon: Icons.Award,
-    roles: ['technician', 'vendor', 'program_admin'],
+    roles: ['technician', 'program_admin'],
   },
   {
     label: 'Program Admin',

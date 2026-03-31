@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../lib/auth';
-import { UserRole } from '../../../types';
-import { ROLE_LABELS } from '../../../lib/roles';
-import { Thermometer, Lock, Mail, ArrowRight, User, MapPin, ShieldCheck } from 'lucide-react';
+import { SupplierRegistration, UserRole } from '../../../types';
+import { prependCollectionItem, STORAGE_KEYS } from '@/lib/platformStore';
+import { Thermometer, Lock, Mail, ArrowRight, MapPin, ShieldCheck, Building2, PackageSearch, User, GraduationCap } from 'lucide-react';
 
 // HEVACRAZ Color Scheme (matching landing page)
 const colors = {
@@ -16,34 +16,158 @@ const colors = {
     background: '#FDF8F3', // Warm off-white
 };
 
-export default function LoginPage() {
+const DEMO_ROLES: Array<{
+  role: UserRole;
+  label: string;
+  description: string;
+  icon: typeof User;
+}> = [
+  {
+    role: 'program_admin',
+    label: 'Program Admin',
+    description: 'National dashboards and full oversight.',
+    icon: ShieldCheck,
+  },
+  {
+    role: 'org_admin',
+    label: 'Org Admin',
+    description: 'Operations, suppliers, and team visibility.',
+    icon: Building2,
+  },
+  {
+    role: 'technician',
+    label: 'Technician',
+    description: 'Field tools, jobs, and certifications.',
+    icon: Thermometer,
+  },
+  {
+    role: 'trainer',
+    label: 'Trainer',
+    description: 'Learning flows and assessor tools.',
+    icon: GraduationCap,
+  },
+  {
+    role: 'vendor',
+    label: 'Vendor',
+    description: 'Supplier-facing demo workspace.',
+    icon: PackageSearch,
+  },
+];
+
+type SupplierFormState = {
+  companyName: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  province: string;
+  refrigerants: string;
+  businessRegNumber: string;
+  category: string;
+};
+
+function getSupplierType(category: string): SupplierRegistration['supplierType'] {
+  switch (category) {
+    case 'Importer':
+      return 'importer';
+    case 'Service Partner':
+      return 'service-partner';
+    case 'Equipment Supplier':
+      return 'wholesaler';
+    default:
+      return 'distributor';
+  }
+}
+
+function buildSupplierRegistration(supplierForm: SupplierFormState): SupplierRegistration {
+  const timestamp = Date.now();
+
+  return {
+    id: `SUP-APP-${timestamp}`,
+    companyName: supplierForm.companyName,
+    registrationNumber: supplierForm.businessRegNumber || `SUP-${timestamp}`,
+    supplierType: getSupplierType(supplierForm.category),
+    contactName: supplierForm.contactPerson,
+    email: supplierForm.email,
+    phone: supplierForm.phone,
+    province: supplierForm.province,
+    city: supplierForm.province,
+    address: supplierForm.province,
+    refrigerantsSupplied: supplierForm.refrigerants
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean),
+    status: 'submitted',
+    submittedAt: new Date().toISOString(),
+    notes: `Submitted from login supplier onboarding flow (${supplierForm.category}).`,
+  };
+}
+
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, demo } = useAuth();
-  const [isDemoView, setIsDemoView] = useState(false);
+  const [manualMode, setManualMode] = useState<'signin' | 'demo' | 'supplier' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [supplierSubmitted, setSupplierSubmitted] = useState(false);
 
   // Demo Specific State
-  const [selectedRole, setSelectedRole] = useState<UserRole>('technician' as UserRole);
   const [selectedRegion, setSelectedRegion] = useState('Harare');
+  const [supplierForm, setSupplierForm] = useState({
+    companyName: '',
+    contactPerson: '',
+    email: '',
+    phone: '',
+    province: 'Harare',
+    refrigerants: 'R-290, R-32, R-744',
+    businessRegNumber: '',
+    category: 'Distributor',
+  });
 
   const REGIONS = ["Harare", "Bulawayo", "Mutare", "Gweru", "Masvingo", "Other"];
+  const isSupplierFlow = searchParams.get('flow') === 'supplier';
+  const activeMode = manualMode ?? (isSupplierFlow ? 'supplier' : 'signin');
+  const nextPath = searchParams.get('next') || (isSupplierFlow ? '/suppliers' : '/dashboard');
 
   const handleNormalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
     setIsLoading(true);
     await login(email);
-    router.push('/dashboard');
+    router.push(nextPath);
   };
 
-  const handleDemoAccess = async () => {
+  const handleDemoAccess = async (role: UserRole) => {
     setIsLoading(true);
     if (demo) {
-      demo(selectedRole, selectedRegion);
-      router.push('/dashboard');
+      demo(role, selectedRegion);
+      router.push(nextPath);
     }
+  };
+
+  const handleSupplierSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supplierForm.companyName || !supplierForm.contactPerson || !supplierForm.email || !supplierForm.phone) return;
+
+    setIsLoading(true);
+
+    if (typeof window !== 'undefined') {
+      const registration = buildSupplierRegistration(supplierForm);
+
+      prependCollectionItem<SupplierRegistration>(
+        STORAGE_KEYS.supplierApplications,
+        registration,
+        [],
+        [STORAGE_KEYS.supplierProfilesLegacy]
+      );
+    }
+
+    if (demo) {
+      demo('vendor', supplierForm.province);
+    }
+    setSupplierSubmitted(true);
+    router.push(nextPath);
   };
 
   return (
@@ -70,36 +194,50 @@ export default function LoginPage() {
           {/* Tab Switcher */}
           <div className="flex rounded-xl p-1" style={{ backgroundColor: colors.background }}>
             <button 
-              onClick={() => setIsDemoView(false)}
+              onClick={() => setManualMode('signin')}
               className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg transition-all ${
-                !isDemoView 
+                activeMode === 'signin' 
                   ? 'text-white shadow-sm' 
                   : ''
               }`}
               style={{ 
-                backgroundColor: !isDemoView ? colors.highlight : 'transparent',
-                color: !isDemoView ? 'white' : colors.primary
+                backgroundColor: activeMode === 'signin' ? colors.highlight : 'transparent',
+                color: activeMode === 'signin' ? 'white' : colors.primary
               }}
             >
               Sign In
             </button>
             <button 
-              onClick={() => setIsDemoView(true)}
+              onClick={() => setManualMode('demo')}
               className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg transition-all ${
-                isDemoView 
+                activeMode === 'demo' 
                   ? 'text-white shadow-sm' 
                   : ''
               }`}
               style={{ 
-                backgroundColor: isDemoView ? colors.highlight : 'transparent',
-                color: isDemoView ? 'white' : colors.primary
+                backgroundColor: activeMode === 'demo' ? colors.highlight : 'transparent',
+                color: activeMode === 'demo' ? 'white' : colors.primary
               }}
             >
               Demo Access
             </button>
+            <button 
+              onClick={() => setManualMode('supplier')}
+              className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg transition-all ${
+                activeMode === 'supplier' 
+                  ? 'text-white shadow-sm' 
+                  : ''
+              }`}
+              style={{ 
+                backgroundColor: activeMode === 'supplier' ? colors.highlight : 'transparent',
+                color: activeMode === 'supplier' ? 'white' : colors.primary
+              }}
+            >
+              Supplier
+            </button>
           </div>
 
-          {!isDemoView ? (
+          {activeMode === 'signin' ? (
             // Login Form
             <form onSubmit={handleNormalLogin} className="space-y-5">
               <div className="space-y-2">
@@ -163,7 +301,7 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
-          ) : (
+          ) : activeMode === 'demo' ? (
             // Demo Access Form
             <div className="space-y-5">
               <div className="rounded-xl p-4 border" style={{ backgroundColor: colors.secondary + '20', borderColor: colors.secondary }}>
@@ -173,26 +311,6 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <label htmlFor="role" className="block text-sm font-semibold text-gray-700">
-                    Select Role
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <User className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <select 
-                      id="role"
-                      value={selectedRole}
-                      onChange={(e) => setSelectedRole(e.target.value as UserRole)}
-                      className="block w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="org_admin">Admin</option>
-                      <option value="technician">Technician</option>
-                    </select>
-                  </div>
-                </div>
-
                 <div className="space-y-2">
                   <label htmlFor="region" className="block text-sm font-semibold text-gray-700">
                     Operating Region
@@ -214,23 +332,165 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <button 
-                  onClick={handleDemoAccess}
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg active:scale-[0.98]"
-                  style={{ backgroundColor: colors.highlight }}
-                >
-                  {isLoading ? (
-                    <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      Continue with Demo
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </button>
+                <div className="space-y-2">
+                  <p className="block text-sm font-semibold text-gray-700">Choose Demo Role</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {DEMO_ROLES.map((demoRole) => {
+                      const Icon = demoRole.icon;
+
+                      return (
+                        <button
+                          key={demoRole.role}
+                          type="button"
+                          onClick={() => handleDemoAccess(demoRole.role)}
+                          disabled={isLoading}
+                          className="group rounded-xl border border-gray-200 bg-gray-50 p-4 text-left transition-all hover:border-[#FF6B35] hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <p className="text-sm font-semibold text-gray-900">{demoRole.label}</p>
+                              <p className="text-xs leading-5 text-gray-500">{demoRole.description}</p>
+                            </div>
+                            <div
+                              className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm transition-transform group-hover:scale-105"
+                              style={{ backgroundColor: colors.highlight }}
+                            >
+                              <Icon className="h-5 w-5" />
+                            </div>
+                          </div>
+                          <div className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#FF6B35]">
+                            Open demo
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
+          ) : (
+            <form onSubmit={handleSupplierSubmit} className="space-y-5">
+              <div className="rounded-xl p-4 border flex items-start gap-3" style={{ backgroundColor: colors.secondary + '20', borderColor: colors.secondary }}>
+                <div className="rounded-lg bg-white p-2 text-[#5A7D5A]">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <p className="text-sm" style={{ color: colors.primary }}>
+                  <strong className="font-semibold">Supplier Onboarding:</strong> Register your business for approved supplier consideration and NOU traceability.
+                </p>
+              </div>
+
+              {supplierSubmitted && (
+                <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                  Supplier registration saved locally. You can continue into the vendor portal.
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700">Business Name</label>
+                  <input
+                    value={supplierForm.companyName}
+                    onChange={(e) => setSupplierForm({ ...supplierForm, companyName: e.target.value })}
+                    className="block w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    placeholder="Zimbabwe Refrigeration Supplies"
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">Contact Person</label>
+                    <input
+                      value={supplierForm.contactPerson}
+                      onChange={(e) => setSupplierForm({ ...supplierForm, contactPerson: e.target.value })}
+                      className="block w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">Business Reg. No.</label>
+                    <input
+                      value={supplierForm.businessRegNumber}
+                      onChange={(e) => setSupplierForm({ ...supplierForm, businessRegNumber: e.target.value })}
+                      className="block w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      placeholder="CO/24/0001"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">Email</label>
+                    <input
+                      type="email"
+                      value={supplierForm.email}
+                      onChange={(e) => setSupplierForm({ ...supplierForm, email: e.target.value })}
+                      className="block w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      placeholder="supplier@company.co.zw"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">Phone</label>
+                    <input
+                      value={supplierForm.phone}
+                      onChange={(e) => setSupplierForm({ ...supplierForm, phone: e.target.value })}
+                      className="block w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      placeholder="+263 77 123 4567"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">Province</label>
+                    <select
+                      value={supplierForm.province}
+                      onChange={(e) => setSupplierForm({ ...supplierForm, province: e.target.value })}
+                      className="block w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
+                    >
+                      {REGIONS.map(reg => (
+                        <option key={reg} value={reg}>{reg}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">Category</label>
+                    <select
+                      value={supplierForm.category}
+                      onChange={(e) => setSupplierForm({ ...supplierForm, category: e.target.value })}
+                      className="block w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="Distributor">Distributor</option>
+                      <option value="Importer">Importer</option>
+                      <option value="Equipment Supplier">Equipment Supplier</option>
+                      <option value="Service Partner">Service Partner</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700">Refrigerants Supplied</label>
+                  <input
+                    value={supplierForm.refrigerants}
+                    onChange={(e) => setSupplierForm({ ...supplierForm, refrigerants: e.target.value })}
+                    className="block w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    placeholder="R-290, R-32, R-744"
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg active:scale-[0.98]"
+                style={{ backgroundColor: colors.highlight }}
+              >
+                {isLoading ? (
+                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Register Supplier
+                    <PackageSearch className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </form>
           )}
         </div>
 
@@ -240,5 +500,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

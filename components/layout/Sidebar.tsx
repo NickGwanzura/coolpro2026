@@ -2,49 +2,56 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ComponentType, SVGProps, useState, useSyncExternalStore } from 'react';
 import { cn } from '@/lib/utils';
 import {
     LayoutDashboard,
     BookOpen,
     Calculator,
+    Building2,
+    Factory,
     Wrench,
     ClipboardList,
+    CalendarRange,
+    BellRing,
     Award,
-    Gift,
+    Users,
     ShieldCheck,
     LogOut,
     Thermometer,
-    Users,
-    MapPin,
     X,
     AlertTriangle,
     ChevronDown
 } from 'lucide-react';
 import { getSession, logout } from '@/lib/auth';
-import { useEffect, useState } from 'react';
 
 // Define navigation items with optional children
 interface NavItem {
     name: string;
     href: string;
-    icon: React.ComponentType<any>;
+    icon: ComponentType<SVGProps<SVGSVGElement>>;
     roles: string[];
     children?: NavItem[];
 }
 
 // Define navigation items
 const NAV_ITEMS: NavItem[] = [
-    { name: 'My Stats', href: '/dashboard', icon: LayoutDashboard, roles: ['technician', 'trainer', 'vendor', 'org_admin', 'program_admin'] },
+    { name: 'My Stats', href: '/dashboard', icon: LayoutDashboard, roles: ['technician', 'org_admin', 'program_admin'] },
     { name: 'Learn', href: '/learn', icon: BookOpen, roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
-    { name: 'Sizing Tool', href: '/sizing-tool', icon: Calculator, roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
-    { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
-    { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
+    { name: 'Sizing Tool', href: '/sizing-tool', icon: Calculator, roles: ['technician'] },
+    { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician'] },
+    { name: 'Job Planner', href: '/job-planner', icon: CalendarRange, roles: ['technician'] },
+    { name: 'Field Scheduling', href: '/field-scheduling', icon: BellRing, roles: ['technician'] },
+    { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician', 'org_admin', 'program_admin'] },
     { name: 'Certifications', href: '/certifications', icon: Award, roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
     { name: 'Request COC', href: '/jobs/request-coc', icon: ShieldCheck, roles: ['technician'] },
-    { name: 'Rewards', href: '/rewards', icon: Gift, roles: ['technician', 'trainer', 'vendor', 'org_admin', 'program_admin'] },
-    { name: 'Technician Registry', href: '/technician-registry', icon: Users, roles: ['program_admin', 'org_admin', 'trainer'] },
-    { name: 'Harare Techs', href: '/technician-registry?province=Harare', icon: MapPin, roles: ['technician', 'trainer', 'vendor', 'org_admin', 'program_admin'] },
+    { name: 'Compliance Rewards', href: '/rewards', icon: Award, roles: ['vendor'] },
+    { name: 'Supplier Registration', href: '/supplier-register', icon: Building2, roles: ['vendor'] },
+    { name: 'Supplier Compliance', href: '/supplier-compliance', icon: ShieldCheck, roles: ['vendor'] },
+    { name: 'Supply Reporting', href: '/suppliers', icon: Factory, roles: ['vendor', 'org_admin', 'program_admin'] },
+    { name: 'Tech Registry', href: '/technician-registry', icon: Users, roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
     { name: 'Admin', href: '/admin', icon: ShieldCheck, roles: ['program_admin'] },
+    { name: 'NOU Dashboard', href: '/nou-dashboard', icon: AlertTriangle, roles: ['org_admin', 'program_admin'] },
 ];
 
 interface SidebarProps {
@@ -53,16 +60,12 @@ interface SidebarProps {
 
 export function Sidebar({ className, onClose }: SidebarProps & { className?: string }) {
     const pathname = usePathname();
-    const [role, setRole] = useState<string>('technician');
+    const role = useSyncExternalStore(
+        () => () => undefined,
+        () => getSession()?.role ?? 'technician',
+        () => 'technician'
+    );
     const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['/learn']));
-
-    useEffect(() => {
-        // Client-side session check for sidebar role
-        const session = getSession();
-        if (session) {
-            setRole(session.role);
-        }
-    }, []);
 
     const toggleExpanded = (href: string) => {
         setExpandedItems(prev => {

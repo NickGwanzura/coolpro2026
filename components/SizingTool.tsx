@@ -3,8 +3,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { SizingInputs, JobType, JobTypeLabels, JobTypeDefaults, JobTypeImages, JobTypeDescriptions } from '../types';
 import { INSULATION_U_VALUES, Icons, REFRIGERANTS } from '../constants';
 import { getTechnicalAdvice } from '../services/groq';
-import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download, Snowflake, ExternalLink } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download, Snowflake, ExternalLink, Gauge, ArrowUpDown, Droplets } from 'lucide-react';
 import { useAuth } from '../lib/auth';
+import { MOCK_REFRIGERANTS } from '@/constants/refrigerants';
 
 // Technical References/Sources
 const SIZING_SOURCES = [
@@ -13,6 +14,112 @@ const SIZING_SOURCES = [
   { name: 'Manufacturer Data', description: 'Equipment specifications and performance data', url: null },
   { name: 'SANS 10142-1', description: 'Wiring of Premises (Electrical)', url: 'https://www.sabs.co.za' },
 ];
+
+type CalculatorTab = 'wizard' | 'superheat' | 'pt-chart' | 'leak-rate' | 'converter';
+type RefrigerantCode = 'R-290' | 'R-32' | 'R-744' | 'R-22';
+type ConverterType = 'temperature' | 'pressure' | 'mass' | 'airflow' | 'energy';
+
+const PT_CURVES: Record<RefrigerantCode, { temp: number; pressure: number }[]> = {
+  'R-290': [
+    { temp: -20, pressure: 1.8 },
+    { temp: -10, pressure: 2.4 },
+    { temp: 0, pressure: 3.2 },
+    { temp: 10, pressure: 4.3 },
+    { temp: 20, pressure: 5.8 },
+    { temp: 30, pressure: 7.7 },
+    { temp: 40, pressure: 10.1 },
+  ],
+  'R-32': [
+    { temp: -20, pressure: 4.8 },
+    { temp: -10, pressure: 6.2 },
+    { temp: 0, pressure: 7.9 },
+    { temp: 10, pressure: 10.0 },
+    { temp: 20, pressure: 12.5 },
+    { temp: 30, pressure: 15.5 },
+    { temp: 40, pressure: 19.2 },
+  ],
+  'R-744': [
+    { temp: -20, pressure: 17.0 },
+    { temp: -10, pressure: 22.0 },
+    { temp: 0, pressure: 27.5 },
+    { temp: 10, pressure: 34.5 },
+    { temp: 20, pressure: 42.5 },
+    { temp: 30, pressure: 52.0 },
+    { temp: 40, pressure: 64.0 },
+  ],
+  'R-22': [
+    { temp: -20, pressure: 2.4 },
+    { temp: -10, pressure: 3.3 },
+    { temp: 0, pressure: 4.6 },
+    { temp: 10, pressure: 6.1 },
+    { temp: 20, pressure: 8.1 },
+    { temp: 30, pressure: 10.6 },
+    { temp: 40, pressure: 13.6 },
+  ],
+};
+
+const MAX_OPERATING_PRESSURE: Record<RefrigerantCode, number> = {
+  'R-290': 10,
+  'R-32': 16,
+  'R-744': 60,
+  'R-22': 13,
+};
+
+const CONVERTER_OPTIONS: Record<ConverterType, { units: string[] }> = {
+  temperature: { units: ['C', 'F', 'K'] },
+  pressure: { units: ['bar', 'psi', 'Pa'] },
+  mass: { units: ['kg', 'lb'] },
+  airflow: { units: ['m3/h', 'CFM'] },
+  energy: { units: ['kW', 'BTU/h'] },
+};
+
+const interpolateTempFromPressure = (curve: { temp: number; pressure: number }[], pressure: number) => {
+  const sorted = [...curve].sort((a, b) => a.pressure - b.pressure);
+  if (pressure <= sorted[0].pressure) return sorted[0].temp;
+  if (pressure >= sorted[sorted.length - 1].pressure) return sorted[sorted.length - 1].temp;
+
+  for (let i = 0; i < sorted.length - 1; i += 1) {
+    const current = sorted[i];
+    const next = sorted[i + 1];
+    if (pressure >= current.pressure && pressure <= next.pressure) {
+      const ratio = (pressure - current.pressure) / (next.pressure - current.pressure);
+      return current.temp + ratio * (next.temp - current.temp);
+    }
+  }
+
+  return sorted[0].temp;
+};
+
+const convertValue = (value: number, type: ConverterType, from: string, to: string) => {
+  if (from === to) return value;
+
+  if (type === 'temperature') {
+    const celsius =
+      from === 'C' ? value :
+      from === 'F' ? ((value - 32) * 5) / 9 :
+      value - 273.15;
+
+    return to === 'C' ? celsius : to === 'F' ? (celsius * 9) / 5 + 32 : celsius + 273.15;
+  }
+
+  if (type === 'pressure') {
+    const bar = from === 'bar' ? value : from === 'psi' ? value / 14.5038 : value / 100000;
+    return to === 'bar' ? bar : to === 'psi' ? bar * 14.5038 : bar * 100000;
+  }
+
+  if (type === 'mass') {
+    const kg = from === 'kg' ? value : value / 2.20462;
+    return to === 'kg' ? kg : kg * 2.20462;
+  }
+
+  if (type === 'airflow') {
+    const metric = from === 'm3/h' ? value : value * 1.699;
+    return to === 'm3/h' ? metric : metric / 1.699;
+  }
+
+  const kw = from === 'kW' ? value : value / 3412.142;
+  return to === 'kW' ? kw : kw * 3412.142;
+};
 
 const SizingTool: React.FC = () => {
   const { user } = useAuth();
@@ -36,6 +143,28 @@ const SizingTool: React.FC = () => {
 
   const [aiAdvice, setAiAdvice] = useState<string>('');
   const [isLoadingAi, setIsLoadingAi] = useState(false);
+  const [activeCalculator, setActiveCalculator] = useState<CalculatorTab>('wizard');
+  const [selectedRefrigerant, setSelectedRefrigerant] = useState<RefrigerantCode>('R-290');
+  const [superheatInputs, setSuperheatInputs] = useState({
+    suctionPressure: 3.2,
+    suctionTemp: 8,
+    liquidTemp: 28,
+    liquidPressure: 7.7
+  });
+  const [leakInputs, setLeakInputs] = useState({
+    leakRate: 12,
+    refrigerantCode: 'R-32' as RefrigerantCode
+  });
+  const [converterType, setConverterType] = useState<ConverterType>('temperature');
+  const [converterValue, setConverterValue] = useState(25);
+  const [converterFrom, setConverterFrom] = useState('C');
+  const [converterTo, setConverterTo] = useState('F');
+
+  useEffect(() => {
+    const [defaultFrom, defaultTo] = CONVERTER_OPTIONS[converterType].units;
+    setConverterFrom(defaultFrom);
+    setConverterTo(defaultTo ?? defaultFrom);
+  }, [converterType]);
 
   const handleDownload = () => {
     // Generate PDF using jsPDF
@@ -208,8 +337,73 @@ const SizingTool: React.FC = () => {
     { num: 3, label: 'Summary' }
   ];
 
+  const saturationTempLow = useMemo(
+    () => interpolateTempFromPressure(PT_CURVES[selectedRefrigerant], superheatInputs.suctionPressure),
+    [selectedRefrigerant, superheatInputs.suctionPressure]
+  );
+
+  const saturationTempHigh = useMemo(
+    () => interpolateTempFromPressure(PT_CURVES[selectedRefrigerant], superheatInputs.liquidPressure),
+    [selectedRefrigerant, superheatInputs.liquidPressure]
+  );
+
+  const superheatValue = Number((superheatInputs.suctionTemp - saturationTempLow).toFixed(1));
+  const subcoolingValue = Number((saturationTempHigh - superheatInputs.liquidTemp).toFixed(1));
+
+  const superheatStatus =
+    superheatValue < 5 ? 'Low' : superheatValue > 12 ? 'High' : 'Optimal';
+  const subcoolingStatus =
+    subcoolingValue < 3 ? 'Low' : subcoolingValue > 10 ? 'High' : 'Optimal';
+
+  const leakEquivalent = useMemo(() => {
+    const refrigerant = MOCK_REFRIGERANTS[leakInputs.refrigerantCode];
+    const co2eq = (leakInputs.leakRate * refrigerant.gwp) / 1000;
+    const carJourneys = Math.round(co2eq * 245);
+    return {
+      co2eq: Number(co2eq.toFixed(2)),
+      carJourneys,
+      refrigerant
+    };
+  }, [leakInputs]);
+
+  const convertedValue = useMemo(
+    () => convertValue(converterValue, converterType, converterFrom, converterTo),
+    [converterFrom, converterTo, converterType, converterValue]
+  );
+
   return (
     <div className="max-w-5xl mx-auto space-y-8">
+      <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          {[
+            { id: 'wizard', label: 'Cooling Load Wizard', icon: Calculator },
+            { id: 'superheat', label: 'Superheat & Subcooling', icon: Thermometer },
+            { id: 'pt-chart', label: 'P-T Chart', icon: Gauge },
+            { id: 'leak-rate', label: 'Leak Rate & CO2-eq', icon: Droplets },
+            { id: 'converter', label: 'Unit Converter', icon: ArrowUpDown },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeCalculator === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveCalculator(tab.id as CalculatorTab)}
+                className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {activeCalculator === 'wizard' ? (
+        <>
       {/* Step Indicator */}
       <div className="flex items-center justify-center">
         <div className="flex items-center gap-2">
@@ -514,6 +708,288 @@ const SizingTool: React.FC = () => {
           ))}
         </div>
       </div>
+        </>
+      ) : activeCalculator === 'superheat' ? (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.35fr_0.95fr]">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Superheat & Subcooling Calculator</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Use suction and liquid pressures against the selected refrigerant curve to estimate field conditions.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Reference Refrigerant</label>
+                <select
+                  value={selectedRefrigerant}
+                  onChange={(e) => setSelectedRefrigerant(e.target.value as RefrigerantCode)}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                >
+                  {Object.keys(PT_CURVES).map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <InputGroup label="Suction Pressure (bar)" value={superheatInputs.suctionPressure} onChange={(v: number) => setSuperheatInputs({ ...superheatInputs, suctionPressure: v })} />
+              <InputGroup label="Suction Temp (°C)" value={superheatInputs.suctionTemp} onChange={(v: number) => setSuperheatInputs({ ...superheatInputs, suctionTemp: v })} />
+              <InputGroup label="Liquid Pressure (bar)" value={superheatInputs.liquidPressure} onChange={(v: number) => setSuperheatInputs({ ...superheatInputs, liquidPressure: v })} />
+              <InputGroup label="Liquid Temp (°C)" value={superheatInputs.liquidTemp} onChange={(v: number) => setSuperheatInputs({ ...superheatInputs, liquidTemp: v })} />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+                <p className="text-sm font-semibold text-gray-500">Evaporator Saturation Temp</p>
+                <p className="mt-3 text-3xl font-bold text-gray-900">{saturationTempLow.toFixed(1)}°C</p>
+                <p className="mt-2 text-xs text-gray-500">Interpolated from suction pressure</p>
+              </div>
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+                <p className="text-sm font-semibold text-gray-500">Condensing Saturation Temp</p>
+                <p className="mt-3 text-3xl font-bold text-gray-900">{saturationTempHigh.toFixed(1)}°C</p>
+                <p className="mt-2 text-xs text-gray-500">Interpolated from liquid pressure</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-gray-200 bg-gray-900 p-6 text-white shadow-lg">
+              <p className="text-sm font-semibold text-gray-300">Superheat</p>
+              <p className="mt-3 text-4xl font-bold text-blue-400">{superheatValue.toFixed(1)}°C</p>
+              <p className="mt-2 text-sm text-gray-300">Status: {superheatStatus}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-gray-500">Subcooling</p>
+              <p className="mt-3 text-4xl font-bold text-gray-900">{subcoolingValue.toFixed(1)}°C</p>
+              <p className="mt-2 text-sm text-gray-500">Status: {subcoolingStatus}</p>
+            </div>
+            <div className="rounded-2xl border border-amber-100 bg-amber-50 p-5">
+              <p className="text-sm font-semibold text-amber-900">Field Guidance</p>
+              <ul className="mt-3 space-y-2 text-sm text-amber-800">
+                <li>Optimal superheat target: 5°C to 12°C</li>
+                <li>Optimal subcooling target: 3°C to 10°C</li>
+                <li>Always confirm pressure readings against refrigerant safety class before adjustment.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      ) : activeCalculator === 'pt-chart' ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Pressure-Temperature Chart</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Review simplified reference curves and compare them to safe operating thresholds.
+              </p>
+            </div>
+            <div className="w-full sm:w-60">
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Highlight Refrigerant</label>
+              <select
+                value={selectedRefrigerant}
+                onChange={(e) => setSelectedRefrigerant(e.target.value as RefrigerantCode)}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+              >
+                {Object.keys(PT_CURVES).map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-slate-950 p-4">
+            <svg viewBox="0 0 700 320" className="h-[320px] w-full">
+              <rect x="0" y="0" width="700" height="320" fill="#020617" rx="20" />
+              {Array.from({ length: 6 }).map((_, index) => (
+                <line
+                  key={`h-${index}`}
+                  x1="70"
+                  y1={40 + index * 40}
+                  x2="660"
+                  y2={40 + index * 40}
+                  stroke="rgba(255,255,255,0.08)"
+                />
+              ))}
+              {Array.from({ length: 7 }).map((_, index) => (
+                <line
+                  key={`v-${index}`}
+                  x1={90 + index * 80}
+                  y1="30"
+                  x2={90 + index * 80}
+                  y2="280"
+                  stroke="rgba(255,255,255,0.08)"
+                />
+              ))}
+              <rect
+                x="70"
+                y={30 + (1 - MAX_OPERATING_PRESSURE[selectedRefrigerant] / 64) * 230}
+                width="590"
+                height={280 - (30 + (1 - MAX_OPERATING_PRESSURE[selectedRefrigerant] / 64) * 230)}
+                fill="rgba(239,68,68,0.12)"
+              />
+              {Object.entries(PT_CURVES).map(([code, curve]) => {
+                const points = curve
+                  .map((point) => {
+                    const x = 90 + ((point.temp + 20) / 60) * 480;
+                    const y = 260 - (point.pressure / 64) * 220;
+                    return `${x},${y}`;
+                  })
+                  .join(' ');
+
+                const color =
+                  code === 'R-290' ? '#22c55e' :
+                  code === 'R-32' ? '#38bdf8' :
+                  code === 'R-744' ? '#f59e0b' :
+                  '#cbd5e1';
+
+                return (
+                  <g key={code}>
+                    <polyline
+                      fill="none"
+                      stroke={color}
+                      strokeWidth={code === selectedRefrigerant ? 4 : 2}
+                      opacity={code === selectedRefrigerant ? 1 : 0.5}
+                      points={points}
+                    />
+                    <text x="600" y={60 + Object.keys(PT_CURVES).indexOf(code as RefrigerantCode) * 22} fill={color} fontSize="12" fontWeight="700">
+                      {code}
+                    </text>
+                  </g>
+                );
+              })}
+              <text x="320" y="305" fill="#cbd5e1" fontSize="12">Temperature (°C)</text>
+              <text x="14" y="160" fill="#cbd5e1" fontSize="12" transform="rotate(-90 14 160)">Pressure (bar)</text>
+            </svg>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <p className="text-sm font-semibold text-gray-500">Selected Curve</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{selectedRefrigerant}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <p className="text-sm font-semibold text-gray-500">Safety Class</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{MOCK_REFRIGERANTS[selectedRefrigerant].ashraeSafetyClass}</p>
+            </div>
+            <div className="rounded-2xl border border-red-100 bg-red-50 p-5">
+              <p className="text-sm font-semibold text-red-700">Max Operating Pressure</p>
+              <p className="mt-2 text-2xl font-bold text-red-900">{MAX_OPERATING_PRESSURE[selectedRefrigerant]} bar</p>
+            </div>
+          </div>
+        </div>
+      ) : activeCalculator === 'leak-rate' ? (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Leak Rate & CO2-eq Calculator</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Translate annual refrigerant leakage into climate impact and explain it in field-ready terms.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <InputGroup label="Leak Rate (kg/year)" value={leakInputs.leakRate} onChange={(v: number) => setLeakInputs({ ...leakInputs, leakRate: v })} />
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Refrigerant</label>
+                <select
+                  value={leakInputs.refrigerantCode}
+                  onChange={(e) => setLeakInputs({ ...leakInputs, refrigerantCode: e.target.value as RefrigerantCode })}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                >
+                  {Object.keys(MOCK_REFRIGERANTS).map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <p className="text-sm font-semibold text-gray-500">Handling Precautions</p>
+              <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                {leakEquivalent.refrigerant.handlingPrecautions.map((item) => (
+                  <li key={item}>• {item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-gray-200 bg-gray-900 p-6 text-white shadow-lg">
+              <p className="text-sm font-semibold text-gray-300">CO2 Equivalent</p>
+              <p className="mt-3 text-4xl font-bold text-emerald-400">{leakEquivalent.co2eq} tCO2-eq</p>
+              <p className="mt-2 text-sm text-gray-300">Based on {leakEquivalent.refrigerant.gwp} GWP for {leakInputs.refrigerantCode}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-gray-500">Equivalent Car Journeys</p>
+              <p className="mt-3 text-4xl font-bold text-gray-900">{leakEquivalent.carJourneys}</p>
+              <p className="mt-2 text-sm text-gray-500">Approximate one-way urban journeys for context.</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Unit Converter</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Convert temperature, pressure, mass, airflow, and energy values for field calculations.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Category</label>
+                <select
+                  value={converterType}
+                  onChange={(e) => setConverterType(e.target.value as ConverterType)}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                >
+                  <option value="temperature">Temperature</option>
+                  <option value="pressure">Pressure</option>
+                  <option value="mass">Mass</option>
+                  <option value="airflow">Airflow</option>
+                  <option value="energy">Energy</option>
+                </select>
+              </div>
+              <InputGroup label="Value" value={converterValue} onChange={(v: number) => setConverterValue(v)} />
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">From</label>
+                <select
+                  value={converterFrom}
+                  onChange={(e) => setConverterFrom(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                >
+                  {CONVERTER_OPTIONS[converterType].units.map((unit) => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">To</label>
+                <select
+                  value={converterTo}
+                  onChange={(e) => setConverterTo(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                >
+                  {CONVERTER_OPTIONS[converterType].units.map((unit) => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-gray-900 p-6 text-white shadow-lg">
+            <p className="text-sm font-semibold text-gray-300">Converted Result</p>
+            <p className="mt-4 text-4xl font-bold text-blue-400">{convertedValue.toFixed(2)}</p>
+            <p className="mt-2 text-sm text-gray-300">
+              {converterValue} {converterFrom} = {convertedValue.toFixed(2)} {converterTo}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

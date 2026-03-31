@@ -1,245 +1,307 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Filter, ChevronRight, CheckCircle, AlertTriangle, Clock, MapPin, Phone, Mail, Briefcase } from 'lucide-react';
+import { ChevronRight, Download, Mail, Phone, Search } from 'lucide-react';
+import autoTable from 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
 import { Technician } from '@/types/index';
-import { MOCK_TECHNICIANS, ZIMBABWE_PROVINCES, TECHNICIAN_SPECIALIZATIONS } from '@/constants/registry';
-import { getSession, UserSession } from '@/lib/auth';
+import { MOCK_TECHNICIANS, TECHNICIAN_SPECIALIZATIONS, ZIMBABWE_PROVINCES } from '@/constants/registry';
+
+type CertificationFilter = '' | 'valid' | 'expired' | 'pending';
 
 function TechnicianRegistryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [session, setSession] = useState<UserSession | null>(null);
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [filteredTechnicians, setFilteredTechnicians] = useState<Technician[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProvince, setSelectedProvince] = useState('');
+  const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedEmploymentStatus, setSelectedEmploymentStatus] = useState('');
+  const [selectedCertificationStatus, setSelectedCertificationStatus] = useState<CertificationFilter>('');
 
   useEffect(() => {
-    setSession(getSession());
-    setTechnicians(MOCK_TECHNICIANS);
-    setFilteredTechnicians(MOCK_TECHNICIANS);
-
-    // Get search parameters from URL
     const search = searchParams.get('search');
     const specialization = searchParams.get('specialization');
     const province = searchParams.get('province');
+    const district = searchParams.get('district');
+    const status = searchParams.get('status');
 
-    if (search) {
-      setSearchTerm(search);
-    }
-
-    if (specialization) {
-      setSelectedSpecialization(specialization);
-    }
-
-    if (province) {
-      setSelectedProvince(province);
-    }
+    if (search) setSearchTerm(search);
+    if (specialization) setSelectedSpecialization(specialization);
+    if (province) setSelectedProvince(province);
+    if (district) setSelectedDistrict(district);
+    if (status) setSelectedStatus(status);
   }, [searchParams]);
 
-  useEffect(() => {
-    let filtered = [...technicians];
+  const availableDistricts = useMemo(() => {
+    if (!selectedProvince) {
+      return ZIMBABWE_PROVINCES.flatMap(province => province.districts).sort();
+    }
 
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(tech =>
-        tech.name.toLowerCase().includes(term) ||
-        tech.registrationNumber.toLowerCase().includes(term) ||
-        tech.nationalId.toLowerCase().includes(term) ||
-        tech.specialization.toLowerCase().includes(term)
+    return (
+      ZIMBABWE_PROVINCES.find(province => province.name === selectedProvince)?.districts ?? []
+    );
+  }, [selectedProvince]);
+
+  const filteredTechnicians = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    return MOCK_TECHNICIANS.filter(tech => {
+      const matchesSearch =
+        !term ||
+        [
+          tech.name,
+          tech.registrationNumber,
+          tech.nationalId,
+          tech.specialization,
+          tech.province,
+          tech.district,
+          tech.contactNumber,
+          tech.email ?? '',
+          tech.employer ?? '',
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(term);
+
+      const matchesProvince = !selectedProvince || tech.province === selectedProvince;
+      const matchesDistrict = !selectedDistrict || tech.district === selectedDistrict;
+      const matchesSpecialization = !selectedSpecialization || tech.specialization === selectedSpecialization;
+      const matchesStatus = !selectedStatus || tech.status === selectedStatus;
+      const matchesEmploymentStatus = !selectedEmploymentStatus || tech.employmentStatus === selectedEmploymentStatus;
+      const matchesCertificationStatus =
+        !selectedCertificationStatus ||
+        tech.certifications.some(certification => certification.status === selectedCertificationStatus);
+
+      return (
+        matchesSearch &&
+        matchesProvince &&
+        matchesDistrict &&
+        matchesSpecialization &&
+        matchesStatus &&
+        matchesEmploymentStatus &&
+        matchesCertificationStatus
       );
-    }
+    });
+  }, [
+    searchTerm,
+    selectedProvince,
+    selectedDistrict,
+    selectedSpecialization,
+    selectedStatus,
+    selectedEmploymentStatus,
+    selectedCertificationStatus,
+  ]);
 
-    if (selectedProvince) {
-      filtered = filtered.filter(tech => tech.province === selectedProvince);
-    }
+  const registrySummary = useMemo(() => {
+    return {
+      total: filteredTechnicians.length,
+      active: filteredTechnicians.filter(tech => tech.status === 'active').length,
+      employed: filteredTechnicians.filter(tech => tech.employmentStatus === 'employed').length,
+      provinces: new Set(filteredTechnicians.map(tech => tech.province)).size,
+      towns: new Set(filteredTechnicians.map(tech => tech.district)).size,
+      validCertificates: filteredTechnicians.filter(tech =>
+        tech.certifications.some(certification => certification.status === 'valid')
+      ).length,
+    };
+  }, [filteredTechnicians]);
 
-    if (selectedSpecialization) {
-      filtered = filtered.filter(tech => tech.specialization === selectedSpecialization);
-    }
+  const exportPdf = () => {
+    const doc = new jsPDF({ orientation: 'landscape' });
 
-    if (selectedStatus) {
-      filtered = filtered.filter(tech => tech.status === selectedStatus);
-    }
+    doc.setFontSize(18);
+    doc.text('HEVACRAZ Technician Registry Report', 14, 18);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleString('en-ZW')}`, 14, 26);
+    doc.text(`Records: ${filteredTechnicians.length}`, 14, 32);
 
-    setFilteredTechnicians(filtered);
-  }, [searchTerm, selectedProvince, selectedSpecialization, selectedStatus, technicians]);
+    autoTable(doc, {
+      startY: 38,
+      head: [[
+        'Name',
+        'Registration',
+        'Province',
+        'Town',
+        'Specialization',
+        'Status',
+        'Employer',
+        'Contact',
+        'Email',
+      ]],
+      body: filteredTechnicians.map(tech => [
+        tech.name,
+        tech.registrationNumber,
+        tech.province,
+        tech.district,
+        tech.specialization,
+        tech.status,
+        tech.employer ?? tech.employmentStatus,
+        tech.contactNumber,
+        tech.email ?? 'N/A',
+      ]),
+      headStyles: { fillColor: [44, 36, 32] },
+      styles: { fontSize: 8, cellPadding: 2.5 },
+    });
 
-  const getStatusBadge = (status: string) => {
-    const styles = {
+    doc.save(`technician-registry-${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
+  const statusBadge = (status: Technician['status']) => {
+    const classes: Record<Technician['status'], string> = {
       active: 'bg-green-100 text-green-800',
       inactive: 'bg-gray-100 text-gray-800',
       suspended: 'bg-red-100 text-red-800',
-      pending: 'bg-yellow-100 text-yellow-800'
+      pending: 'bg-yellow-100 text-yellow-800',
     };
-
-    const labels = {
-      active: 'Active',
-      inactive: 'Inactive',
-      suspended: 'Suspended',
-      pending: 'Pending'
-    };
-
-    const icons = {
-      active: CheckCircle,
-      inactive: AlertTriangle,
-      suspended: AlertTriangle,
-      pending: Clock
-    };
-
-    const Icon = icons[status as keyof typeof icons];
 
     return (
-      <span className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${styles[status as keyof typeof styles]}`}>
-        <Icon className="h-3 w-3" />
-        {labels[status as keyof typeof labels]}
+      <span className={`rounded-full px-2 py-1 text-xs font-semibold capitalize ${classes[status]}`}>
+        {status}
       </span>
     );
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">National Technician Registry</h1>
-          <p className="text-gray-500 mt-1">Search and verify registered technicians across Zimbabwe</p>
+          <h1 className="text-2xl font-bold text-gray-900">Tech Registry</h1>
+          <p className="mt-1 text-gray-500">
+            All registered technicians, searchable by province, town, specialization, and status.
+          </p>
         </div>
+        <button
+          onClick={exportPdf}
+          className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
+        >
+          <Download className="h-4 w-4" />
+          Export PDF Report
+        </button>
       </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Search */}
-          <div className="lg:col-span-2">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+        <SummaryCard label="Registered Techs" value={registrySummary.total} />
+        <SummaryCard label="Active" value={registrySummary.active} />
+        <SummaryCard label="Employed" value={registrySummary.employed} />
+        <SummaryCard label="Provinces" value={registrySummary.provinces} />
+        <SummaryCard label="Towns" value={registrySummary.towns} />
+        <SummaryCard label="Valid Certs" value={registrySummary.validCertificates} />
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="xl:col-span-2">
+            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">Search</label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by name, registration number, national ID, or specialization..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Name, registration, ID, employer, email, contact, town..."
+                className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-4 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
-
-          {/* Province Filter */}
-          <div>
-            <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={selectedProvince}
-              onChange={(e) => setSelectedProvince(e.target.value)}
-            >
-              <option value="">All Provinces</option>
-              {ZIMBABWE_PROVINCES.map(province => (
-                <option key={province.id} value={province.name}>{province.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Specialization Filter */}
-          <div>
-            <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={selectedSpecialization}
-              onChange={(e) => setSelectedSpecialization(e.target.value)}
-            >
-              <option value="">All Specializations</option>
-              {TECHNICIAN_SPECIALIZATIONS.map(specialization => (
-                <option key={specialization} value={specialization}>{specialization}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-            >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-              <option value="pending">Pending</option>
-            </select>
-          </div>
+          <FilterSelect
+            label="Province"
+            value={selectedProvince}
+            onChange={value => {
+              setSelectedProvince(value);
+              setSelectedDistrict('');
+            }}
+            options={ZIMBABWE_PROVINCES.map(province => province.name)}
+          />
+          <FilterSelect
+            label="Town"
+            value={selectedDistrict}
+            onChange={setSelectedDistrict}
+            options={availableDistricts}
+          />
+          <FilterSelect
+            label="Specialization"
+            value={selectedSpecialization}
+            onChange={setSelectedSpecialization}
+            options={TECHNICIAN_SPECIALIZATIONS}
+          />
+          <FilterSelect
+            label="Registration Status"
+            value={selectedStatus}
+            onChange={setSelectedStatus}
+            options={['active', 'inactive', 'suspended', 'pending']}
+          />
+          <FilterSelect
+            label="Employment"
+            value={selectedEmploymentStatus}
+            onChange={setSelectedEmploymentStatus}
+            options={['employed', 'self-employed', 'unemployed']}
+          />
+          <FilterSelect
+            label="Certification"
+            value={selectedCertificationStatus}
+            onChange={value => setSelectedCertificationStatus(value as CertificationFilter)}
+            options={['valid', 'expired', 'pending']}
+          />
         </div>
       </div>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">Total Technicians</p>
-          <p className="text-2xl font-bold text-gray-900">{filteredTechnicians.length}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">Active Technicians</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {filteredTechnicians.filter(tech => tech.status === 'active').length}
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">Provinces Covered</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {new Set(filteredTechnicians.map(tech => tech.province)).size}
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">Specializations</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {new Set(filteredTechnicians.map(tech => tech.specialization)).size}
-          </p>
-        </div>
-      </div>
-
-      {/* Technician List */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="divide-y divide-gray-200">
-          {filteredTechnicians.map((technician) => (
-            <div key={technician.id} className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+          {filteredTechnicians.map(technician => (
+            <div key={technician.id} className="p-6 transition-colors hover:bg-gray-50">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div className="space-y-4 flex-1">
+                  <div className="flex flex-wrap items-center gap-3">
                     <h3 className="text-lg font-semibold text-gray-900">{technician.name}</h3>
-                    {getStatusBadge(technician.status)}
+                    {statusBadge(technician.status)}
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                      {technician.specialization}
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium text-gray-400">REG:</span>
-                      <span className="font-bold">{technician.registrationNumber}</span>
+                  <div className="grid grid-cols-1 gap-3 text-sm text-gray-600 md:grid-cols-2 xl:grid-cols-4">
+                    <FieldLine label="Reg No" value={technician.registrationNumber} />
+                    <FieldLine label="National ID" value={technician.nationalId} />
+                    <FieldLine label="Province" value={technician.province} />
+                    <FieldLine label="Town" value={technician.district} />
+                    <FieldLine label="Employment" value={technician.employmentStatus.replace('-', ' ')} />
+                    <FieldLine label="Employer" value={technician.employer ?? 'Independent'} />
+                    <FieldLine label="Registered" value={technician.registrationDate} />
+                    <FieldLine label="Expiry" value={technician.expiryDate} />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 text-sm text-gray-600 md:grid-cols-2">
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-gray-400" />
+                      <span>{technician.contactNumber}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium text-gray-400">SPECIALTY:</span>
-                      <span className="font-bold">{technician.specialization}</span>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-gray-400" />
+                      <span>{technician.email ?? 'No email on file'}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium text-gray-400">CERTS:</span>
-                      <span className="font-bold text-blue-600 px-2 py-0.5 bg-blue-50 rounded-lg">{technician.certifications.length} Verified</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium text-gray-400">PROVINCE:</span>
-                      <span className="font-bold">{technician.province}</span>
-                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {technician.certifications.map(certification => (
+                      <span
+                        key={certification.id}
+                        className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600"
+                      >
+                        {certification.name} · {certification.status}
+                      </span>
+                    ))}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => router.push(`/technician-registry/${technician.id}`)}
-                    className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-blue-600 transition-all flex items-center gap-2 font-bold text-sm shadow-lg shadow-gray-200"
-                  >
-                    Verify Profile <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-
+                <button
+                  onClick={() => router.push(`/technician-registry/${technician.id}`)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-blue-600"
+                >
+                  View Profile
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
             </div>
           ))}
@@ -247,9 +309,9 @@ function TechnicianRegistryContent() {
 
         {filteredTechnicians.length === 0 && (
           <div className="p-12 text-center">
-            <Search className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No technicians found</h3>
-            <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+            <Search className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">No technicians found</h3>
+            <p className="text-gray-500">Adjust your filters to broaden the registry search.</p>
           </div>
         )}
       </div>
@@ -257,11 +319,59 @@ function TechnicianRegistryContent() {
   );
 }
 
+function SummaryCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <p className="text-sm font-semibold text-gray-500">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
+    </div>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">{label}</label>
+      <select
+        value={value}
+        onChange={event => onChange(event.target.value)}
+        className="w-full rounded-xl border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">All {label}</option>
+        {options.map(option => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function FieldLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="font-semibold text-gray-400">{label}:</span>
+      <span className="text-gray-700">{value}</span>
+    </div>
+  );
+}
+
 export default function TechnicianRegistryPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
       </div>
     }>
       <TechnicianRegistryContent />

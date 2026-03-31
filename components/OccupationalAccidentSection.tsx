@@ -1,7 +1,7 @@
-
-import React, { useState } from 'react';
-import { AlertTriangle, Clock, MapPin, User, ChevronDown, ChevronUp, Download, Plus, X, Search, ClipboardCheck } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { AlertTriangle, Clock, MapPin, User, Download, Plus, X, Search, ClipboardCheck } from 'lucide-react';
 import { OccupationalAccident, SeverityCategories, RootCauseCategories } from '../types';
+import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 
 interface InvestigationData {
     rootCause: keyof typeof RootCauseCategories;
@@ -53,6 +53,10 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
     const [showForm, setShowForm] = useState(false);
     const [selectedAccident, setSelectedAccident] = useState<OccupationalAccident | null>(null);
     const [showInvestigation, setShowInvestigation] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedRegion, setSelectedRegion] = useState('all');
+    const [selectedSeverity, setSelectedSeverity] = useState<'all' | OccupationalAccident['severity']>('all');
+    const [selectedInvestigationStatus, setSelectedInvestigationStatus] = useState<'all' | 'Open' | 'Under Investigation' | 'Closed'>('all');
     const [investigationData, setInvestigationData] = useState<InvestigationData>({
         rootCause: 'NEGLIGENCE',
         investigationDate: new Date().toISOString().split('T')[0],
@@ -101,6 +105,60 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
         });
     };
 
+    const getRegionForAccident = (accident: OccupationalAccident) => {
+        const haystack = `${accident.jobSite} ${accident.clientName}`.toLowerCase();
+
+        for (const province of ZIMBABWE_PROVINCES) {
+            if (haystack.includes(province.name.toLowerCase())) {
+                return province.name;
+            }
+
+            const matchingDistrict = province.districts.find(district => haystack.includes(district.toLowerCase()));
+            if (matchingDistrict) {
+                return province.name;
+            }
+        }
+
+        return 'Other';
+    };
+
+    const filteredAccidents = useMemo(() => {
+        const term = searchTerm.trim().toLowerCase();
+
+        return accidents.filter(accident => {
+            const region = getRegionForAccident(accident);
+            const matchesSearch =
+                !term ||
+                [
+                    accident.jobSite,
+                    accident.clientName,
+                    accident.description,
+                    accident.technicianName,
+                    region,
+                ]
+                    .join(' ')
+                    .toLowerCase()
+                    .includes(term);
+
+            const matchesRegion = selectedRegion === 'all' || region === selectedRegion;
+            const matchesSeverity = selectedSeverity === 'all' || accident.severity === selectedSeverity;
+            const matchesInvestigationStatus =
+                selectedInvestigationStatus === 'all' ||
+                (accident.status ?? 'Open') === selectedInvestigationStatus;
+
+            return matchesSearch && matchesRegion && matchesSeverity && matchesInvestigationStatus;
+        });
+    }, [accidents, searchTerm, selectedRegion, selectedSeverity, selectedInvestigationStatus]);
+
+    const oversightSummary = useMemo(() => {
+        return {
+            total: filteredAccidents.length,
+            criticalHigh: filteredAccidents.filter(accident => accident.severity === 'Critical' || accident.severity === 'High').length,
+            openCases: filteredAccidents.filter(accident => (accident.status ?? 'Open') !== 'Closed').length,
+            regions: new Set(filteredAccidents.map(accident => getRegionForAccident(accident))).size,
+        };
+    }, [filteredAccidents]);
+
     const exportPDF = async () => {
         const { jsPDF } = await import('jspdf');
         const { default: autoTable } = await import('jspdf-autotable');
@@ -116,7 +174,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
         doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
 
         // Summary by Severity
-        const summary = accidents.reduce((acc, curr) => {
+        const summary = filteredAccidents.reduce((acc, curr) => {
             acc[curr.severity] = (acc[curr.severity] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
@@ -135,9 +193,10 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
         // Detailed Table
         autoTable(doc, {
             startY: y + 10,
-            head: [['Date', 'Job Site', 'Client', 'Severity', 'Description', 'Reported By']],
-            body: accidents.map(a => [
+            head: [['Date', 'Region', 'Job Site', 'Client', 'Severity', 'Description', 'Reported By']],
+            body: filteredAccidents.map(a => [
                 a.date,
+                getRegionForAccident(a),
                 a.jobSite,
                 a.clientName,
                 a.severity,
@@ -164,9 +223,11 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-50 flex items-center justify-between">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">Occupational Accidents</h2>
+                    <h2 className="text-xl font-bold text-gray-900">
+                        {isAdmin ? 'Occupational Accident Oversight' : 'Occupational Accidents'}
+                    </h2>
                     <p className="text-sm text-gray-500 mt-1">
-                        {isAdmin ? 'Monitoring safety performance across all sites' : 'Log and view safety incidents'}
+                        {isAdmin ? 'Monitor logged accidents by region, severity, and investigation status' : 'Log and view safety incidents'}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -190,6 +251,50 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                     )}
                 </div>
             </div>
+
+            {isAdmin && (
+                <div className="border-b border-gray-100 bg-white px-6 py-5">
+                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                        <SummaryTile label="Filtered Incidents" value={oversightSummary.total} />
+                        <SummaryTile label="Critical / High" value={oversightSummary.criticalHigh} />
+                        <SummaryTile label="Open Cases" value={oversightSummary.openCases} />
+                        <SummaryTile label="Regions" value={oversightSummary.regions} />
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="xl:col-span-2">
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">Search</label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    value={searchTerm}
+                                    onChange={event => setSearchTerm(event.target.value)}
+                                    placeholder="Search site, client, technician, region..."
+                                    className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-purple-500"
+                                />
+                            </div>
+                        </div>
+                        <FilterSelect
+                            label="Region"
+                            value={selectedRegion}
+                            onChange={setSelectedRegion}
+                            options={['all', ...ZIMBABWE_PROVINCES.map(province => province.name), 'Other']}
+                        />
+                        <FilterSelect
+                            label="Severity"
+                            value={selectedSeverity}
+                            onChange={value => setSelectedSeverity(value as 'all' | OccupationalAccident['severity'])}
+                            options={['all', 'Critical', 'High', 'Medium', 'Low']}
+                        />
+                        <FilterSelect
+                            label="Investigation"
+                            value={selectedInvestigationStatus}
+                            onChange={value => setSelectedInvestigationStatus(value as 'all' | 'Open' | 'Under Investigation' | 'Closed')}
+                            options={['all', 'Open', 'Under Investigation', 'Closed']}
+                        />
+                    </div>
+                </div>
+            )}
 
             {showForm && (
                 <div className="p-6 bg-red-50/50 border-b border-red-100 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -267,7 +372,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
             <div className="p-6 bg-gray-50 border-b border-gray-100">
                 <p className="text-sm font-bold text-gray-700 mb-4">Severity Classification Guide</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {Object.entries(SeverityCategories).map(([key, category]) => (
+                        {Object.entries(SeverityCategories).map(([key, category]) => (
                         <div 
                             key={key} 
                             className="p-3 rounded-lg border"
@@ -304,7 +409,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                 </td>
                             </tr>
                         ) : (
-                            accidents.map((accident) => (
+                            filteredAccidents.map((accident) => (
                                 <tr key={accident.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                         <div className="flex items-center gap-2">
@@ -364,6 +469,11 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                         )}
                     </tbody>
                 </table>
+                {isAdmin && filteredAccidents.length === 0 && accidents.length > 0 && (
+                    <div className="px-6 py-8 text-center text-sm text-gray-500">
+                        No incidents match the current oversight filters.
+                    </div>
+                )}
             </div>
             
             {/* Investigation Modal */}
@@ -383,6 +493,40 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
         </div>
     );
 };
+
+const SummaryTile = ({ label, value }: { label: string; value: number }) => (
+    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{label}</p>
+        <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
+    </div>
+);
+
+const FilterSelect = ({
+    label,
+    value,
+    onChange,
+    options,
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    options: string[];
+}) => (
+    <div>
+        <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">{label}</label>
+        <select
+            value={value}
+            onChange={event => onChange(event.target.value)}
+            className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none transition-all focus:ring-2 focus:ring-purple-500"
+        >
+            {options.map(option => (
+                <option key={option} value={option}>
+                    {option === 'all' ? `All ${label}` : option}
+                </option>
+            ))}
+        </select>
+    </div>
+);
 
 // Investigation Modal
 const InvestigationModal = ({ 
