@@ -10,7 +10,7 @@ const connection = neon(process.env.DATABASE_URL!);
 const db = drizzle(connection, { schema });
 
 // ---------------------------------------------------------------------------
-// Seed users — mirroring MOCK_USERS from lib/auth.tsx
+// Seed users mirroring MOCK_USERS from lib/auth.tsx
 // ---------------------------------------------------------------------------
 // Stable seed UUIDs - version 4 format
 const U = {
@@ -218,7 +218,7 @@ const seedTechnicians: (typeof schema.technicians.$inferInsert)[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Seed courses — from lib/platformStore.ts SEED_COURSES
+// Seed courses from lib/platformStore.ts SEED_COURSES
 // ---------------------------------------------------------------------------
 const seedCourses: (typeof schema.courses.$inferInsert)[] = [
   {
@@ -288,7 +288,7 @@ const seedCourses: (typeof schema.courses.$inferInsert)[] = [
       {
         title: 'Electronic Leak Detection',
         content:
-          'Using electronic detectors, UV dye methods, and soap bubble testing — when to use each technique.',
+          'Using electronic detectors, UV dye methods, and soap bubble testing when to use each technique.',
         minutes: 55,
       },
       {
@@ -305,7 +305,7 @@ const seedCourses: (typeof schema.courses.$inferInsert)[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Seed exam submissions — from lib/platformStore.ts SEED_EXAM_SUBMISSIONS
+// Seed exam submissions from lib/platformStore.ts SEED_EXAM_SUBMISSIONS
 // ---------------------------------------------------------------------------
 const seedExamSubmissions: (typeof schema.examSubmissions.$inferInsert)[] = [
   {
@@ -315,7 +315,7 @@ const seedExamSubmissions: (typeof schema.examSubmissions.$inferInsert)[] = [
     studentId: U.tTendai,
     studentName: 'Tendai Moyo',
     answers: [
-      { question: 'What ASHRAE safety class is R-410A?', answer: 'A1 — non-toxic, non-flammable.' },
+      { question: 'What ASHRAE safety class is R-410A?', answer: 'A1 non-toxic, non-flammable.' },
       {
         question: 'List two mandatory PPE items when handling refrigerants.',
         answer: 'Safety goggles and insulated gloves.',
@@ -331,7 +331,7 @@ const seedExamSubmissions: (typeof schema.examSubmissions.$inferInsert)[] = [
     studentId: U.tChiedza,
     studentName: 'Chiedza Nhamo',
     answers: [
-      { question: 'What ASHRAE safety class is R-410A?', answer: 'A2L — mildly flammable.' },
+      { question: 'What ASHRAE safety class is R-410A?', answer: 'A2L mildly flammable.' },
       {
         question: 'List two mandatory PPE items when handling refrigerants.',
         answer: 'Gloves and a face shield.',
@@ -340,7 +340,7 @@ const seedExamSubmissions: (typeof schema.examSubmissions.$inferInsert)[] = [
     score: '72.00',
     passed: true,
     feedback:
-      'Good overall understanding. Review ASHRAE classification for R-410A — it is A1, not A2L.',
+      'Good overall understanding. Review ASHRAE classification for R-410A it is A1, not A2L.',
     status: 'graded',
     submittedAt: new Date('2026-04-11T08:40:00.000Z'),
     gradedAt: new Date('2026-04-13T09:00:00.000Z'),
@@ -363,7 +363,7 @@ const seedExamSubmissions: (typeof schema.examSubmissions.$inferInsert)[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Seed supplier reorders — from lib/platformStore.ts SEED_REORDERS
+// Seed supplier reorders from lib/platformStore.ts SEED_REORDERS
 // ---------------------------------------------------------------------------
 const seedReorders: (typeof schema.supplierReorders.$inferInsert)[] = [
   {
@@ -373,7 +373,7 @@ const seedReorders: (typeof schema.supplierReorders.$inferInsert)[] = [
     gasType: 'R-410A',
     quantityKg: '50',
     purpose: 'Restocking commercial refrigeration supply for Harare region',
-    supplierNotes: 'Urgent — low on stock before peak season',
+    supplierNotes: 'Urgent low on stock before peak season',
     status: 'pending_hevacraz',
     createdAt: new Date('2026-04-10T08:00:00.000Z'),
   },

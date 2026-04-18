@@ -90,7 +90,7 @@ export default function MembershipPage() {
           <p className="text-[#D97706] text-xs font-semibold tracking-widest uppercase mb-3">Membership</p>
           <h1 className="text-4xl sm:text-5xl font-bold" style={{ color: '#1C1917' }}>Choose Your Path</h1>
           <p className="mt-4 text-gray-600 text-lg max-w-xl mx-auto">
-            From student to enterprise — find the plan that matches where you are and where you're headed.
+            From student to enterprise find the plan that matches where you are and where you're headed.
           </p>
         </div>
       </div>

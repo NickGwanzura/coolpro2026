@@ -75,7 +75,7 @@ function ReviewPanel({
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Course Review</p>
                     <h2 className="mt-1 text-lg font-bold text-gray-900">{course.title}</h2>
                     <p className="mt-0.5 text-sm text-gray-500">
-                        By {course.lecturerName} — submitted {formatDate(course.updatedAt)}
+                        By {course.lecturerName} submitted {formatDate(course.updatedAt)}
                     </p>
                 </div>
                 <button onClick={onClose} className="text-sm text-gray-500 hover:text-gray-800">Close</button>
@@ -241,7 +241,7 @@ export default function LearnApprovalsPage() {
             <div className="border border-gray-200 bg-white shadow-sm overflow-x-auto">
                 <div className="border-b border-gray-200 bg-gray-50 px-5 py-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-                        Pending Review — {courses.length} course{courses.length !== 1 ? 's' : ''}
+                        Pending Review {courses.length} course{courses.length !== 1 ? 's' : ''}
                     </p>
                 </div>
                 <table className="w-full text-sm">

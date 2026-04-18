@@ -16,11 +16,11 @@ function ResultPanel({ data }: { data: VerifyTechnicianResult }) {
         <div className="mt-6 space-y-4">
             {isClear ? (
                 <div className="border border-emerald-300 bg-emerald-600 px-5 py-4 text-base font-bold text-white">
-                    Registered — Sale authorized
+                    Registered Sale authorized
                 </div>
             ) : (
                 <div className="border border-rose-300 bg-rose-600 px-5 py-4 text-base font-bold text-white">
-                    DO NOT SELL — {result === 'not_found' ? 'Technician not found' : result === 'expired' ? 'Registration expired' : 'Registration revoked'}
+                    DO NOT SELL {result === 'not_found' ? 'Technician not found' : result === 'expired' ? 'Registration expired' : 'Registration revoked'}
                 </div>
             )}
 
@@ -29,7 +29,7 @@ function ResultPanel({ data }: { data: VerifyTechnicianResult }) {
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 text-sm">
                         <InfoRow label="Name" value={tech.name} />
                         <InfoRow label="Registration no." value={tech.registrationNumber} />
-                        <InfoRow label="Region / Province" value={`${tech.region} — ${tech.province}`} />
+                        <InfoRow label="Region / Province" value={`${tech.region} ${tech.province}`} />
                         <InfoRow label="Registration status" value={tech.status} />
                         <InfoRow label="Registered" value={tech.registrationDate} />
                         <InfoRow label="Expiry" value={tech.expiryDate} />

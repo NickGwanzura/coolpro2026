@@ -675,7 +675,7 @@ export default function LearnManagePage() {
                 <div className="space-y-6">
                     <p className="text-sm text-gray-500">
                         {submissions.length} submission{submissions.length !== 1 ? 's' : ''} across your courses
-                        {pendingExams > 0 && <span className="ml-1 font-semibold text-amber-700">— {pendingExams} awaiting grade</span>}
+                        {pendingExams > 0 && <span className="ml-1 font-semibold text-amber-700">  {pendingExams} awaiting grade</span>}
                     </p>
 
                     {selectedSubmission && (

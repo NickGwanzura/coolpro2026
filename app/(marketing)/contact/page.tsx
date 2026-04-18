@@ -19,7 +19,7 @@ export default function ContactPage() {
           <p className="text-[#D97706] text-xs font-semibold tracking-widest uppercase mb-3">Get in touch</p>
           <h1 className="text-4xl sm:text-5xl font-bold" style={{ color: '#1C1917' }}>Contact HEVACRAZ</h1>
           <p className="mt-4 text-gray-600 text-lg max-w-2xl mx-auto">
-            Membership enquiries, supplier onboarding, training bookings, compliance questions — we typically reply within one working day.
+            Membership enquiries, supplier onboarding, training bookings, compliance questions we typically reply within one working day.
           </p>
         </div>
       </div>
@@ -69,7 +69,7 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold" style={{ color: '#1C1917' }}>Phone</h3>
                     <p className="text-sm text-gray-600 mt-1">+263 242 000 000</p>
-                    <p className="text-xs text-gray-400 mt-1">Mon–Fri · 08:00–17:00 CAT</p>
+                    <p className="text-xs text-gray-400 mt-1">Mon-Fri · 08:00-17:00 CAT</p>
                   </div>
                 </div>
               </div>

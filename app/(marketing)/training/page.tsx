@@ -47,7 +47,7 @@ export default function TrainingPage() {
                 Public Training Calendar
               </h1>
               <p className="mt-3 max-w-2xl text-gray-600">
-                Trainers schedule sessions with venue and fees — this calendar updates automatically.
+                Trainers schedule sessions with venue and fees this calendar updates automatically.
                 Reservations are mocked until online payment is wired in.
               </p>
             </div>

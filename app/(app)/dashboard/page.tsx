@@ -421,7 +421,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-3">
                         <Award className="h-4 w-4 text-[#D97706] flex-shrink-0" />
                         <p className="text-sm text-[#44403C]">
-                            Demo mode — <span className="font-semibold capitalize">{session.role.replace('_', ' ')}</span> · {session.region}
+                            Demo mode <span className="font-semibold capitalize">{session.role.replace('_', ' ')}</span> · {session.region}
                         </p>
                     </div>
                 </div>
@@ -761,7 +761,7 @@ export default function DashboardPage() {
                         )}
                     </div>
 
-                    {/* Safety — Occupational Accident Section */}
+                    {/* Safety Occupational Accident Section */}
                     <OccupationalAccidentSection isAdmin={false} />
                 </>
             )}
@@ -769,7 +769,7 @@ export default function DashboardPage() {
             {/* Admin-only: Technician Performance Table */}
             {isAdmin && (
                 <div className="bg-white border border-[#E7E5E4] p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1917] mb-4">Top Performers — {dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This Week' : 'This Month'}</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1917] mb-4">Top Performers {dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This Week' : 'This Month'}</h2>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>

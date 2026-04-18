@@ -15,7 +15,7 @@ const CARDS = [
     icon: <Users className="h-8 w-8" />,
     title: 'Enterprise Team Management',
     description:
-      'Enrol your workforce, track CPD credits, manage bulk certification renewals, and generate compliance reports — all from a single dashboard. Custom pricing for teams of 5 or more.',
+      'Enrol your workforce, track CPD credits, manage bulk certification renewals, and generate compliance reports all from a single dashboard. Custom pricing for teams of 5 or more.',
     cta: 'Talk to Sales',
     href: '/contact',
   },
@@ -45,7 +45,7 @@ export default function ForBusinessesPage() {
             Hire with confidence.<br />Operate in compliance.
           </h1>
           <p className="mt-6 text-white/70 text-lg max-w-xl leading-relaxed">
-            HEVACRAZ gives businesses the tools to verify the technicians they hire, manage team certifications at scale, and stay aligned with Zimbabwe&apos;s refrigerant regulations — without extra overhead.
+            HEVACRAZ gives businesses the tools to verify the technicians they hire, manage team certifications at scale, and stay aligned with Zimbabwe&apos;s refrigerant regulations without extra overhead.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4">
             <Link

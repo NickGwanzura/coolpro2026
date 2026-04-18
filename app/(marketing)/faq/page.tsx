@@ -31,11 +31,11 @@ const FAQS = [
   },
   {
     question: 'What refrigerants can I legally handle after certification?',
-    answer: 'Certification levels determine the refrigerant classes you are authorised to handle — from lower-GWP A1 synthetics through to flammable hydrocarbons (A3) and ammonia. The Learning Hub and assessments cover each class, and the NOU (National Ozone Unit) oversees compliance with the Montreal Protocol and Kigali Amendment requirements.',
+    answer: 'Certification levels determine the refrigerant classes you are authorised to handle from lower-GWP A1 synthetics through to flammable hydrocarbons (A3) and ammonia. The Learning Hub and assessments cover each class, and the NOU (National Ozone Unit) oversees compliance with the Montreal Protocol and Kigali Amendment requirements.',
   },
   {
     question: 'Can suppliers sell gas to anyone who walks in?',
-    answer: 'No. Registered suppliers on our platform must use the "Verify Buyer" tool before any transaction — it confirms the buyer is a HEVACRAZ-certified technician in good standing. Sales to unregistered buyers are flagged to the NOU automatically and can result in supplier sanctions.',
+    answer: 'No. Registered suppliers on our platform must use the "Verify Buyer" tool before any transaction it confirms the buyer is a HEVACRAZ-certified technician in good standing. Sales to unregistered buyers are flagged to the NOU automatically and can result in supplier sanctions.',
   },
   {
     question: 'How long does certification approval take?',

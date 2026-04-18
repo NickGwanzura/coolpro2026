@@ -143,7 +143,7 @@ export default function ManageTechniciansPage() {
   const approveCert = (id: string, techName: string, certName: string) => {
     setPendingCerts(prev => prev.filter(c => c.id !== id));
     setExamModal(null);
-    success(`Certification approved and issued to ${techName} — ${certName}`);
+    success(`Certification approved and issued to ${techName} ${certName}`);
   };
 
   if (techniciansLoading) {

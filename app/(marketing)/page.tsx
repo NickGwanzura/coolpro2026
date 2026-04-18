@@ -48,7 +48,7 @@ export default function HomePage() {
               The Future of<br />HVAC-R in Zimbabwe
             </h1>
             <p className="text-white/70 text-lg sm:text-xl mb-10 leading-relaxed max-w-xl">
-              Professional training, compliance, and industry networking — built for Zimbabwe&apos;s refrigeration and air-conditioning sector.
+              Professional training, compliance, and industry networking built for Zimbabwe&apos;s refrigeration and air-conditioning sector.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
@@ -86,7 +86,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Benefit teaser — 3 cards */}
+      {/* Benefit teaser 3 cards */}
       <section className="py-20" style={{ backgroundColor: '#ffffff' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">

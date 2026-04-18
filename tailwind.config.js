@@ -23,7 +23,7 @@ export default {
         sans: ['GeistSans', 'system-ui', 'sans-serif'],
       },
       colors: {
-        // HEVACRAZ brand palette — use hevac-* in components
+        // HEVACRAZ brand palette use hevac-* in components
         hevac: {
           primary:    '#2C2420', // Rich charcoal
           secondary:  '#D4A574', // Warm terracotta

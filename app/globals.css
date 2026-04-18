@@ -17,7 +17,7 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Focus styles for accessibility — brand accent color */
+/* Focus styles for accessibility brand accent color */
 :focus-visible {
   outline: 2px solid #5A7D5A;
   outline-offset: 2px;

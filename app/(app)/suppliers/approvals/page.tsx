@@ -247,7 +247,7 @@ export default function ApprovalsPage() {
                                                 disabled={acting}
                                                 className="inline-flex items-center gap-1.5 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
                                             >
-                                                Approve — send to NOU
+                                                Approve send to NOU
                                             </button>
                                             <button
                                                 type="button"

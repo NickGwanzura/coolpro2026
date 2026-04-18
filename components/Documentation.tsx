@@ -15,7 +15,7 @@ const Documentation: React.FC = () => {
       <section className="bg-white border border-gray-200 overflow-hidden">
         <div className="bg-gray-900 px-6 py-4 flex items-center gap-3">
           <Terminal className="h-5 w-5 text-blue-400" />
-          <h2 className="text-lg font-semibold text-white">Section 1 — System Architecture</h2>
+          <h2 className="text-lg font-semibold text-white">Section 1 System Architecture</h2>
         </div>
         <div className="p-6">
           <div className="bg-gray-50 p-6 font-mono text-sm leading-relaxed mb-6">
@@ -41,7 +41,7 @@ const Documentation: React.FC = () => {
       <section className="bg-white border border-gray-200 overflow-hidden">
         <div className="bg-gray-900 px-6 py-4 flex items-center gap-3">
           <Database className="h-5 w-5 text-emerald-400" />
-          <h2 className="text-lg font-semibold text-white">Section 4 — Database Design (PostgreSQL)</h2>
+          <h2 className="text-lg font-semibold text-white">Section 4 Database Design (PostgreSQL)</h2>
         </div>
         <div className="p-6">
           <pre className="bg-gray-50 p-5 text-xs overflow-x-auto text-gray-700 border border-gray-100">
@@ -71,7 +71,7 @@ CREATE TABLE refrigerant_logs (
       <section className="bg-white border border-gray-200 overflow-hidden">
         <div className="bg-gray-900 px-6 py-4 flex items-center gap-3">
           <Calculator className="h-5 w-5 text-amber-400" />
-          <h2 className="text-lg font-semibold text-white">Section 7 — Sizing Logic</h2>
+          <h2 className="text-lg font-semibold text-white">Section 7 Sizing Logic</h2>
         </div>
         <div className="p-6">
           <div className="bg-gray-50 border border-gray-200 p-6 ">

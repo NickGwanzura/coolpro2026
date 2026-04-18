@@ -6,13 +6,13 @@ const CARDS = [
     icon: <ShieldCheck className="h-8 w-8" />,
     title: 'Verify Buyer Before Sale',
     description:
-      'Before dispensing any regulated refrigerant, look up the buyer by registration number, QR code, or full name. The tool returns live certification status, authorised refrigerant classes, and standing with the NOU — in under three seconds.',
+      'Before dispensing any regulated refrigerant, look up the buyer by registration number, QR code, or full name. The tool returns live certification status, authorised refrigerant classes, and standing with the NOU in under three seconds.',
   },
   {
     icon: <RefreshCw className="h-8 w-8" />,
     title: 'Reorder with Full Audit Trail',
     description:
-      'Place refrigerant reorders through the HEVACRAZ platform. Each order goes through a two-step NOU approval flow and is logged immutably — giving you clean records for any inspection or EPR audit, with no extra paperwork on your end.',
+      'Place refrigerant reorders through the HEVACRAZ platform. Each order goes through a two-step NOU approval flow and is logged immutably giving you clean records for any inspection or EPR audit, with no extra paperwork on your end.',
   },
   {
     icon: <BookOpen className="h-8 w-8" />,
@@ -50,7 +50,7 @@ export default function ForSuppliersPage() {
             Sell gas confidently.<br />Every buyer verified.
           </h1>
           <p className="mt-6 text-white/70 text-lg max-w-xl leading-relaxed">
-            Registered suppliers on HEVACRAZ must verify buyer certification before any refrigerant sale. That requirement protects you against counterfeit transactions, unregistered dispensing, and NOU sanctions — while making compliance automatic rather than manual.
+            Registered suppliers on HEVACRAZ must verify buyer certification before any refrigerant sale. That requirement protects you against counterfeit transactions, unregistered dispensing, and NOU sanctions while making compliance automatic rather than manual.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4">
             <Link

@@ -110,7 +110,7 @@ export interface TechnicianVerification {
 }
 
 // ---------------------------------------------------------------------------
-// Legacy localStorage helpers — kept for non-migrated features only
+// Legacy localStorage helpers kept for non-migrated features only
 // ---------------------------------------------------------------------------
 
 function isBrowser() {

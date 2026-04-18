@@ -14,7 +14,7 @@ const MEMBER_BENEFITS = [
   {
     icon: <FileCheck className="h-6 w-6" />,
     title: 'COC issuance',
-    body: 'Issue Certificates of Conformity directly from the platform — no paper, no middleman.',
+    body: 'Issue Certificates of Conformity directly from the platform no paper, no middleman.',
   },
   {
     icon: <Search className="h-6 w-6" />,
@@ -24,7 +24,7 @@ const MEMBER_BENEFITS = [
   {
     icon: <Calculator className="h-6 w-6" />,
     title: 'Professional tools',
-    body: 'Sizing calculators, field toolkits, job logging — priced for a membership, not per seat.',
+    body: 'Sizing calculators, field toolkits, job logging priced for a membership, not per seat.',
   },
   {
     icon: <GraduationCap className="h-6 w-6" />,
@@ -39,7 +39,7 @@ const MEMBER_BENEFITS = [
   {
     icon: <ShieldCheck className="h-6 w-6" />,
     title: 'Supplier protection',
-    body: 'Gas suppliers verify your certification before sale — stops counterfeit and improper dispensing.',
+    body: 'Gas suppliers verify your certification before sale stops counterfeit and improper dispensing.',
   },
   {
     icon: <Users className="h-6 w-6" />,
@@ -89,7 +89,7 @@ export default function AboutPage() {
             Real outcomes, measured in<br />work won and compliance earned.
           </h1>
           <p className="mt-6 max-w-2xl text-gray-600 leading-relaxed text-lg">
-            HEVACRAZ membership is not a badge — it&rsquo;s a toolkit, a registry, and a
+            HEVACRAZ membership is not a badge it&rsquo;s a toolkit, a registry, and a
             regulatory shortcut that together move technicians from informal repair
             work into audited, certified, higher-paying jobs.
           </p>
@@ -108,7 +108,7 @@ export default function AboutPage() {
                 8 outcomes that change your career trajectory.
               </h2>
               <p className="text-white/60 mt-6 leading-relaxed">
-                From certification to supplier protection — every benefit is designed to move the needle on income, compliance, and reputation.
+                From certification to supplier protection every benefit is designed to move the needle on income, compliance, and reputation.
               </p>
               <Link
                 href="/membership"

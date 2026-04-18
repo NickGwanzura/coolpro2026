@@ -137,7 +137,7 @@ function LoginPageContent() {
             <Thermometer className="h-6 w-6 text-white" />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-[#1C1917]">HEVACRAZ</h1>
-          <p className="mt-1 text-sm text-[#78716C]">HVAC-R Professionals Zimbabwe — Member Portal</p>
+          <p className="mt-1 text-sm text-[#78716C]">HVAC-R Professionals Zimbabwe Member Portal</p>
         </div>
 
         {/* Card */}
@@ -209,7 +209,7 @@ function LoginPageContent() {
             {activeMode === 'demo' && (
               <div className="space-y-5">
                 <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-3 text-sm text-[#44403C]">
-                  <strong className="font-semibold text-[#1C1917]">Demo Mode</strong> — No password required. Select a persona to explore role-specific tools.
+                  <strong className="font-semibold text-[#1C1917]">Demo Mode</strong> No password required. Select a persona to explore role-specific tools.
                 </div>
 
                 <div className="space-y-1.5">
@@ -255,7 +255,7 @@ function LoginPageContent() {
               <form onSubmit={handleSupplierSubmit} className="space-y-4">
                 <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-3 flex items-start gap-3 text-sm text-[#44403C]">
                   <Building2 className="h-4 w-4 text-[#D97706] mt-0.5 flex-shrink-0" />
-                  <span><strong className="font-semibold text-[#1C1917]">Supplier Onboarding</strong> — Register for approved supplier consideration and NOU traceability.</span>
+                  <span><strong className="font-semibold text-[#1C1917]">Supplier Onboarding</strong> Register for approved supplier consideration and NOU traceability.</span>
                 </div>
 
                 {supplierSubmitted && (

@@ -161,7 +161,7 @@ export default function NouDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reorders]);
 
-  // Recent activity feed — last 10 events sorted by createdAt desc
+  // Recent activity feed last 10 events sorted by createdAt desc
   const recentActivity = useMemo(() => {
     type ActivityEvent = {
       id: string;
@@ -172,7 +172,7 @@ export default function NouDashboard() {
     };
     const events: ActivityEvent[] = [];
 
-    // New technician registrations — most recent 5
+    // New technician registrations most recent 5
     techniciansData.slice(0, 5).forEach(tech => {
       events.push({
         id: `reg-${tech.id}`,
@@ -200,7 +200,7 @@ export default function NouDashboard() {
     for (const r of (reorders ?? [])) {
       events.push({
         id: `reorder-${r.id}`,
-        label: `Reorder ${r.gasType} ${r.quantityKg} kg — ${r.status.replace('_', ' ')}`,
+        label: `Reorder ${r.gasType} ${r.quantityKg} kg ${r.status.replace('_', ' ')}`,
         detail: `${r.vendorName}`,
         at: r.createdAt,
         kind: 'reorder',
@@ -213,7 +213,7 @@ export default function NouDashboard() {
         events.push({
           id: `verif-${v.id}`,
           label: `Verification flag: ${v.result.replace('_', ' ')} (${v.method})`,
-          detail: `By ${v.vendorName} — query: "${v.query}"`,
+          detail: `By ${v.vendorName} query: "${v.query}"`,
           at: v.createdAt,
           kind: 'verification',
         });
@@ -291,7 +291,7 @@ export default function NouDashboard() {
                 doc.setFontSize(16);
                 doc.setTextColor(255, 255, 255);
                 doc.setFont(undefined, 'bold');
-                doc.text('UNEP COMPLIANCE REPORT — NATIONAL REFRIGERATION PROGRAMME', 148.5, 18, { align: 'center' });
+                doc.text('UNEP COMPLIANCE REPORT NATIONAL REFRIGERATION PROGRAMME', 148.5, 18, { align: 'center' });
 
                 doc.setFontSize(9);
                 doc.setFont(undefined, 'normal');
@@ -344,7 +344,7 @@ export default function NouDashboard() {
                 doc.rect(0, 190, 297, 10, 'F');
                 doc.setFontSize(7);
                 doc.setTextColor(107, 114, 128);
-                doc.text('CONFIDENTIAL — FOR OFFICIAL USE ONLY', 148.5, 196, { align: 'center' });
+                doc.text('CONFIDENTIAL FOR OFFICIAL USE ONLY', 148.5, 196, { align: 'center' });
 
                 doc.save(`UNEP-compliance-report-${new Date().toISOString().split('T')[0]}.pdf`);
                 success('UNEP compliance report downloaded');
@@ -498,7 +498,7 @@ export default function NouDashboard() {
                     <p className="font-semibold text-gray-900">Suspicious Verification Attempts</p>
                     <p className="text-sm text-rose-700">
                       {(verifications ?? []).filter(v => v.result === 'not_found' || v.result === 'revoked').length} flag
-                      {(verifications ?? []).filter(v => v.result === 'not_found' || v.result === 'revoked').length !== 1 ? 's' : ''} — possible unregistered buyer activity
+                      {(verifications ?? []).filter(v => v.result === 'not_found' || v.result === 'revoked').length !== 1 ? 's' : ''} possible unregistered buyer activity
                     </p>
                   </div>
                 </div>
@@ -560,7 +560,7 @@ export default function NouDashboard() {
             <BarChart3 className="h-5 w-5 text-slate-600" />
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Refrigerant Volumes Approved YTD</h2>
-              <p className="text-sm text-gray-500">Approved reorders grouped by gas type — {now.getFullYear()}</p>
+              <p className="text-sm text-gray-500">Approved reorders grouped by gas type {now.getFullYear()}</p>
             </div>
           </div>
 

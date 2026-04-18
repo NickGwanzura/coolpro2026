@@ -212,7 +212,7 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
                         <UserCircle className="w-5 h-5 text-[#78716C]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{user?.name ?? '—'}</p>
+                        <p className="text-sm font-medium text-white truncate">{user?.name ?? ' '}</p>
                         <p className="text-xs text-[#78716C] capitalize truncate">
                             {user?.role?.replace('_', ' ') ?? ''}
                         </p>
