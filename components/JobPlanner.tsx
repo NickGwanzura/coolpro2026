@@ -11,8 +11,8 @@ import {
     type PlannerSafetyChecklistItem,
     type RefrigerantSafetyClass,
 } from '@/types/index';
-import { MOCK_TECHNICIANS } from '@/constants/registry';
 import { MOCK_PLANNER_CLIENTS, MOCK_PLANNER_JOBS, MOCK_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
+import { useTechnicians } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
 
@@ -90,7 +90,7 @@ function normalizePlannerJob(job: LegacyPlannerJob): PlannerJob {
         location: job.location ?? MOCK_PLANNER_CLIENTS[0].location,
         province: job.province ?? MOCK_PLANNER_CLIENTS[0].province,
         district: job.district,
-        technicianId: job.technicianId ?? MOCK_TECHNICIANS[0]?.id ?? 'tech-001',
+        technicianId: job.technicianId ?? 'tech-001',
         technicianName,
         jobType: job.jobType ?? 'COLD_ROOM',
         refrigerantClass: job.refrigerantClass ?? 'A1',
@@ -106,6 +106,8 @@ function normalizePlannerJob(job: LegacyPlannerJob): PlannerJob {
 
 export default function JobPlanner() {
     const router = useRouter();
+    const { data: techniciansData } = useTechnicians();
+    const technicians = techniciansData ?? [];
     const [jobs, setJobs] = useState<PlannerJob[]>(MOCK_PLANNER_JOBS);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClient, setSelectedClient] = useState('');
@@ -122,8 +124,8 @@ export default function JobPlanner() {
         jobType: 'COLD_ROOM',
         refrigerantClass: 'A1',
         scheduledDate: '2026-04-04',
-        technicianId: MOCK_TECHNICIANS[0]?.id ?? 'tech-001',
-        technicianName: MOCK_TECHNICIANS[0]?.name ?? 'Demo Technician',
+        technicianId: 'tech-001',
+        technicianName: 'Demo Technician',
         preJobChecklistComplete: false,
         notes: ''
     });
@@ -241,7 +243,7 @@ export default function JobPlanner() {
     return (
         <div className="space-y-6">
             {notice && (
-                <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800">
+                <div className="border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800">
                     {notice}
                 </div>
             )}
@@ -250,10 +252,10 @@ export default function JobPlanner() {
                 {stats.map(stat => {
                     const Icon = stat.icon;
                     return (
-                        <div key={stat.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <div key={stat.label} className="border border-gray-200 bg-white p-5 shadow-sm">
                             <div className="flex items-center justify-between">
                                 <p className="text-sm font-semibold text-gray-500">{stat.label}</p>
-                                <span className="rounded-lg bg-gray-100 p-2 text-gray-500">
+                                <span className="bg-gray-100 p-2 text-gray-500">
                                     <Icon className="h-4 w-4" />
                                 </span>
                             </div>
@@ -265,14 +267,14 @@ export default function JobPlanner() {
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
                 <div className="space-y-6 xl:col-span-4">
-                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="border border-gray-200 bg-white p-5 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900">Clients</h2>
                                 <p className="text-sm text-gray-500">Expandable service history</p>
                             </div>
                         </div>
-                        <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                        <div className="mt-4 border border-gray-200 bg-gray-50 p-4">
                             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Focused Client</p>
                             <h3 className="mt-1 text-sm font-bold text-gray-900">{selectedClientInfo.name}</h3>
                             <p className="text-xs text-gray-500">{selectedClientInfo.location}</p>
@@ -292,7 +294,7 @@ export default function JobPlanner() {
                                 <details
                                     key={client.id}
                                     open={client.id === activeClientId}
-                                    className="group rounded-2xl border border-gray-200 bg-gray-50/70 p-4"
+                                    className="group border border-gray-200 bg-gray-50/70 p-4"
                                     onClick={() => openClient(client.id)}
                                 >
                                     <summary className="cursor-pointer list-none">
@@ -319,7 +321,7 @@ export default function JobPlanner() {
                                             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Service History</p>
                                             <div className="mt-2 space-y-2">
                                                 {client.serviceHistory.map(item => (
-                                                    <div key={`${client.id}-${item.date}`} className="rounded-xl border border-gray-200 bg-white p-3">
+                                                    <div key={`${client.id}-${item.date}`} className="border border-gray-200 bg-white p-3">
                                                         <div className="flex items-center justify-between gap-3">
                                                             <p className="text-xs font-semibold text-gray-900">{item.notes}</p>
                                                             <span className="text-[11px] text-gray-400">{formatDate(item.date)}</span>
@@ -339,7 +341,7 @@ export default function JobPlanner() {
                 </div>
 
                 <div className="space-y-6 xl:col-span-8">
-                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="border border-gray-200 bg-white p-5 shadow-sm">
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                             <div className="md:col-span-2">
                                 <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</label>
@@ -348,7 +350,7 @@ export default function JobPlanner() {
                                     value={searchTerm}
                                     onChange={event => setSearchTerm(event.target.value)}
                                     placeholder="Search client, location, or technician..."
-                                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
+                                    className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
                                 />
                             </div>
                             <div>
@@ -356,7 +358,7 @@ export default function JobPlanner() {
                                 <select
                                     value={selectedClient}
                                     onChange={event => setSelectedClient(event.target.value)}
-                                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
+                                    className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
                                 >
                                     <option value="">All clients</option>
                                     {MOCK_PLANNER_CLIENTS.map(client => (
@@ -371,7 +373,7 @@ export default function JobPlanner() {
                                 <select
                                     value={selectedStatus}
                                     onChange={event => setSelectedStatus(event.target.value)}
-                                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
+                                    className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
                                 >
                                     <option value="">All statuses</option>
                                     <option value="scheduled">Scheduled</option>
@@ -389,7 +391,7 @@ export default function JobPlanner() {
                                     type="date"
                                     value={startDate}
                                     onChange={event => setStartDate(event.target.value)}
-                                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
+                                    className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
                                 />
                             </div>
                             <div>
@@ -398,7 +400,7 @@ export default function JobPlanner() {
                                     type="date"
                                     value={endDate}
                                     onChange={event => setEndDate(event.target.value)}
-                                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
+                                    className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
                                 />
                             </div>
                         </div>
@@ -410,7 +412,7 @@ export default function JobPlanner() {
                             <button
                                 type="button"
                                 onClick={() => setShowModal(true)}
-                                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                                className="inline-flex items-center gap-2 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
                             >
                                 <Plus className="h-4 w-4" />
                                 New Job
@@ -420,7 +422,7 @@ export default function JobPlanner() {
 
                     <div className="space-y-4">
                         {sortedDates.map(date => (
-                            <div key={date} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <div key={date} className="border border-gray-200 bg-white p-5 shadow-sm">
                                 <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
                                     <div>
                                         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Schedule</p>
@@ -432,7 +434,7 @@ export default function JobPlanner() {
                                 </div>
                                 <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                                     {jobsByDate[date].map(job => (
-                                        <div key={job.id} className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4">
+                                        <div key={job.id} className="border border-gray-200 bg-gray-50/80 p-4">
                                             <div className="flex flex-wrap items-center justify-between gap-2">
                                                 <div>
                                                     <h4 className="text-sm font-bold text-gray-900">{job.clientName}</h4>
@@ -460,7 +462,7 @@ export default function JobPlanner() {
                                             </div>
                                             <p className="mt-3 text-sm text-gray-600">{job.notes}</p>
                                             {job.refrigerantClass === 'A2L' || job.refrigerantClass === 'A3' ? (
-                                                <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                                <div className="mt-3 flex items-center gap-2 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                                                     <ShieldAlert className="h-4 w-4" />
                                                     Safety checklist required for this refrigerant class.
                                                 </div>
@@ -472,7 +474,7 @@ export default function JobPlanner() {
                         ))}
 
                         {!sortedDates.length && (
-                            <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+                            <div className="border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
                                 No jobs match the current filters.
                             </div>
                         )}
@@ -482,7 +484,7 @@ export default function JobPlanner() {
 
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
-                    <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl">
+                    <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-gray-200 bg-white shadow-2xl">
                         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900">Create Planner Job</h2>
@@ -491,7 +493,7 @@ export default function JobPlanner() {
                             <button
                                 type="button"
                                 onClick={() => setShowModal(false)}
-                                className="rounded-xl p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                                className="p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
                             >
                                 <X className="h-5 w-5" />
                             </button>
@@ -504,7 +506,7 @@ export default function JobPlanner() {
                                     <select
                                         value={formData.clientId}
                                         onChange={event => openClient(event.target.value)}
-                                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                                     >
                                         {MOCK_PLANNER_CLIENTS.map(client => (
                                             <option key={client.id} value={client.id}>
@@ -518,7 +520,7 @@ export default function JobPlanner() {
                                     <input
                                         value={formData.location}
                                         onChange={event => setFormData(prev => ({ ...prev, location: event.target.value }))}
-                                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                                     />
                                 </div>
                                 <div>
@@ -526,7 +528,7 @@ export default function JobPlanner() {
                                     <select
                                         value={formData.jobType}
                                         onChange={event => setFormData(prev => ({ ...prev, jobType: event.target.value as JobType }))}
-                                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                                     >
                                         {Object.keys(JobTypeLabels).map(type => (
                                             <option key={type} value={type}>
@@ -543,7 +545,7 @@ export default function JobPlanner() {
                                     <select
                                         value={formData.refrigerantClass}
                                         onChange={event => setFormData(prev => ({ ...prev, refrigerantClass: event.target.value as RefrigerantSafetyClass, preJobChecklistComplete: event.target.value === 'A1' ? prev.preJobChecklistComplete : false }))}
-                                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                                     >
                                         {REF_CLASSES.map(item => (
                                             <option key={item} value={item}>
@@ -558,7 +560,7 @@ export default function JobPlanner() {
                                         type="date"
                                         value={formData.scheduledDate}
                                         onChange={event => setFormData(prev => ({ ...prev, scheduledDate: event.target.value }))}
-                                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                                     />
                                 </div>
                                 <div>
@@ -566,9 +568,9 @@ export default function JobPlanner() {
                                     <select
                                         value={formData.technicianName}
                                         onChange={event => setFormData(prev => ({ ...prev, technicianName: event.target.value }))}
-                                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                                     >
-                                        {MOCK_TECHNICIANS.map(tech => (
+                                        {technicians.map(tech => (
                                             <option key={tech.id} value={tech.name}>
                                                 {tech.name}
                                             </option>
@@ -578,7 +580,7 @@ export default function JobPlanner() {
                             </div>
 
                             {safetyChecklistRequired && (
-                                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                                <div className="border border-amber-200 bg-amber-50 p-4">
                                     <div className="flex items-start gap-3">
                                         <ShieldCheck className="mt-0.5 h-5 w-5 text-amber-700" />
                                         <div className="space-y-3">
@@ -607,13 +609,13 @@ export default function JobPlanner() {
                                 <textarea
                                     value={formData.notes}
                                     onChange={event => setFormData(prev => ({ ...prev, notes: event.target.value }))}
-                                    className="min-h-[110px] w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                                    className="min-h-[110px] w-full border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                                     placeholder="Scope, parts required, or follow-up notes..."
                                 />
                             </div>
 
                             {safetyChecklistRequired && !safetyChecklistComplete && (
-                                <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                <div className="border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
                                     The safety checklist must be completed before this job can be saved.
                                 </div>
                             )}
@@ -622,14 +624,14 @@ export default function JobPlanner() {
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                                    className="border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={safetyChecklistRequired && !safetyChecklistComplete}
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="inline-flex items-center justify-center gap-2 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <Sparkles className="h-4 w-4" />
                                     Save Planner Job

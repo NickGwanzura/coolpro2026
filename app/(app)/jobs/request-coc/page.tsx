@@ -81,7 +81,7 @@ function RequestCoCForm() {
             <div className="flex items-center gap-4">
                 <button
                     onClick={() => router.back()}
-                    className="p-2 rounded-xl hover:bg-white transition-colors"
+                    className="p-2 hover:bg-white transition-colors"
                 >
                     <ArrowLeft className="h-5 w-5 text-gray-600" />
                 </button>
@@ -93,7 +93,7 @@ function RequestCoCForm() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Job Summary Card */}
-                <div className="bg-slate-900 rounded-2xl p-6 text-white overflow-hidden relative">
+                <div className="bg-slate-900 p-6 text-white overflow-hidden relative">
                     <div className="relative z-10 space-y-4">
                         <div className="flex items-center gap-2">
                             <ShieldCheck className="h-5 w-5 text-blue-400" />
@@ -120,14 +120,14 @@ function RequestCoCForm() {
                 </div>
 
                 {/* Form Sections */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
+                <div className="bg-white border border-gray-200 shadow-sm p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">Equipment Type</label>
                             <input
                                 required
                                 type="text"
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="w-full px-4 py-2.5 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                                 value={formData.equipmentType}
                                 onChange={e => setFormData({ ...formData, equipmentType: e.target.value })}
                                 placeholder="e.g. R-744 Transcritical"
@@ -138,7 +138,7 @@ function RequestCoCForm() {
                             <input
                                 required
                                 type="text"
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="w-full px-4 py-2.5 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                                 value={formData.serialNumber}
                                 onChange={e => setFormData({ ...formData, serialNumber: e.target.value })}
                                 placeholder="Unit Serial Number"
@@ -149,7 +149,7 @@ function RequestCoCForm() {
                             <input
                                 required
                                 type="date"
-                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="w-full px-4 py-2.5 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                                 value={formData.installationDate}
                                 onChange={e => setFormData({ ...formData, installationDate: e.target.value })}
                             />
@@ -159,14 +159,14 @@ function RequestCoCForm() {
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-gray-700">Installation Details & Safety Measures</label>
                         <textarea
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none min-h-[120px]"
+                            className="w-full px-4 py-3 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none min-h-[120px]"
                             value={formData.details}
                             onChange={e => setFormData({ ...formData, details: e.target.value })}
                             placeholder="Describe the installation, pressure tests performed, and leak checks conducted..."
                         />
                     </div>
 
-                    <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                    <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 ">
                         <div className="pt-0.5">
                             <input
                                 type="checkbox"
@@ -186,7 +186,7 @@ function RequestCoCForm() {
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50 shadow-lg shadow-blue-500/20 transition-all"
+                        className="w-full bg-blue-600 text-white py-3.5 font-bold flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50 shadow-lg shadow-blue-500/20 transition-all"
                     >
                         {submitting ? (
                             <>

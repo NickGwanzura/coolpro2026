@@ -11,7 +11,7 @@ export default function SafetyPage() {
         setSession(getSession());
     }, []);
 
-    const isAdmin = session?.role === 'org_admin' || session?.role === 'program_admin';
+    const isAdmin = session?.role === 'org_admin';
 
     return (
         <div className="p-6">

@@ -1,0 +1,22 @@
+{
+  "scripts": [
+    {
+      "title": "Reponse a une fuite de propane",
+      "refrigerantCode": "R-290",
+      "steps": [
+        "Couper les sources d’allumage.",
+        "Ventiler immediatement la zone.",
+        "Ne pas redemarrer le systeme avant verification."
+      ]
+    },
+    {
+      "title": "Controles de charge A2L",
+      "refrigerantCode": "R-32",
+      "steps": [
+        "Verifier la ventilation continue avant la charge.",
+        "Confirmer que le detecteur de fuite est etalonne.",
+        "Enregistrer la validation avant remise sous tension."
+      ]
+    }
+  ]
+}

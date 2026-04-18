@@ -1,121 +1,294 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, ShieldCheck, CheckCircle, AlertCircle, MapPin, Phone, Mail, Award, Calendar, ArrowLeft, User, Clock, Shield, Info, ExternalLink } from 'lucide-react';
-import { MOCK_TECHNICIANS } from '@/constants/registry';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Award,
+  Calendar,
+  CheckCircle,
+  Clock,
+  ExternalLink,
+  Info,
+  Mail,
+  MapPin,
+  Phone,
+  Search,
+  Shield,
+  ShieldCheck,
+  User,
+} from 'lucide-react';
+import { CertificateQRCode } from '@/components/CertificateQRCode';
+import { useTechnicians } from '@/lib/api';
+import { MOCK_TRAINER_CERTIFICATE_REQUESTS } from '@/constants/training';
+import { readCollection, STORAGE_KEYS } from '@/lib/platformStore';
+import type { CertificateRecord, Technician, TrainerCertificateRequest } from '@/types/index';
 
-// Recent verification activity feed
-const recentActivity = [
-  { id: '1', name: 'Tendai M.', coc: 'COC #2847', time: '2 hours ago', verified: true },
-  { id: '2', name: 'Sarah K.', coc: 'COC #1923', time: 'Yesterday', verified: true },
-  { id: '3', name: 'Peter D.', coc: 'COC #3156', time: '2 days ago', verified: true },
-  { id: '4', name: 'Chenai S.', coc: 'COC #2841', time: '3 days ago', verified: true },
-  { id: '5', name: 'Farai K.', coc: 'COC #1928', time: '1 week ago', verified: true },
+type SearchMode = 'registration' | 'name' | 'certificate';
+
+type VerificationResult = {
+  technician: Technician | null;
+  certificate: CertificateRecord | null;
+  matchSource: SearchMode;
+};
+
+const DEFAULT_CERTIFICATE_RECORDS: CertificateRecord[] = [
+  {
+    id: 'trainer-cert-portal-demo',
+    technicianId: '2',
+    technicianName: 'Nyasha Chikomo',
+    certificateNumber: 'HEV-240318',
+    certificateType: 'R-744 (CO2) System Specialist',
+    issuingBody: 'HEVACRAZ / CertifyZim Demo',
+    issueDate: '2026-03-24T09:00:00.000Z',
+    expiryDate: '2028-03-24T09:00:00.000Z',
+    verificationToken: 'verify-demo2403',
+    verificationUrl: 'https://coolpro2026.vercel.app/verify-technician?mode=certificate&q=HEV-240318&token=verify-demo2403',
+    status: 'valid',
+  },
 ];
+
+function formatDate(value?: string) {
+  if (!value) return 'Not available';
+  return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium' }).format(new Date(value));
+}
+
+function deriveCertificateRecordsFromRequests(requests: TrainerCertificateRequest[]) {
+  return requests
+    .filter((request) => request.status === 'issued' && request.certificateNumber)
+    .map<CertificateRecord>((request) => {
+      const issueDate = request.issuedAt ?? request.reviewedAt ?? request.submittedAt;
+      const expiryDate = new Date(issueDate);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 2);
+
+      return {
+        id: request.id,
+        technicianId: request.technicianId,
+        technicianName: request.technicianName,
+        certificateNumber: request.certificateNumber ?? request.id,
+        certificateType: request.courseTitle,
+        issuingBody: 'HEVACRAZ / CertifyZim Demo',
+        issueDate,
+        expiryDate: expiryDate.toISOString(),
+        verificationToken: request.verificationToken ?? `verify-${request.id}`,
+        verificationUrl: request.verificationUrl ?? '',
+        status: 'valid',
+      };
+    });
+}
+
+function buildCertificatePool(certificateRecords: CertificateRecord[], issuedRequests: TrainerCertificateRequest[]) {
+  return [...certificateRecords, ...deriveCertificateRecordsFromRequests(issuedRequests)].filter(
+    (item, index, array) =>
+      array.findIndex((candidate) => candidate.certificateNumber === item.certificateNumber) === index
+  );
+}
+
+function getInitialPortalState() {
+  const certificateRecords = readCollection(STORAGE_KEYS.certificateRecords, DEFAULT_CERTIFICATE_RECORDS);
+  const issuedRequests = readCollection(
+    STORAGE_KEYS.trainerCertificateRequests,
+    MOCK_TRAINER_CERTIFICATE_REQUESTS
+  );
+
+  if (typeof window === 'undefined') {
+    return {
+      certificateRecords,
+      issuedRequests,
+      searchMode: 'registration' as SearchMode,
+      searchQuery: '',
+      notFound: false,
+    };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get('mode');
+  const query = params.get('q') ?? '';
+  const searchMode: SearchMode =
+    mode === 'name' || mode === 'certificate' || mode === 'registration' ? mode : 'registration';
+
+  return {
+    certificateRecords,
+    issuedRequests,
+    searchMode,
+    searchQuery: query,
+    notFound: false,
+  };
+}
+
+function findVerificationResult(
+  query: string,
+  mode: SearchMode,
+  technicians: Technician[],
+  certificateRecords: CertificateRecord[],
+  token?: string | null
+): VerificationResult | null {
+  const normalizedQuery = query.trim().toUpperCase();
+  const normalizedToken = token?.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return null;
+  }
+
+  if (mode === 'certificate') {
+    const certificate = certificateRecords.find((item) => {
+      const matchesQuery =
+        item.certificateNumber.toUpperCase() === normalizedQuery ||
+        item.certificateNumber.toUpperCase().includes(normalizedQuery) ||
+        item.verificationToken.toUpperCase() === normalizedQuery;
+
+      const matchesToken = !normalizedToken || item.verificationToken.toLowerCase() === normalizedToken;
+      return matchesQuery && matchesToken;
+    });
+
+    if (!certificate) return null;
+
+    return {
+      technician: technicians.find((item) => item.id === certificate.technicianId) ?? null,
+      certificate,
+      matchSource: mode,
+    };
+  }
+
+  const technician =
+    mode === 'registration'
+      ? technicians.find((item) => item.registrationNumber.toUpperCase() === normalizedQuery) ?? null
+      : technicians.find((item) => item.name.toUpperCase().includes(normalizedQuery)) ?? null;
+
+  if (!technician) {
+    return null;
+  }
+
+  return {
+    technician,
+    certificate:
+      certificateRecords.find((item) => item.technicianId === technician.id && item.status === 'valid') ?? null,
+    matchSource: mode,
+  };
+}
 
 export default function VerifyTechnicianPage() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState<'id' | 'name'>('id');
-  const [searchResult, setSearchResult] = useState<any>(null);
-  const [notFound, setNotFound] = useState(false);
+  const [initialState] = useState(getInitialPortalState);
+  const [searchQuery, setSearchQuery] = useState(initialState.searchQuery);
+  const [searchMode, setSearchMode] = useState<SearchMode>(initialState.searchMode);
+  const [searchResult, setSearchResult] = useState<VerificationResult | null>(null);
+  const [notFound, setNotFound] = useState(initialState.notFound);
   const [isSearching, setIsSearching] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
+  const [certificateRecords] = useState<CertificateRecord[]>(initialState.certificateRecords);
+  const [issuedRequests] = useState<TrainerCertificateRequest[]>(initialState.issuedRequests);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const { data: techniciansData, isLoading: techniciansLoading } = useTechnicians();
+  const technicians = techniciansData ?? [];
+
+  const availableCertificates = useMemo(
+    () => buildCertificatePool(certificateRecords, issuedRequests),
+    [certificateRecords, issuedRequests]
+  );
+
+  // Re-run initial URL query once technicians are loaded
+  const [initialQueryRun, setInitialQueryRun] = useState(false);
+  useEffect(() => {
+    if (!initialQueryRun && !techniciansLoading && technicians.length > 0 && initialState.searchQuery) {
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const token = params?.get('token');
+      const pool = buildCertificatePool(certificateRecords, issuedRequests);
+      const match = findVerificationResult(initialState.searchQuery, initialState.searchMode, technicians, pool, token);
+      setSearchResult(match);
+      setNotFound(!match);
+      setInitialQueryRun(true);
+    }
+  }, [techniciansLoading, technicians, initialQueryRun, initialState, certificateRecords, issuedRequests]);
+
+  const recentActivity = useMemo(
+    () =>
+      availableCertificates.slice(0, 5).map((certificate) => ({
+        id: certificate.id,
+        name: certificate.technicianName,
+        certificateNumber: certificate.certificateNumber,
+        time: formatDate(certificate.issueDate),
+        verified: certificate.status === 'valid',
+      })),
+    [availableCertificates]
+  );
+
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
     if (!searchQuery.trim()) return;
 
     setIsSearching(true);
     setNotFound(false);
 
-    // Simulate search delay
-    setTimeout(() => {
-      const query = searchQuery.toUpperCase().trim();
-      let found = null;
-
-      if (searchType === 'id') {
-        found = MOCK_TECHNICIANS.find(
-          tech => tech.registrationNumber.toUpperCase() === query
-        );
-      } else {
-        found = MOCK_TECHNICIANS.find(
-          tech => tech.name.toUpperCase().includes(query)
-        );
-      }
-
-      if (found) {
-        setSearchResult(found);
-        setNotFound(false);
-      } else {
-        setSearchResult(null);
-        setNotFound(true);
-      }
+    window.setTimeout(() => {
+      const match = findVerificationResult(searchQuery, searchMode, technicians, availableCertificates);
+      setSearchResult(match);
+      setNotFound(!match);
       setIsSearching(false);
-    }, 500);
+    }, 300);
   };
 
-  const demoCodes = MOCK_TECHNICIANS.map(t => t.registrationNumber);
+  const demoQueries = {
+    registration: technicians.slice(0, 4).map((item) => item.registrationNumber),
+    name: technicians.slice(0, 4).map((item) => item.name),
+    certificate: availableCertificates.slice(0, 4).map((item) => item.certificateNumber),
+  };
+
+  const technician = searchResult?.technician ?? null;
+  const certificate = searchResult?.certificate ?? null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div 
-              className="flex items-center cursor-pointer" 
-              onClick={() => router.push('/')}
+    <div className="min-h-screen bg-[#FAFAF9]">
+      <header className="border-b border-[#E7E5E4] bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex cursor-pointer items-center" onClick={() => router.push('/')}>
+            <div className="bg-[#1C1917] p-2.5">
+              <ShieldCheck className="h-6 w-6 text-white" />
+            </div>
+            <div className="ml-3">
+              <span className="text-xl font-bold text-slate-900">HEVACRAZ</span>
+              <p className="text-xs text-slate-500">Public Certificate Verification Portal</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowActivity((current) => !current)}
+              className="flex items-center gap-2 text-[#78716C] transition-colors hover:text-[#1C1917]"
             >
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-2.5 rounded-lg">
-                <ShieldCheck className="h-6 w-6 text-white" />
-              </div>
-              <div className="ml-3">
-                <span className="text-xl font-bold text-slate-900">HEVACRAZ</span>
-                <p className="text-xs text-slate-500">Technician Verification Portal</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setShowActivity(!showActivity)}
-                className="flex items-center gap-2 text-slate-600 hover:text-blue-600 transition-colors"
-              >
-                <Clock className="h-4 w-4" />
-                <span className="text-sm font-medium">Recent Activity</span>
-              </button>
-              <button
-                onClick={() => router.push('/')}
-                className="flex items-center text-slate-600 hover:text-blue-600 transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                <span className="text-sm font-medium">Back</span>
-              </button>
-            </div>
+              <Clock className="h-4 w-4" />
+              <span className="text-sm font-medium">Recent Activity</span>
+            </button>
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center text-[#78716C] transition-colors hover:text-[#1C1917]"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              <span className="text-sm font-medium">Back</span>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Activity Sidebar */}
       {showActivity && (
-        <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-2xl z-50 overflow-y-auto">
+        <div className="fixed right-0 top-0 z-50 h-full w-80 overflow-y-auto bg-white border-l border-[#E7E5E4] shadow-sm">
           <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold text-slate-900">Real-time Activity</h3>
-              <button onClick={() => setShowActivity(false)} className="text-slate-400 hover:text-slate-600">
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="font-bold text-slate-900">Recent Verifications</h3>
+              <button onClick={() => setShowActivity(false)} className="text-slate-400 transition hover:text-slate-600">
                 <AlertCircle className="h-5 w-5" />
               </button>
             </div>
             <div className="space-y-4">
               {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                  <div className="bg-green-100 p-2 rounded-full">
+                <div key={activity.id} className="flex items-start gap-3 bg-slate-50 p-3">
+                  <div className="rounded-full bg-green-100 p-2">
                     <CheckCircle className="h-4 w-4 text-green-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-900 text-sm">{activity.name}</p>
-                    <p className="text-xs text-slate-500">{activity.coc}</p>
-                    <p className="text-xs text-slate-400 mt-1">{activity.time}</p>
+                    <p className="text-sm font-semibold text-slate-900">{activity.name}</p>
+                    <p className="text-xs text-slate-500">{activity.certificateNumber}</p>
+                    <p className="mt-1 text-xs text-slate-400">{activity.time}</p>
                   </div>
                 </div>
               ))}
@@ -124,249 +297,269 @@ export default function VerifyTechnicianPage() {
         </div>
       )}
 
-      <main className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16">
-        {/* Hero Section */}
-        <div className="text-center mb-10">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-            <ShieldCheck className="h-10 w-10 text-white" />
+      <main className="mx-auto max-w-5xl px-3 py-8 sm:px-4 md:px-6 md:py-14">
+        <div className="mb-10 text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center bg-[#D97706]">
+            <ShieldCheck className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">Verify Your Technician</h1>
-          <p className="text-lg text-slate-600 mb-6 max-w-2xl mx-auto">
-            Ensure you're working with a certified HEVACRAZ professional. 
-            Search by registration ID or technician name.
+          <h1 className="mb-4 text-4xl font-bold text-slate-900">Public Certificate Verification Portal</h1>
+          <p className="mx-auto max-w-3xl text-lg text-slate-600">
+            Verify a technician by registration number or name, or validate a HEVACRAZ / CertifyZim certificate using
+            the certificate number or QR share link.
           </p>
         </div>
 
-        {/* Search Box - Enhanced */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-slate-100">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="mb-8 border border-[#E7E5E4] bg-white p-8 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
             <User className="h-5 w-5 text-blue-600" />
-            <span className="font-semibold text-slate-900">VERIFY YOUR TECHNICIAN</span>
+            <span className="font-semibold text-slate-900">VERIFY A TECHNICIAN OR CERTIFICATE</span>
           </div>
-          
+
           <form onSubmit={handleSearch}>
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* Search Type Toggle */}
-              <div className="flex rounded-xl overflow-hidden border-2 border-slate-200">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap border-2 border-slate-200">
+                {([
+                  { value: 'registration', label: 'By Registration' },
+                  { value: 'name', label: 'By Name' },
+                  { value: 'certificate', label: 'By Certificate' },
+                ] as const).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSearchMode(option.value)}
+                    className={`px-4 py-3 text-sm font-medium transition-colors ${
+                      searchMode === option.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-4 md:flex-row">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder={
+                      searchMode === 'registration'
+                        ? 'Enter registration number (e.g. ZIM/TECH/2023/001)'
+                        : searchMode === 'name'
+                          ? 'Enter technician name'
+                          : 'Enter certificate number or verification token'
+                    }
+                    className="w-full border-2 border-slate-200 px-6 py-4 pl-12 text-lg transition-colors focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
                 <button
-                  type="button"
-                  onClick={() => setSearchType('id')}
-                  className={`px-4 py-3 text-sm font-medium transition-colors ${
-                    searchType === 'id' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
+                  type="submit"
+                  disabled={isSearching}
+                  className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-4 font-semibold text-white shadow-lg shadow-orange-200 transition-all hover:from-orange-600 hover:to-orange-700 disabled:opacity-50"
                 >
-                  By ID
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSearchType('name')}
-                  className={`px-4 py-3 text-sm font-medium transition-colors ${
-                    searchType === 'name' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  By Name
+                  {isSearching ? 'Searching...' : 'Search'}
                 </button>
               </div>
-              
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={searchType === 'id' ? "Enter ID (e.g., ZIM/TECH/2023/001)" : "Enter Name (e.g., John Moyo)"}
-                  className="w-full px-6 py-4 text-lg border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isSearching}
-                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-4 px-8 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-orange-200"
-              >
-                {isSearching ? 'Searching...' : 'Search'}
-              </button>
             </div>
           </form>
 
-          {/* Demo Codes */}
-          <div className="mt-6 pt-6 border-t border-slate-100">
-            <p className="text-sm text-slate-500 mb-3">Demo Registration IDs:</p>
+          <div className="mt-6 border-t border-slate-100 pt-6">
+            <p className="mb-3 text-sm text-slate-500">Demo {searchMode} queries:</p>
             <div className="flex flex-wrap gap-2">
-              {demoCodes.slice(0, 6).map((code) => (
+              {demoQueries[searchMode].map((entry) => (
                 <button
-                  key={code}
-                  onClick={() => {
-                    setSearchQuery(code);
-                    setSearchType('id');
-                  }}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm rounded-lg transition-colors font-mono"
+                  key={entry}
+                  onClick={() => setSearchQuery(entry)}
+                  className="bg-slate-100 px-3 py-1.5 font-mono text-sm text-slate-700 transition-colors hover:bg-slate-200"
                 >
-                  {code}
+                  {entry}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Not Found Message */}
         {notFound && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
-            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-red-800 mb-2">Technician Not Found</h3>
+          <div className="border border-red-200 bg-red-50 p-8 text-center">
+            <AlertCircle className="mx-auto mb-4 h-16 w-16 text-red-500" />
+            <h3 className="mb-2 text-2xl font-bold text-red-800">No Match Found</h3>
             <p className="text-slate-600">
-              No technician found with {searchType === 'id' ? 'registration number' : 'name'} "<strong>{searchQuery}</strong>". 
-              <br />Please check and try again.
+              We couldn&apos;t find a technician or certificate matching <strong>{searchQuery}</strong>. Check the code and try
+              again.
             </p>
           </div>
         )}
 
-        {/* Found Technician */}
         {searchResult && (
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-              <div className="flex items-center justify-between">
+          <div className="border border-[#E7E5E4] bg-white shadow-sm">
+            <div className="bg-[#1C1917] px-8 py-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center">
-                  <div className="bg-white/20 p-3 rounded-full">
+                  <div className="rounded-full bg-white/20 p-3">
                     <ShieldCheck className="h-8 w-8 text-white" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-2xl font-bold text-white">{searchResult.name}</h3>
-                    <p className="text-blue-100 font-mono">{searchResult.registrationNumber}</p>
+                    <h3 className="text-2xl font-bold text-white">
+                      {technician?.name ?? certificate?.technicianName ?? 'Verified Record'}
+                    </h3>
+                    <p className="font-mono text-blue-100">
+                      {certificate?.certificateNumber ?? technician?.registrationNumber ?? 'Matched record'}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center bg-green-500 px-4 py-2 rounded-full shadow-lg">
-                  <CheckCircle className="h-5 w-5 text-white mr-2" />
-                  <span className="text-white font-semibold">Verified</span>
+                <div className="flex items-center bg-[#5A7D5A] px-3 py-1.5">
+                  <CheckCircle className="mr-2 h-4 w-4 text-white" />
+                  <span className="text-sm font-semibold text-white">Verified</span>
                 </div>
               </div>
             </div>
 
-            {/* Details */}
-            <div className="p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Personal Info */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-slate-900 border-b pb-2">Personal Information</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <MapPin className="h-5 w-5 text-slate-400" />
-                      <span className="text-slate-600">{searchResult.region}, Zimbabwe</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Award className="h-5 w-5 text-slate-400" />
-                      <span className="text-slate-600">{searchResult.certificationType || 'Advanced HVAC-R Technician'}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Calendar className="h-5 w-5 text-slate-400" />
-                      <span className="text-slate-600">Certified since {searchResult.certificationDate || '2023'}</span>
+            <div className="grid gap-6 p-8 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="space-y-6">
+                {technician && (
+                  <div className="space-y-4">
+                    <h4 className="border-b pb-2 text-lg font-semibold text-slate-900">Technician Details</h4>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="flex items-center gap-3">
+                        <MapPin className="h-5 w-5 text-slate-400" />
+                        <span className="text-slate-600">{technician.region}, Zimbabwe</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Award className="h-5 w-5 text-slate-400" />
+                        <span className="text-slate-600">{technician.specialization}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Phone className="h-5 w-5 text-slate-400" />
+                        <span className="text-slate-600">{technician.contactNumber}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-5 w-5 text-slate-400" />
+                        <span className="text-slate-600">{technician.email ?? 'No email published'}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-5 w-5 text-slate-400" />
+                        <span className="text-slate-600">Registry valid until {formatDate(technician.expiryDate)}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Shield className="h-5 w-5 text-green-600" />
+                        <span className="text-slate-600">Registry status: {technician.status}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Verification Info */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-slate-900 border-b pb-2">Verification Details</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Shield className="h-5 w-5 text-green-600" />
-                      <span className="text-slate-600">SAZ Recognized Certification</span>
+                {certificate && (
+                  <div className="space-y-4">
+                    <h4 className="border-b pb-2 text-lg font-semibold text-slate-900">Certificate Details</h4>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Certificate</p>
+                        <p className="mt-2 font-semibold text-slate-900">{certificate.certificateType}</p>
+                      </div>
+                      <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Issuing Body</p>
+                        <p className="mt-2 font-semibold text-slate-900">{certificate.issuingBody}</p>
+                      </div>
+                      <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Issued</p>
+                        <p className="mt-2 font-semibold text-slate-900">{formatDate(certificate.issueDate)}</p>
+                      </div>
+                      <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Expiry</p>
+                        <p className="mt-2 font-semibold text-slate-900">{formatDate(certificate.expiryDate)}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <span className="text-slate-600">HEVACRAZ Verified Member</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Award className="h-5 w-5 text-green-600" />
-                      <span className="text-slate-600">COC Authorized</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                        Status: {certificate.status}
+                      </span>
+                      <span className="bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                        Match source: {searchResult.matchSource}
+                      </span>
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {certificate ? (
+                  <>
+                    <CertificateQRCode
+                      value={
+                        certificate.verificationUrl ||
+                        `${typeof window === 'undefined' ? 'https://coolpro2026.vercel.app' : window.location.origin}/verify-technician?mode=certificate&q=${encodeURIComponent(certificate.certificateNumber)}&token=${certificate.verificationToken}`
+                      }
+                      title="Shareable Verification QR"
+                    />
+                    <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-5">
+                      <p className="text-sm font-semibold text-slate-900">Verification token</p>
+                      <p className="mt-2 break-all font-mono text-sm text-slate-600">{certificate.verificationToken}</p>
+                      {certificate.verificationUrl && (
+                        <a
+                          href={certificate.verificationUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#D97706] transition hover:text-[#b45309]"
+                        >
+                          Open shareable link
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="border border-amber-200 bg-amber-50 p-5">
+                    <p className="text-sm font-semibold text-amber-900">Registry match only</p>
+                    <p className="mt-2 text-sm leading-6 text-amber-800">
+                      This technician is present in the National RAC Technician Verification and Competency Registry, but no
+                      issued certificate record is stored locally yet.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* Why Verification Matters - Consumer Trust Center */}
-        <div className="mt-12 bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-8 text-white">
-          <div className="flex items-center gap-3 mb-6">
+        <div className="mt-12 bg-gradient-to-r from-slate-800 to-slate-900 p-8 text-white">
+          <div className="mb-6 flex items-center gap-3">
             <Info className="h-6 w-6 text-orange-400" />
             <h2 className="text-2xl font-bold">Why Verification Matters</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid gap-6 md:grid-cols-3">
             <div className="space-y-2">
-              <div className="bg-white/10 p-3 rounded-lg w-fit">
+              <div className="w-fit bg-white/10 p-3">
                 <ShieldCheck className="h-6 w-6 text-blue-400" />
               </div>
               <h3 className="font-semibold">Consumer Protection</h3>
-              <p className="text-slate-300 text-sm">
-                Verify that your technician holds valid certifications and is authorized to work on HVAC-R systems in Zimbabwe.
+              <p className="text-sm text-slate-300">
+                Check that your technician is listed in the national registry and carries the right credentials for the job.
               </p>
             </div>
             <div className="space-y-2">
-              <div className="bg-white/10 p-3 rounded-lg w-fit">
+              <div className="w-fit bg-white/10 p-3">
                 <Award className="h-6 w-6 text-blue-400" />
               </div>
-              <h3 className="font-semibold">Quality Assurance</h3>
-              <p className="text-slate-300 text-sm">
-                HEVACRAZ certified technicians meet industry standards and follow safety protocols for all installations.
+              <h3 className="font-semibold">Certificate Integrity</h3>
+              <p className="text-sm text-slate-300">
+                QR-backed verification helps confirm issued certificates, assessment history, and expiry dates before site work.
               </p>
             </div>
             <div className="space-y-2">
-              <div className="bg-white/10 p-3 rounded-lg w-fit">
+              <div className="w-fit bg-white/10 p-3">
                 <CheckCircle className="h-6 w-6 text-blue-400" />
               </div>
-              <h3 className="font-semibold">Compliance Guaranteed</h3>
-              <p className="text-slate-300 text-sm">
-                Certified technicians ensure all work meets SAZ standards and government regulations.
+              <h3 className="font-semibold">Compliance Confidence</h3>
+              <p className="text-sm text-slate-300">
+                Verified technicians and valid certificates reduce installation risk and strengthen audit-readiness for clients.
               </p>
             </div>
-          </div>
-          <div className="mt-6 pt-6 border-t border-white/20">
-            <a href="#" className="inline-flex items-center gap-2 text-orange-400 hover:text-orange-300 font-medium">
-              Learn more about HEVACRAZ Certification <ExternalLink className="h-4 w-4" />
-            </a>
-          </div>
-        </div>
-
-        {/* Recent Verifications Section */}
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent verifications:</h3>
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            {recentActivity.map((activity, index) => (
-              <div 
-                key={activity.id} 
-                className={`flex items-center justify-between p-4 ${index !== recentActivity.length - 1 ? 'border-b border-slate-100' : ''}`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-green-100 p-2 rounded-full">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-900">{activity.name}</p>
-                    <p className="text-sm text-slate-500">{activity.coc}</p>
-                  </div>
-                </div>
-                <span className="text-sm text-slate-400">Verified {activity.time}</span>
-              </div>
-            ))}
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-8 mt-12">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <p className="text-sm">
-            © 2024 HEVACRAZ. All rights reserved. | 
-            <a href="#" className="hover:text-white ml-2">Privacy Policy</a> | 
-            <a href="#" className="hover:text-white ml-2">Terms of Service</a>
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

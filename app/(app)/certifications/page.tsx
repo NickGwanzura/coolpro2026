@@ -13,11 +13,13 @@ import {
   ShieldCheck,
   UserCheck,
 } from 'lucide-react';
-import { getSession, type UserSession } from '@/lib/auth';
-import { MOCK_TECHNICIANS, ZIMBABWE_PROVINCES } from '@/constants/registry';
+import { CertificateQRCode } from '@/components/CertificateQRCode';
+import { useAuth } from '@/lib/auth';
+import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import { MOCK_TRAINER_CERTIFICATE_REQUESTS } from '@/constants/training';
-import { STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
-import type { TrainerCertificateRequest } from '@/types/index';
+import { useTechnicians } from '@/lib/api';
+import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
+import type { CertificateRecord, TrainerCertificateRequest } from '@/types/index';
 
 const AVAILABLE_EXAMS = [
   {
@@ -59,9 +61,37 @@ function generateCertificateNumber() {
   return `HEV-${Date.now().toString().slice(-6)}`;
 }
 
+function generateVerificationToken() {
+  return `verify-${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`;
+}
+
+function buildCertificateRecord(request: TrainerCertificateRequest): CertificateRecord | null {
+  if (!request.certificateNumber) {
+    return null;
+  }
+
+  const issueDate = request.issuedAt ?? new Date().toISOString();
+  const expiry = new Date(issueDate);
+  expiry.setFullYear(expiry.getFullYear() + 2);
+
+  return {
+    id: request.id,
+    technicianId: request.technicianId,
+    technicianName: request.technicianName,
+    certificateNumber: request.certificateNumber,
+    certificateType: request.courseTitle,
+    issuingBody: 'HEVACRAZ / CertifyZim Demo',
+    issueDate,
+    expiryDate: expiry.toISOString(),
+    verificationToken: request.verificationToken ?? generateVerificationToken(),
+    verificationUrl: request.verificationUrl ?? '',
+    status: 'valid',
+  };
+}
+
 function SummaryStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="border border-gray-200 bg-white p-5 shadow-sm">
       <p className="text-sm font-semibold text-gray-500">{label}</p>
       <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
     </div>
@@ -73,11 +103,8 @@ function formatDate(value: string) {
 }
 
 export default function CertificationsPage() {
-  const session = useSyncExternalStore<UserSession | null>(
-    () => () => undefined,
-    () => getSession(),
-    () => null
-  );
+  const { user: session } = useAuth();
+  const { data: techniciansData } = useTechnicians();
   const storedRequests = useSyncExternalStore(
     () => () => undefined,
     () => {
@@ -102,7 +129,7 @@ export default function CertificationsPage() {
   const [dateFilter, setDateFilter] = useState('');
   const [notice, setNotice] = useState('');
   const [trainerForm, setTrainerForm] = useState<TrainerFormState>({
-    technicianId: MOCK_TECHNICIANS[0]?.id ?? '',
+    technicianId: '',
     courseTitle: AVAILABLE_EXAMS[0].title,
     examDate: '2026-04-05',
     theoryScore: '78',
@@ -111,7 +138,7 @@ export default function CertificationsPage() {
   });
 
   const requests = localRequests ?? storedRequests;
-  const isAdmin = session?.role === 'org_admin' || session?.role === 'program_admin';
+  const isAdmin = session?.role === 'org_admin';
   const isTrainer = session?.role === 'trainer';
 
   const trainerRequests = useMemo(() => {
@@ -122,6 +149,7 @@ export default function CertificationsPage() {
 
   const filteredAdminRequests = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
+    const techList = techniciansData ?? [];
 
     return requests.filter(request => {
       const matchesSearch =
@@ -130,13 +158,13 @@ export default function CertificationsPage() {
         request.courseTitle.toLowerCase().includes(search) ||
         request.trainerName.toLowerCase().includes(search);
 
-      const technician = MOCK_TECHNICIANS.find(tech => tech.id === request.technicianId);
+      const technician = techList.find(tech => tech.id === request.technicianId);
       const matchesRegion = !selectedRegion || technician?.province === selectedRegion;
       const matchesDate = !dateFilter || request.submittedAt.startsWith(dateFilter) || request.examDate.startsWith(dateFilter);
 
       return matchesSearch && matchesRegion && matchesDate;
     });
-  }, [dateFilter, requests, searchTerm, selectedRegion]);
+  }, [dateFilter, requests, searchTerm, selectedRegion, techniciansData]);
 
   const adminSummary = useMemo(() => ({
     submitted: filteredAdminRequests.filter(item => item.status === 'submitted-for-admin-approval').length,
@@ -151,9 +179,39 @@ export default function CertificationsPage() {
     issued: trainerRequests.filter(item => item.status === 'issued').length,
   }), [trainerRequests]);
 
+  if (techniciansData === undefined) {
+    return <div className="p-8 text-sm text-slate-500">Loading…</div>;
+  }
+
   const saveRequests = (items: TrainerCertificateRequest[]) => {
     setLocalRequests(items);
     writeCollection(STORAGE_KEYS.trainerCertificateRequests, items);
+  };
+
+  const upsertCertificateRecord = (request: TrainerCertificateRequest) => {
+    const record = buildCertificateRecord(request);
+    if (!record || typeof window === 'undefined') {
+      return null;
+    }
+
+    const verificationUrl =
+      request.verificationUrl ||
+      `${window.location.origin}/verify-technician?mode=certificate&q=${encodeURIComponent(record.certificateNumber)}&token=${record.verificationToken}`;
+
+    const nextRecord = {
+      ...record,
+      verificationUrl,
+    };
+
+    const existing = readCollection<CertificateRecord>(STORAGE_KEYS.certificateRecords, []);
+    const next = [
+      nextRecord,
+      ...existing.filter(
+        (item) => item.id !== nextRecord.id && item.certificateNumber !== nextRecord.certificateNumber
+      ),
+    ];
+    writeCollection(STORAGE_KEYS.certificateRecords, next);
+    return nextRecord;
   };
 
   const updateRequest = (id: string, updater: (request: TrainerCertificateRequest) => TrainerCertificateRequest) => {
@@ -161,9 +219,42 @@ export default function CertificationsPage() {
     saveRequests(next);
   };
 
+  const handleIssueCertificate = (requestId: string) => {
+    let issuedRequest: TrainerCertificateRequest | null = null;
+
+    updateRequest(requestId, (item) => {
+      const issuedAt = new Date().toISOString();
+      const certificateNumber = item.certificateNumber ?? generateCertificateNumber();
+      const verificationToken = item.verificationToken ?? generateVerificationToken();
+      const verificationUrl =
+        typeof window === 'undefined'
+          ? ''
+          : `${window.location.origin}/verify-technician?mode=certificate&q=${encodeURIComponent(certificateNumber)}&token=${verificationToken}`;
+
+      issuedRequest = {
+        ...item,
+        status: 'issued',
+        certificateNumber,
+        issuedAt,
+        verificationToken,
+        verificationUrl,
+        cpdCredits: item.cpdCredits ?? 12,
+      };
+
+      return issuedRequest;
+    });
+
+    if (issuedRequest) {
+      const record = upsertCertificateRecord(issuedRequest);
+      if (record) {
+        setNotice(`Certificate ${record.certificateNumber} is now live on the Public Certificate Verification Portal.`);
+      }
+    }
+  };
+
   const handleTrainerSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    const technician = MOCK_TECHNICIANS.find(item => item.id === trainerForm.technicianId);
+    const technician = (techniciansData ?? []).find(item => item.id === trainerForm.technicianId);
     const theoryScore = Number(trainerForm.theoryScore);
     const practicalScore = Number(trainerForm.practicalScore);
 
@@ -225,7 +316,7 @@ export default function CertificationsPage() {
               Review trainer-marked assessments, approve certificate issuance, and manage the national certification queue.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2">
+          <div className="flex items-center gap-2 border border-blue-100 bg-blue-50 px-4 py-2">
             <ShieldCheck className="h-5 w-5 text-blue-600" />
             <span className="text-sm font-semibold text-blue-700">Admin Approval Gate</span>
           </div>
@@ -238,7 +329,7 @@ export default function CertificationsPage() {
           <SummaryStat label="Rejected" value={adminSummary.rejected} />
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="border border-gray-200 bg-white p-6 shadow-sm">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
               <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">Search</label>
@@ -248,7 +339,7 @@ export default function CertificationsPage() {
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Search technician, course, or trainer"
-                  className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-4 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 py-2.5 pl-10 pr-4 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -257,7 +348,7 @@ export default function CertificationsPage() {
               <select
                 value={selectedRegion}
                 onChange={(event) => setSelectedRegion(event.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Regions</option>
                 {ZIMBABWE_PROVINCES.map((province) => (
@@ -271,7 +362,7 @@ export default function CertificationsPage() {
                 type="month"
                 value={dateFilter}
                 onChange={(event) => setDateFilter(event.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -279,7 +370,7 @@ export default function CertificationsPage() {
 
         <div className="space-y-4">
           {filteredAdminRequests.map((request) => (
-            <div key={request.id} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div key={request.id} className="border border-gray-200 bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="font-semibold text-gray-900">{request.technicianName}</p>
@@ -318,7 +409,7 @@ export default function CertificationsPage() {
                         adminReviewer: session?.name ?? 'Admin',
                       }))
                     }
-                    className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    className="bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
                   >
                     Approve for Issuance
                   </button>
@@ -331,7 +422,7 @@ export default function CertificationsPage() {
                         adminReviewer: session?.name ?? 'Admin',
                       }))
                     }
-                    className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                    className="border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
                   >
                     Reject
                   </button>
@@ -354,7 +445,7 @@ export default function CertificationsPage() {
               Mark registered technicians, submit certificate requests for admin approval, and issue certificates once approved.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2">
+          <div className="flex items-center gap-2 border border-emerald-100 bg-emerald-50 px-4 py-2">
             <UserCheck className="h-5 w-5 text-emerald-600" />
             <span className="text-sm font-semibold text-emerald-700">Trainer Marking View</span>
           </div>
@@ -367,7 +458,7 @@ export default function CertificationsPage() {
         </div>
 
         <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <form onSubmit={handleTrainerSubmit} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <form onSubmit={handleTrainerSubmit} className="border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900">Mark Exam and Submit Certificate Request</h2>
             <p className="mt-2 text-sm leading-6 text-gray-600">
               Choose a registered technician, record their theory and practical marks, then send the certificate request to admin for approval.
@@ -377,9 +468,9 @@ export default function CertificationsPage() {
               <select
                 value={trainerForm.technicianId}
                 onChange={(event) => setTrainerForm((current) => ({ ...current, technicianId: event.target.value }))}
-                className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {MOCK_TECHNICIANS.map((technician) => (
+                {techniciansData.map((technician) => (
                   <option key={technician.id} value={technician.id}>
                     {technician.name} · {technician.registrationNumber} · {technician.employer ?? 'Independent'}
                   </option>
@@ -389,7 +480,7 @@ export default function CertificationsPage() {
               <select
                 value={trainerForm.courseTitle}
                 onChange={(event) => setTrainerForm((current) => ({ ...current, courseTitle: event.target.value }))}
-                className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {AVAILABLE_EXAMS.map((exam) => (
                   <option key={exam.id} value={exam.title}>{exam.title}</option>
@@ -401,7 +492,7 @@ export default function CertificationsPage() {
                   type="date"
                   value={trainerForm.examDate}
                   onChange={(event) => setTrainerForm((current) => ({ ...current, examDate: event.target.value }))}
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="number"
@@ -410,7 +501,7 @@ export default function CertificationsPage() {
                   value={trainerForm.theoryScore}
                   onChange={(event) => setTrainerForm((current) => ({ ...current, theoryScore: event.target.value }))}
                   placeholder="Theory %"
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="number"
@@ -419,7 +510,7 @@ export default function CertificationsPage() {
                   value={trainerForm.practicalScore}
                   onChange={(event) => setTrainerForm((current) => ({ ...current, practicalScore: event.target.value }))}
                   placeholder="Practical %"
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -428,20 +519,20 @@ export default function CertificationsPage() {
                 value={trainerForm.notes}
                 onChange={(event) => setTrainerForm((current) => ({ ...current, notes: event.target.value }))}
                 placeholder="Trainer notes and practical observations"
-                className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <button
               type="submit"
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+              className="mt-5 inline-flex items-center gap-2 bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
             >
               <Send className="h-4 w-4" />
               Submit for Admin Approval
             </button>
 
             {notice && (
-              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              <div className="mt-4 border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
                 {notice}
               </div>
             )}
@@ -449,7 +540,7 @@ export default function CertificationsPage() {
 
           <div className="space-y-4">
             {trainerRequests.map((request) => (
-              <div key={request.id} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div key={request.id} className="border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-gray-900">{request.technicianName}</p>
@@ -471,17 +562,27 @@ export default function CertificationsPage() {
                 )}
                 {request.status === 'admin-approved' && (
                   <button
-                    onClick={() =>
-                      updateRequest(request.id, (item) => ({
-                        ...item,
-                        status: 'issued',
-                        certificateNumber: item.certificateNumber ?? generateCertificateNumber(),
-                      }))
-                    }
-                    className="mt-4 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    onClick={() => handleIssueCertificate(request.id)}
+                    className="mt-4 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
                   >
                     Issue Certificate
                   </button>
+                )}
+                {request.status === 'issued' && request.verificationUrl && (
+                  <div className="mt-4 space-y-3">
+                    <CertificateQRCode
+                      value={request.verificationUrl}
+                      title="Public Certificate Verification Portal"
+                    />
+                    <a
+                      href={request.verificationUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex text-sm font-semibold text-blue-600 transition hover:text-blue-700"
+                    >
+                      Open verification link
+                    </a>
+                  </div>
                 )}
               </div>
             ))}
@@ -498,7 +599,7 @@ export default function CertificationsPage() {
           <h1 className="text-2xl font-bold text-gray-900">National Certification Center</h1>
           <p className="text-gray-500 mt-1">Take professional assessments and move into trainer review</p>
         </div>
-        <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-xl border border-blue-100">
+        <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 border border-blue-100">
           <ShieldCheck className="h-5 w-5 text-blue-600" />
           <span className="text-sm font-semibold text-blue-700">Accredited by SA-RACA</span>
         </div>
@@ -512,7 +613,7 @@ export default function CertificationsPage() {
           </h2>
           <div className="grid gap-4">
             {AVAILABLE_EXAMS.map((exam) => (
-              <div key={exam.id} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:border-blue-300 transition-all group">
+              <div key={exam.id} className="bg-white border border-gray-200 p-6 shadow-sm hover:border-blue-300 transition-all group">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -541,7 +642,7 @@ export default function CertificationsPage() {
                   </div>
                   <div className="flex-shrink-0">
                     {completedExams.includes(exam.id) ? (
-                      <div className="flex items-center gap-2 text-green-600 bg-green-50 px-4 py-2 rounded-xl font-bold text-sm">
+                      <div className="flex items-center gap-2 text-green-600 bg-green-50 px-4 py-2 font-bold text-sm">
                         <CheckCircle className="h-4 w-4" />
                         Awaiting Trainer Marking
                       </div>
@@ -549,7 +650,7 @@ export default function CertificationsPage() {
                       <button
                         onClick={() => handleStartExam(exam.id)}
                         disabled={examTaking !== null}
-                        className="flex items-center gap-2 bg-gray-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-600 transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 bg-gray-900 text-white px-6 py-2.5 font-bold text-sm hover:bg-blue-600 transition-all disabled:opacity-50"
                       >
                         Start Exam
                         <ArrowRight className="h-4 w-4" />
@@ -567,8 +668,8 @@ export default function CertificationsPage() {
             <Award className="h-5 w-5 text-amber-500" />
             My Achievements
           </h2>
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+          <div className="bg-white border border-gray-200 p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-100">
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Digital Badges</p>
                 <p className="text-xl font-black text-gray-900">12</p>
@@ -578,8 +679,8 @@ export default function CertificationsPage() {
 
             <div className="space-y-3">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-widest px-1">Recently Issued</p>
-              <div className="p-3 border border-gray-100 rounded-xl flex items-center gap-3">
-                <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <div className="p-3 border border-gray-100 flex items-center gap-3">
+                <div className="h-10 w-10 bg-blue-100 flex items-center justify-center">
                   <ShieldCheck className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
@@ -589,7 +690,7 @@ export default function CertificationsPage() {
               </div>
             </div>
 
-            <button className="w-full py-3 text-sm font-bold text-blue-600 hover:bg-blue-50 rounded-xl transition-colors">
+            <button className="w-full py-3 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-colors">
               View All Credentials
             </button>
           </div>
@@ -601,7 +702,7 @@ export default function CertificationsPage() {
 
 function ScoreCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+    <div className="border border-gray-200 bg-gray-50 p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">{label}</p>
       <p className="mt-2 text-sm font-semibold text-gray-900">{value}</p>
     </div>

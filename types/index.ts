@@ -1,13 +1,17 @@
 import React from 'react';
 
-export type UserRole = 'technician' | 'trainer' | 'vendor' | 'org_admin' | 'program_admin' | 'regulator';
+export type AppLanguage = 'en' | 'fr';
+export type SafetyAlertColor = 'green' | 'orange' | 'red' | 'blue';
+export type RefrigerantRiskLevel = 'low' | 'moderate' | 'high' | 'critical';
+
+export type UserRole = 'technician' | 'trainer' | 'vendor' | 'org_admin' | 'lecturer' | 'regulator';
 
 export const UserRole = {
   TECHNICIAN: 'technician' as const,
   TRAINER: 'trainer' as const,
   VENDOR: 'vendor' as const,
   ORG_ADMIN: 'org_admin' as const,
-  PROGRAM_ADMIN: 'program_admin' as const,
+  LECTURER: 'lecturer' as const,
   REGULATOR: 'regulator' as const,
 };
 
@@ -76,7 +80,7 @@ export interface Job {
 }
 
 export type PlannerJobStatus = 'scheduled' | 'in-progress' | 'completed' | 'follow-up';
-export type RefrigerantSafetyClass = 'A1' | 'A2L' | 'A3';
+export type RefrigerantSafetyClass = 'A1' | 'A2L' | 'A2' | 'A3' | 'B1' | 'B2L' | 'B2' | 'B3';
 export type EquipmentStatus = 'normal' | 'due-soon' | 'overdue';
 export type SupplierQuotaStatus = 'within-quota' | 'near-limit' | 'exceeded';
 
@@ -91,10 +95,15 @@ export interface PlannerServiceRecord {
 export interface PlannerClient {
   id: string;
   name: string;
+  clientName?: string;
+  technicianId?: string;
   location: string;
   province: string;
   contactPerson: string;
   contactNumber: string;
+  contactDetails?: string;
+  equipmentIds?: string[];
+  jobHistory?: string[];
   serviceHistory: PlannerServiceRecord[];
 }
 
@@ -128,11 +137,17 @@ export interface PlannerJob {
 
 export interface EquipmentRecord {
   id: string;
+  clientId?: string;
   equipmentId: string;
   clientName: string;
+  manufacturer?: string;
+  model?: string;
   province: string;
   refrigerantType: string;
+  refrigerantClass?: RefrigerantSafetyClass;
   ashraeSafetyClass: RefrigerantSafetyClass;
+  serialNumber?: string;
+  healthStatus?: 'healthy' | 'watch' | 'critical';
   lastServiceDate: string;
   nextServiceDue: string;
   status: EquipmentStatus;
@@ -145,20 +160,25 @@ export interface EquipmentRecord {
 export interface PredictiveAlert {
   id: string;
   equipmentId: string;
+  technicianId?: string;
   clientName: string;
   province: string;
   predictedFailureReason: string;
   recommendedAction: string;
   urgency: 'low' | 'medium' | 'high';
   status: EquipmentStatus;
+  alertType?: 'service-due' | 'leak-risk' | 'charge-loss' | 'inspection';
+  predictedDate?: string;
 }
 
 export interface ApprovedSupplier {
   id: string;
   name: string;
   refrigerants: string[];
+  approvedRefrigerants?: string[];
   totalSalesKg: number;
   importQuotaKg: number;
+  importQuotas?: Record<string, number>;
   usagePercent: number;
   quotaStatus: SupplierQuotaStatus;
   nouApproved: boolean;
@@ -192,6 +212,7 @@ export type SupplierLedgerDirection = 'purchase' | 'sale';
 
 export interface SupplierLedgerEntry {
   id: string;
+  supplierId?: string;
   supplierEmail: string;
   supplierName: string;
   direction: SupplierLedgerDirection;
@@ -233,7 +254,7 @@ export interface RefrigerantDefinition {
   code: string;
   name: string;
   ashraeSafetyClass: RefrigerantSafetyClass;
-  alertLevel: 'green' | 'orange' | 'red';
+  alertLevel: SafetyAlertColor;
   odp: number;
   gwp: number;
   nouApproved: boolean;
@@ -311,6 +332,9 @@ export interface Course {
   progress: number;
   level: 'BASIC' | 'ADVANCED' | 'GWP_SPECIALIST';
   isDownloaded: boolean;
+  safetyCategory?: SafetyAlertColor | 'mixed';
+  offlineBundleUrl?: string;
+  cpd_credits?: number;
 }
 
 export interface TrainingSession {
@@ -355,6 +379,10 @@ export interface TrainerCertificateRequest {
   reviewedAt?: string;
   adminReviewer?: string;
   certificateNumber?: string;
+  issuedAt?: string;
+  verificationToken?: string;
+  verificationUrl?: string;
+  cpdCredits?: number;
 }
 
 // RewardItem from old types.ts
@@ -382,21 +410,28 @@ export interface Technician {
   trainingHistory: TrainingRecord[];
   employmentStatus: 'employed' | 'self-employed' | 'unemployed';
   employer?: string;
+  refrigerantsHandled?: string[];
+  supplierId?: string;
   registrationDate: string;
   expiryDate: string;
   status: 'active' | 'inactive' | 'suspended' | 'pending';
   lastRenewalDate?: string;
   nextRenewalDate?: string;
+  qrToken?: string;
 }
 
 export interface Certification {
   id: string;
+  technicianId?: string;
+  type?: string;
   name: string;
   issuingBody: string;
   dateIssued: string;
+  issueDate?: string;
   expiryDate: string;
   certificateNumber: string;
   status: 'valid' | 'expired' | 'pending';
+  cpd_credits?: number;
 }
 
 export interface TrainingRecord {
@@ -422,6 +457,7 @@ export interface RefrigerantLog {
   location: string;
   jobType: JobType;
   refrigerantType: string;
+  refrigerantClass?: RefrigerantSafetyClass;
   amount: number;
   actionType: 'Charge' | 'Recovery' | 'Leak Repair';
   timestamp: string;
@@ -429,6 +465,12 @@ export interface RefrigerantLog {
   approvedSupplierName?: string;
   supplierVerified?: boolean;
   pesepayTransactionId?: string;
+  odp?: number;
+  gwp?: number;
+  co2EqEmissions?: number;
+  ashraeSafetyClass?: RefrigerantSafetyClass;
+  supplierId?: string;
+  purchaseTransactionId?: string;
 }
 
 // Installation Types
@@ -437,10 +479,14 @@ export interface Installation {
   technicianId: string;
   technicianName: string;
   clientName: string;
+  location?: string;
   jobDetails: string;
   floorSpace: string;
   jobType: JobType;
   installationDate: string;
+  equipmentId?: string;
+  ocrScanData?: OcrScanRecord | null;
+  nameplateJson?: Record<string, string | number | boolean | null>;
   status: 'pending' | 'approved' | 'rejected';
   images: string[];
   cocRequested: boolean;
@@ -464,12 +510,17 @@ export interface CertificateOfConformity {
 }
 export interface OccupationalAccident {
   id: string;
+  technicianId?: string;
   date: string;
   jobSite: string;
   clientName: string;
+  severityClass?: 'Critical' | 'High' | 'Medium' | 'Low';
   severity: 'Critical' | 'High' | 'Medium' | 'Low';
   description: string;
   technicianName: string;
+  refrigerantInvolved?: string;
+  nearMissFlag?: boolean;
+  nouNotified?: boolean;
   // Investigation fields
   rootCause?: string;
   investigationDate?: string;
@@ -548,3 +599,145 @@ export const SeverityCategories = {
     examples: ['Near miss', 'Potential hazard identified', 'Minor oil spill cleaned immediately']
   }
 };
+
+export interface WhatGasRefrigerantProfile {
+  code: string;
+  commonName: string;
+  ashraeSafetyClass: RefrigerantSafetyClass;
+  riskColor: SafetyAlertColor;
+  riskLevel: RefrigerantRiskLevel;
+  typicalUse: string;
+  odp: number;
+  gwp: number;
+  emergencyNotes: string[];
+  fieldChecklist: string[];
+  whatGasReference: string;
+}
+
+export interface OcrScanRecord {
+  id: string;
+  createdAt: string;
+  rawText: string;
+  refrigerantCode?: string;
+  manufacturer?: string;
+  model?: string;
+  serialNumber?: string;
+  matchConfidence?: number;
+  whatGasMatch?: WhatGasRefrigerantProfile | null;
+}
+
+export interface Equipment {
+  id: string;
+  clientId: string;
+  manufacturer: string;
+  model: string;
+  refrigerantType: string;
+  refrigerantClass: RefrigerantSafetyClass;
+  serialNumber: string;
+  healthStatus: 'healthy' | 'watch' | 'critical';
+}
+
+export interface SafetySession {
+  id: string;
+  technicianId: string;
+  query: string;
+  response: string;
+  sourceDocuments: string[];
+  refrigerantClass?: RefrigerantSafetyClass;
+  createdAt: string;
+  language: AppLanguage;
+  emergencyMode: boolean;
+}
+
+export interface ImageRecord {
+  id: string;
+  jobId: string;
+  beforeAfter: 'before' | 'after' | 'inspection';
+  annotationsJson: Array<{
+    id: string;
+    x: number;
+    y: number;
+    label: string;
+  }>;
+  gpsTag?: string;
+  imageDataUrl: string;
+  createdAt: string;
+}
+
+export interface AnalyticsSnapshot {
+  totalHandlers: number;
+  totalKgPurchased: number;
+  totalKgRecovered: number;
+  emissionsAvoided: number;
+  leakIncidents: number;
+}
+
+export interface ClientProfile {
+  id: string;
+  technicianId: string;
+  clientName: string;
+  contactDetails: string;
+  location: string;
+  equipmentIds: string[];
+  jobHistory: string[];
+}
+
+export interface JobReport {
+  id: string;
+  jobId: string;
+  technicianId: string;
+  pdfUrl: string;
+  sentToClient: boolean;
+  workPerformed: string;
+  refrigerantUsed: string;
+  photos: string[];
+}
+
+export interface SupplyChainPurchase {
+  id: string;
+  technicianId: string;
+  supplierId: string;
+  refrigerantType: string;
+  quantityKg: number;
+  pesepayTransactionId?: string;
+}
+
+export interface RewardAccount {
+  id: string;
+  technicianId: string;
+  totalPoints: number;
+  tier: 'starter' | 'pro' | 'elite';
+}
+
+export interface MaintenanceAlert {
+  id: string;
+  equipmentId: string;
+  technicianId: string;
+  alertType: 'service-due' | 'leak-risk' | 'charge-loss' | 'inspection';
+  predictedDate: string;
+  status: 'open' | 'scheduled' | 'resolved';
+}
+
+export interface EmergencySafetyScript {
+  id: string;
+  language: AppLanguage;
+  title: string;
+  refrigerantCode: string;
+  severity: SafetyAlertColor;
+  steps: string[];
+  offlineReady: boolean;
+}
+
+export interface CertificateRecord {
+  id: string;
+  technicianId: string;
+  technicianName: string;
+  certificateNumber: string;
+  certificateType: string;
+  issuingBody: string;
+  issueDate: string;
+  expiryDate: string;
+  verificationToken: string;
+  verificationUrl: string;
+  status: 'valid' | 'expired' | 'revoked' | 'pending';
+}

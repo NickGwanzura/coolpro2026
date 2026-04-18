@@ -37,5 +37,11 @@ export const Icons = {
   ),
   User: (props: any) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-  )
+  ),
+  Flask: (props: any) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M9 3h6"/><path d="M10 3v6l-4.5 8A2 2 0 0 0 7.24 20h9.52a2 2 0 0 0 1.74-3L14 9V3"/></svg>
+  ),
+  Siren: (props: any) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M7 18v-6a5 5 0 0 1 10 0v6"/><path d="M5 21a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2Z"/><path d="M21 12h1"/><path d="M2 12h1"/><path d="M12 2v1"/><path d="m4.93 4.93.7.7"/><path d="m18.37 4.93-.7.7"/></svg>
+  ),
 };

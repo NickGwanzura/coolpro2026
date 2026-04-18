@@ -373,7 +373,7 @@ const SizingTool: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+      <div className="border border-gray-200 bg-white p-3 shadow-sm">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
           {[
             { id: 'wizard', label: 'Cooling Load Wizard', icon: Calculator },
@@ -388,7 +388,7 @@ const SizingTool: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveCalculator(tab.id as CalculatorTab)}
-                className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-all ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
                     : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
@@ -430,11 +430,11 @@ const SizingTool: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Form */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="bg-white p-6 sm:p-8 border border-gray-200 shadow-sm">
             {step === 1 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 rounded-lg bg-blue-100">
+                  <div className="p-2 bg-blue-100">
                     <Snowflake className="h-5 w-5 text-blue-600" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900">Job Type & Dimensions</h3>
@@ -456,7 +456,7 @@ const SizingTool: React.FC = () => {
                             loadingTimeHours: defaults.defaultLoadingTime
                           });
                         }}
-                        className={`p-4 rounded-xl border-2 text-sm font-semibold transition-all ${
+                        className={`p-4 border-2 text-sm font-semibold transition-all ${
                           inputs.jobType === type 
                             ? 'border-blue-600 bg-blue-50 text-blue-700' 
                             : 'border-gray-200 text-gray-500 hover:border-gray-300'
@@ -466,7 +466,7 @@ const SizingTool: React.FC = () => {
                           <img 
                             src={JobTypeImages[type]} 
                             alt={JobTypeLabels[type]} 
-                            className="w-full h-24 object-cover rounded-lg"
+                            className="w-full h-24 object-cover "
                           />
                           <div className="text-center w-full">
                             <div className="flex items-center justify-center gap-1 font-semibold">
@@ -493,7 +493,7 @@ const SizingTool: React.FC = () => {
                       <button 
                         key={type}
                         onClick={() => setInputs({...inputs, insulationType: type as any})}
-                        className={`p-3 rounded-xl border-2 text-sm font-semibold transition-all ${
+                        className={`p-3 border-2 text-sm font-semibold transition-all ${
                           inputs.insulationType === type 
                             ? 'border-blue-600 bg-blue-50 text-blue-700' 
                             : 'border-gray-200 text-gray-500 hover:border-gray-300'
@@ -523,7 +523,7 @@ const SizingTool: React.FC = () => {
             {step === 2 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 rounded-lg bg-blue-100">
+                  <div className="p-2 bg-blue-100">
                     <Thermometer className="h-5 w-5 text-blue-600" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900">Operating Conditions</h3>
@@ -542,7 +542,7 @@ const SizingTool: React.FC = () => {
             {step === 3 && (
               <div className="space-y-6">
                 {/* Results Card */}
-                <div className="flex items-center gap-6 p-6 bg-gray-900 rounded-2xl text-white">
+                <div className="flex items-center gap-6 p-6 bg-gray-900 text-white">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-400 mb-1">{JobTypeLabels[inputs.jobType as JobType] || 'Cold Room'} - Total System Load</p>
                     <div className="flex items-baseline gap-2">
@@ -550,14 +550,14 @@ const SizingTool: React.FC = () => {
                       <span className="text-lg font-medium text-gray-400">kW</span>
                     </div>
                   </div>
-                  <div className="w-14 h-14 rounded-xl bg-gray-800 flex items-center justify-center border border-gray-700">
+                  <div className="w-14 h-14 bg-gray-800 flex items-center justify-center border border-gray-700">
                     <Thermometer className="h-7 w-7 text-blue-400" />
                   </div>
                 </div>
                 
                 {/* Breakdown */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="p-4 bg-gray-50 border border-gray-100">
                     <p className="text-sm font-semibold text-gray-700 mb-3">Heat Gain Breakdown</p>
                     <div className="space-y-2">
                       <BreakdownLine label="Transmission" value={results.transmission} />
@@ -566,19 +566,19 @@ const SizingTool: React.FC = () => {
                       <BreakdownLine label={`Safety Margin (${inputs.jobType === 'C90_FREEZER' ? '25' : inputs.jobType === 'C60_FREEZER' ? '20' : '15'}%)`} value={results.total * (inputs.jobType === 'C90_FREEZER' ? 0.25 : inputs.jobType === 'C60_FREEZER' ? 0.20 : 0.15)} />
                     </div>
                   </div>
-                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col justify-center">
+                  <div className="p-4 bg-gray-50 border border-gray-100 flex flex-col justify-center">
                     <p className="text-sm font-semibold text-gray-700 mb-3">Recommended Refrigerants</p>
                     <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold">R-744 (CO₂)</span>
-                      <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold">R-290 (Propane)</span>
-                      <span className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold">R-32</span>
+                      <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-semibold">R-744 (CO₂)</span>
+                      <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-semibold">R-290 (Propane)</span>
+                      <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-semibold">R-32</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">SI 49 of 2023 Compliant</p>
                   </div>
                 </div>
                 
                 {/* Calculation Formula */}
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="p-4 bg-blue-50 border border-blue-100">
                   <p className="text-sm font-semibold text-blue-900 mb-3">Calculation Formula</p>
                   <div className="space-y-2 text-xs font-mono text-blue-800">
                     <p><strong>1. Transmission Load:</strong> Q = A × U × ΔT</p>
@@ -618,7 +618,7 @@ const SizingTool: React.FC = () => {
               {step < 3 ? (
                 <button 
                   onClick={() => setStep(s => Math.min(3, s+1))}
-                  className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors"
+                  className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 font-semibold hover:bg-gray-800 transition-colors"
                 >
                   Continue
                   <ChevronRight className="h-4 w-4" />
@@ -627,7 +627,7 @@ const SizingTool: React.FC = () => {
                 <button 
                   onClick={handleAiConsult}
                   disabled={isLoadingAi}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
                   {isLoadingAi ? (
                     <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -644,9 +644,9 @@ const SizingTool: React.FC = () => {
         {/* AI Advice Panel */}
         <div className="space-y-4">
           {aiAdvice ? (
-            <div className="bg-gray-900 text-gray-50 p-6 rounded-2xl shadow-lg">
+            <div className="bg-gray-900 text-gray-50 p-6 shadow-lg">
               <h4 className="flex items-center gap-2 text-lg font-semibold mb-4">
-                <div className="p-1.5 rounded-lg bg-blue-500">
+                <div className="p-1.5 bg-blue-500">
                   <Shield className="h-4 w-4" />
                 </div>
                 Expert Verification
@@ -658,15 +658,15 @@ const SizingTool: React.FC = () => {
               </div>
               <button 
                 onClick={handleDownload}
-                className="flex items-center justify-center gap-2 w-full mt-6 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-medium transition-colors"
+                className="flex items-center justify-center gap-2 w-full mt-6 py-2.5 bg-white/10 hover:bg-white/20 text-sm font-medium transition-colors"
               >
                 <Download className="h-4 w-4" />
                 Download Technical Sheet
               </button>
             </div>
           ) : (
-            <div className="bg-white p-6 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center h-full min-h-[300px]">
-              <div className="w-14 h-14 bg-gray-50 rounded-xl flex items-center justify-center text-gray-300 mb-4">
+            <div className="bg-white p-6 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center h-full min-h-[300px]">
+              <div className="w-14 h-14 bg-gray-50 flex items-center justify-center text-gray-300 mb-4">
                 <Shield className="h-7 w-7" />
               </div>
               <p className="text-sm font-semibold text-gray-500">Awaiting Sizing Completion</p>
@@ -679,15 +679,15 @@ const SizingTool: React.FC = () => {
       </div>
 
       {/* Technical Sources Section */}
-      <div className="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-6 border border-amber-100">
+      <div className="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 p-6 border border-amber-100">
         <div className="flex items-center gap-2 mb-4">
           <Shield className="h-5 w-5 text-amber-600" />
           <h3 className="text-lg font-bold text-gray-900">Technical References</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {SIZING_SOURCES.map((source, index) => (
-            <div key={index} className="flex items-start gap-3 bg-white/60 p-3 rounded-xl">
-              <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div key={index} className="flex items-start gap-3 bg-white/60 p-3 ">
+              <div className="w-8 h-8 bg-amber-100 flex items-center justify-center flex-shrink-0">
                 <span className="text-xs font-bold text-amber-700">{index + 1}</span>
               </div>
               <div className="min-w-0 flex-1">
@@ -711,7 +711,7 @@ const SizingTool: React.FC = () => {
         </>
       ) : activeCalculator === 'superheat' ? (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.35fr_0.95fr]">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+          <div className="border border-gray-200 bg-white p-6 shadow-sm space-y-6">
             <div>
               <h3 className="text-xl font-bold text-gray-900">Superheat & Subcooling Calculator</h3>
               <p className="mt-1 text-sm text-gray-500">
@@ -725,7 +725,7 @@ const SizingTool: React.FC = () => {
                 <select
                   value={selectedRefrigerant}
                   onChange={(e) => setSelectedRefrigerant(e.target.value as RefrigerantCode)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                  className="w-full border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                 >
                   {Object.keys(PT_CURVES).map((code) => (
                     <option key={code} value={code}>
@@ -741,12 +741,12 @@ const SizingTool: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <div className="border border-gray-200 bg-gray-50 p-5">
                 <p className="text-sm font-semibold text-gray-500">Evaporator Saturation Temp</p>
                 <p className="mt-3 text-3xl font-bold text-gray-900">{saturationTempLow.toFixed(1)}°C</p>
                 <p className="mt-2 text-xs text-gray-500">Interpolated from suction pressure</p>
               </div>
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <div className="border border-gray-200 bg-gray-50 p-5">
                 <p className="text-sm font-semibold text-gray-500">Condensing Saturation Temp</p>
                 <p className="mt-3 text-3xl font-bold text-gray-900">{saturationTempHigh.toFixed(1)}°C</p>
                 <p className="mt-2 text-xs text-gray-500">Interpolated from liquid pressure</p>
@@ -755,17 +755,17 @@ const SizingTool: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-2xl border border-gray-200 bg-gray-900 p-6 text-white shadow-lg">
+            <div className="border border-gray-200 bg-gray-900 p-6 text-white shadow-lg">
               <p className="text-sm font-semibold text-gray-300">Superheat</p>
               <p className="mt-3 text-4xl font-bold text-blue-400">{superheatValue.toFixed(1)}°C</p>
               <p className="mt-2 text-sm text-gray-300">Status: {superheatStatus}</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="border border-gray-200 bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-gray-500">Subcooling</p>
               <p className="mt-3 text-4xl font-bold text-gray-900">{subcoolingValue.toFixed(1)}°C</p>
               <p className="mt-2 text-sm text-gray-500">Status: {subcoolingStatus}</p>
             </div>
-            <div className="rounded-2xl border border-amber-100 bg-amber-50 p-5">
+            <div className="border border-amber-100 bg-amber-50 p-5">
               <p className="text-sm font-semibold text-amber-900">Field Guidance</p>
               <ul className="mt-3 space-y-2 text-sm text-amber-800">
                 <li>Optimal superheat target: 5°C to 12°C</li>
@@ -776,7 +776,7 @@ const SizingTool: React.FC = () => {
           </div>
         </div>
       ) : activeCalculator === 'pt-chart' ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+        <div className="border border-gray-200 bg-white p-6 shadow-sm space-y-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 className="text-xl font-bold text-gray-900">Pressure-Temperature Chart</h3>
@@ -789,7 +789,7 @@ const SizingTool: React.FC = () => {
               <select
                 value={selectedRefrigerant}
                 onChange={(e) => setSelectedRefrigerant(e.target.value as RefrigerantCode)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                className="w-full border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
               >
                 {Object.keys(PT_CURVES).map((code) => (
                   <option key={code} value={code}>
@@ -800,7 +800,7 @@ const SizingTool: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-slate-950 p-4">
+          <div className="border border-gray-200 bg-slate-950 p-4">
             <svg viewBox="0 0 700 320" className="h-[320px] w-full">
               <rect x="0" y="0" width="700" height="320" fill="#020617" rx="20" />
               {Array.from({ length: 6 }).map((_, index) => (
@@ -866,15 +866,15 @@ const SizingTool: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+            <div className="border border-gray-200 bg-gray-50 p-5">
               <p className="text-sm font-semibold text-gray-500">Selected Curve</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{selectedRefrigerant}</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+            <div className="border border-gray-200 bg-gray-50 p-5">
               <p className="text-sm font-semibold text-gray-500">Safety Class</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{MOCK_REFRIGERANTS[selectedRefrigerant].ashraeSafetyClass}</p>
             </div>
-            <div className="rounded-2xl border border-red-100 bg-red-50 p-5">
+            <div className="border border-red-100 bg-red-50 p-5">
               <p className="text-sm font-semibold text-red-700">Max Operating Pressure</p>
               <p className="mt-2 text-2xl font-bold text-red-900">{MAX_OPERATING_PRESSURE[selectedRefrigerant]} bar</p>
             </div>
@@ -882,7 +882,7 @@ const SizingTool: React.FC = () => {
         </div>
       ) : activeCalculator === 'leak-rate' ? (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+          <div className="border border-gray-200 bg-white p-6 shadow-sm space-y-6">
             <div>
               <h3 className="text-xl font-bold text-gray-900">Leak Rate & CO2-eq Calculator</h3>
               <p className="mt-1 text-sm text-gray-500">
@@ -896,7 +896,7 @@ const SizingTool: React.FC = () => {
                 <select
                   value={leakInputs.refrigerantCode}
                   onChange={(e) => setLeakInputs({ ...leakInputs, refrigerantCode: e.target.value as RefrigerantCode })}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                  className="w-full border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                 >
                   {Object.keys(MOCK_REFRIGERANTS).map((code) => (
                     <option key={code} value={code}>
@@ -906,7 +906,7 @@ const SizingTool: React.FC = () => {
                 </select>
               </div>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+            <div className="border border-gray-200 bg-gray-50 p-5">
               <p className="text-sm font-semibold text-gray-500">Handling Precautions</p>
               <ul className="mt-3 space-y-2 text-sm text-gray-700">
                 {leakEquivalent.refrigerant.handlingPrecautions.map((item) => (
@@ -917,12 +917,12 @@ const SizingTool: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-2xl border border-gray-200 bg-gray-900 p-6 text-white shadow-lg">
+            <div className="border border-gray-200 bg-gray-900 p-6 text-white shadow-lg">
               <p className="text-sm font-semibold text-gray-300">CO2 Equivalent</p>
               <p className="mt-3 text-4xl font-bold text-emerald-400">{leakEquivalent.co2eq} tCO2-eq</p>
               <p className="mt-2 text-sm text-gray-300">Based on {leakEquivalent.refrigerant.gwp} GWP for {leakInputs.refrigerantCode}</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="border border-gray-200 bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-gray-500">Equivalent Car Journeys</p>
               <p className="mt-3 text-4xl font-bold text-gray-900">{leakEquivalent.carJourneys}</p>
               <p className="mt-2 text-sm text-gray-500">Approximate one-way urban journeys for context.</p>
@@ -931,7 +931,7 @@ const SizingTool: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+          <div className="border border-gray-200 bg-white p-6 shadow-sm space-y-6">
             <div>
               <h3 className="text-xl font-bold text-gray-900">Unit Converter</h3>
               <p className="mt-1 text-sm text-gray-500">
@@ -944,7 +944,7 @@ const SizingTool: React.FC = () => {
                 <select
                   value={converterType}
                   onChange={(e) => setConverterType(e.target.value as ConverterType)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                  className="w-full border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                 >
                   <option value="temperature">Temperature</option>
                   <option value="pressure">Pressure</option>
@@ -959,7 +959,7 @@ const SizingTool: React.FC = () => {
                 <select
                   value={converterFrom}
                   onChange={(e) => setConverterFrom(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                  className="w-full border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                 >
                   {CONVERTER_OPTIONS[converterType].units.map((unit) => (
                     <option key={unit} value={unit}>{unit}</option>
@@ -971,7 +971,7 @@ const SizingTool: React.FC = () => {
                 <select
                   value={converterTo}
                   onChange={(e) => setConverterTo(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                  className="w-full border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                 >
                   {CONVERTER_OPTIONS[converterType].units.map((unit) => (
                     <option key={unit} value={unit}>{unit}</option>
@@ -981,7 +981,7 @@ const SizingTool: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-gray-900 p-6 text-white shadow-lg">
+          <div className="border border-gray-200 bg-gray-900 p-6 text-white shadow-lg">
             <p className="text-sm font-semibold text-gray-300">Converted Result</p>
             <p className="mt-4 text-4xl font-bold text-blue-400">{convertedValue.toFixed(2)}</p>
             <p className="mt-2 text-sm text-gray-300">
@@ -1001,7 +1001,7 @@ const InputGroup = ({ label, value, onChange }: { label: string; value: number; 
       type="number" 
       value={value} 
       onChange={e => onChange(Number(e.target.value))}
-      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
     />
   </div>
 );

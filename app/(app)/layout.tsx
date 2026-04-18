@@ -8,29 +8,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="flex h-screen" style={{ backgroundColor: '#FDF8F3' }}>
-            {/* Mobile Sidebar Overlay */}
+        <div className="min-h-screen bg-white">
+            {/* Mobile overlay */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 lg:hidden transition-opacity"
+                    className="fixed inset-0 bg-black/40 z-40 lg:hidden"
                     onClick={() => setSidebarOpen(false)}
-                    aria-hidden="true"
                 />
             )}
 
-            {/* Sidebar */}
-            <div 
-                className={`fixed inset-y-0 left-0 z-50 w-72 sm:w-80 transform bg-white transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:z-30 ${
+            {/* Desktop sidebar */}
+            <div className="hidden lg:block">
+                <aside className="fixed left-0 top-0 z-40 h-screen w-64">
+                    <Sidebar />
+                </aside>
+            </div>
+
+            {/* Mobile sidebar */}
+            <aside
+                className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:hidden ${
                     sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
             >
                 <Sidebar onClose={() => setSidebarOpen(false)} />
-            </div>
+            </aside>
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            {/* Main content */}
+            <div className="lg:ml-64 flex flex-col min-h-screen">
                 <Topbar onMenuClick={() => setSidebarOpen(true)} />
-                <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
+                <main className="flex-1 p-6 lg:p-8">
                     <div className="max-w-7xl mx-auto">
                         {children}
                     </div>

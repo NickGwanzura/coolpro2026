@@ -9,9 +9,9 @@ const ALLOWED_ROLES: UserSession['role'][] = ['technician'];
 
 function AccessDenied() {
     return (
-        <div className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+        <div className="mx-auto max-w-3xl border border-gray-200 bg-white p-8 shadow-sm">
             <div className="flex items-start gap-4">
-                <div className="rounded-2xl bg-red-50 p-3 text-red-600">
+                <div className="bg-red-50 p-3 text-red-600">
                     <ShieldCheck className="h-6 w-6" />
                 </div>
                 <div className="space-y-2">
@@ -63,21 +63,21 @@ export default function FieldSchedulingPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center">
-                    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
+                    <div className="border border-gray-200 bg-white px-3 py-2 shadow-sm">
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
                             <Gauge className="h-3.5 w-3.5" />
                             Equipment
                         </div>
                         <p className="mt-1 text-sm font-semibold text-gray-900">Mock fleet view</p>
                     </div>
-                    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
+                    <div className="border border-gray-200 bg-white px-3 py-2 shadow-sm">
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
                             <CalendarDays className="h-3.5 w-3.5" />
                             Alerts
                         </div>
                         <p className="mt-1 text-sm font-semibold text-gray-900">Predictive reminders</p>
                     </div>
-                    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
+                    <div className="border border-gray-200 bg-white px-3 py-2 shadow-sm">
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
                             <Wrench className="h-3.5 w-3.5" />
                             Action

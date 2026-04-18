@@ -1,11 +1,9 @@
 'use client';
 
-import { useMemo, useSyncExternalStore } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Award, CheckCircle2, FileBadge2, Gift, ShieldCheck } from 'lucide-react';
-import { DEMO_VENDOR_EMAIL } from '@/constants/vendorLedger';
-import { STORAGE_KEYS } from '@/lib/platformStore';
-import type { SupplierComplianceApplication, SupplierLedgerEntry } from '@/types/index';
+import { useSupplierLedger, useSupplierComplianceApplications } from '@/lib/api';
 import type { UserSession } from '@/lib/auth';
 
 const VENDOR_REWARDS = [
@@ -40,47 +38,15 @@ function formatDate(value: string) {
 }
 
 export default function VendorRewardsPanel({ session }: { session: UserSession }) {
-    const allLedgerEntries = useSyncExternalStore(
-        () => () => undefined,
-        () => {
-            if (typeof window === 'undefined') return [] as SupplierLedgerEntry[];
-            const raw = window.localStorage.getItem(STORAGE_KEYS.supplierLedger);
-            if (!raw) return [] as SupplierLedgerEntry[];
-
-            try {
-                return JSON.parse(raw) as SupplierLedgerEntry[];
-            } catch {
-                return [] as SupplierLedgerEntry[];
-            }
-        },
-        () => [] as SupplierLedgerEntry[]
-    );
-    const allComplianceApplications = useSyncExternalStore(
-        () => () => undefined,
-        () => {
-            if (typeof window === 'undefined') return [] as SupplierComplianceApplication[];
-            const raw = window.localStorage.getItem(STORAGE_KEYS.supplierComplianceApplications);
-            if (!raw) return [] as SupplierComplianceApplication[];
-
-            try {
-                return JSON.parse(raw) as SupplierComplianceApplication[];
-            } catch {
-                return [] as SupplierComplianceApplication[];
-            }
-        },
-        () => [] as SupplierComplianceApplication[]
-    );
+    const { data: allLedgerEntries = [] } = useSupplierLedger();
+    const { data: allComplianceApplications = [] } = useSupplierComplianceApplications();
 
     const supplierLedger = useMemo(() => {
-        const bySession = allLedgerEntries.filter(entry => entry.supplierEmail === session.email);
-        if (bySession.length > 0) return bySession;
-        return allLedgerEntries.filter(entry => entry.supplierEmail === DEMO_VENDOR_EMAIL);
+        return allLedgerEntries.filter(entry => entry.supplierEmail === session.email);
     }, [allLedgerEntries, session.email]);
 
     const supplierComplianceApplications = useMemo(() => {
-        const bySession = allComplianceApplications.filter(entry => entry.supplierEmail === session.email);
-        if (bySession.length > 0) return bySession;
-        return allComplianceApplications.filter(entry => entry.supplierEmail === DEMO_VENDOR_EMAIL);
+        return allComplianceApplications.filter(entry => entry.supplierEmail === session.email);
     }, [allComplianceApplications, session.email]);
 
     const rewardsSummary = useMemo(() => {
@@ -110,7 +76,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
 
     return (
         <div className="space-y-8">
-            <section className="overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-[#1f2937] via-[#111827] to-[#0f172a] text-white shadow-xl">
+            <section className="overflow-hidden border border-gray-200 bg-gradient-to-br from-[#1f2937] via-[#111827] to-[#0f172a] text-white shadow-xl">
                 <div className="p-8">
                     <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                         <div>
@@ -123,7 +89,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
                                 with registered technicians, and completing supplier compliance applications.
                             </p>
                         </div>
-                        <div className="rounded-2xl border border-white/10 bg-white/10 p-6 text-center backdrop-blur">
+                        <div className="border border-white/10 bg-white/10 p-6 text-center backdrop-blur">
                             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Available points</p>
                             <p className="mt-3 text-5xl font-bold text-emerald-300">{rewardsSummary.totalPoints}</p>
                         </div>
@@ -159,7 +125,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-                <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <article className="border border-gray-200 bg-white p-6 shadow-sm">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900">Available vendor rewards</h3>
@@ -170,7 +136,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
 
                     <div className="space-y-3">
                         {VENDOR_REWARDS.map((reward) => (
-                            <div key={reward.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                            <div key={reward.id} className="border border-gray-200 bg-gray-50 p-4">
                                 <div className="flex items-start justify-between gap-3">
                                     <div>
                                         <p className="font-semibold text-gray-900">{reward.title}</p>
@@ -186,7 +152,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
                     </div>
                 </article>
 
-                <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <article className="border border-gray-200 bg-white p-6 shadow-sm">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900">Compliance milestones</h3>
@@ -194,7 +160,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
                         </div>
                         <Link
                             href="/supplier-compliance"
-                            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                            className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
                         >
                             Open compliance module
                             <ArrowRight className="h-4 w-4" />
@@ -203,12 +169,12 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
 
                     <div className="space-y-3">
                         {supplierComplianceApplications.length === 0 ? (
-                            <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                            <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
                                 No supplier certificate applications yet. Submit one from the compliance module to start earning certificate rewards.
                             </div>
                         ) : (
                             supplierComplianceApplications.slice(0, 3).map((application) => (
-                                <div key={application.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                                <div key={application.id} className="border border-gray-200 bg-gray-50 p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <p className="font-semibold text-gray-900">{application.certificateType.replace(/-/g, ' ')}</p>
@@ -242,13 +208,13 @@ function MetricCard({
     icon: typeof ShieldCheck;
 }) {
     return (
-        <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <article className="border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <p className="text-sm text-gray-500">{label}</p>
                     <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-3 text-slate-700">
+                <div className="bg-slate-50 p-3 text-slate-700">
                     <Icon className="h-5 w-5" />
                 </div>
             </div>

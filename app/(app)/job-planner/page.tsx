@@ -5,13 +5,13 @@ import { CalendarDays, ClipboardList, Route, ShieldCheck, Users } from 'lucide-r
 import { getSession, type UserSession } from '@/lib/auth';
 import JobPlanner from '@/components/JobPlanner';
 
-const ALLOWED_ROLES: UserSession['role'][] = ['technician', 'org_admin', 'program_admin'];
+const ALLOWED_ROLES: UserSession['role'][] = ['technician', 'org_admin'];
 
 function AccessDenied() {
     return (
-        <div className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+        <div className="mx-auto max-w-3xl border border-gray-200 bg-white p-8 shadow-sm">
             <div className="flex items-start gap-4">
-                <div className="rounded-2xl bg-red-50 p-3 text-red-600">
+                <div className="bg-red-50 p-3 text-red-600">
                     <ShieldCheck className="h-6 w-6" />
                 </div>
                 <div className="space-y-2">
@@ -63,21 +63,21 @@ export default function JobPlannerPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center">
-                    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
+                    <div className="border border-gray-200 bg-white px-3 py-2 shadow-sm">
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
                             <Users className="h-3.5 w-3.5" />
                             Clients
                         </div>
                         <p className="mt-1 text-sm font-semibold text-gray-900">4 live accounts</p>
                     </div>
-                    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
+                    <div className="border border-gray-200 bg-white px-3 py-2 shadow-sm">
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
                             <ClipboardList className="h-3.5 w-3.5" />
                             Jobs
                         </div>
                         <p className="mt-1 text-sm font-semibold text-gray-900">10 mock jobs</p>
                     </div>
-                    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
+                    <div className="border border-gray-200 bg-white px-3 py-2 shadow-sm">
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
                             <CalendarDays className="h-3.5 w-3.5" />
                             Window

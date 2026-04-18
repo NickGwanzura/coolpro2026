@@ -76,8 +76,8 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
     const handleInvestigationSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedAccident) {
-            const updatedAccidents = accidents.map(acc => 
-                acc.id === selectedAccident.id 
+            const updatedAccidents = accidents.map(acc =>
+                acc.id === selectedAccident.id
                     ? { ...acc, ...investigationData }
                     : acc
             );
@@ -220,7 +220,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
     };
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-50 flex items-center justify-between">
                 <div>
                     <h2 className="text-xl font-bold text-gray-900">
@@ -234,7 +234,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                     {isAdmin && accidents.length > 0 && (
                         <button
                             onClick={exportPDF}
-                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors"
                         >
                             <Download className="h-4 w-4" />
                             Export Report
@@ -243,7 +243,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                     {!isAdmin && (
                         <button
                             onClick={() => setShowForm(!showForm)}
-                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
+                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors"
                         >
                             {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                             {showForm ? 'Cancel' : 'Log Accident'}
@@ -270,7 +270,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                     value={searchTerm}
                                     onChange={event => setSearchTerm(event.target.value)}
                                     placeholder="Search site, client, technician, region..."
-                                    className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-purple-500"
+                                    className="w-full border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-purple-500"
                                 />
                             </div>
                         </div>
@@ -307,7 +307,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                     required
                                     value={formData.date}
                                     onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                                    className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none transition-all"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -315,7 +315,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                 <select
                                     value={formData.severity}
                                     onChange={e => setFormData({ ...formData, severity: e.target.value as any })}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                                    className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none transition-all"
                                 >
                                     <option value="Low">Low</option>
                                     <option value="Medium">Medium</option>
@@ -332,7 +332,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                     required
                                     value={formData.jobSite}
                                     onChange={e => setFormData({ ...formData, jobSite: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                                    className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none transition-all"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -343,7 +343,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                     required
                                     value={formData.clientName}
                                     onChange={e => setFormData({ ...formData, clientName: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                                    className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none transition-all"
                                 />
                             </div>
                         </div>
@@ -355,12 +355,12 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                 rows={3}
                                 value={formData.description}
                                 onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                                className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none transition-all"
                             />
                         </div>
                         <button
                             type="submit"
-                            className="w-full py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                            className="w-full py-3 bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
                         >
                             Submit Incident Report
                         </button>
@@ -373,9 +373,9 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                 <p className="text-sm font-bold text-gray-700 mb-4">Severity Classification Guide</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {Object.entries(SeverityCategories).map(([key, category]) => (
-                        <div 
-                            key={key} 
-                            className="p-3 rounded-lg border"
+                        <div
+                            key={key}
+                            className="p-3 border"
                             style={{ backgroundColor: category.bgColor, borderColor: category.color }}
                         >
                             <p className="font-bold text-sm" style={{ color: category.color }}>{category.label}</p>
@@ -418,7 +418,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getSeverityColor(accident.severity)}`}>
+                                        <span className={`px-2.5 py-1 text-xs font-bold border ${getSeverityColor(accident.severity)}`}>
                                             {accident.severity}
                                         </span>
                                     </td>
@@ -457,7 +457,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                                     });
                                                     setShowInvestigation(true);
                                                 }}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 transition-colors"
                                             >
                                                 <ClipboardCheck className="h-3 w-3" />
                                                 {accident.status ? 'View' : 'Investigate'}
@@ -475,7 +475,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                     </div>
                 )}
             </div>
-            
+
             {/* Investigation Modal */}
             {selectedAccident && (
                 <InvestigationModal
@@ -495,7 +495,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
 };
 
 const SummaryTile = ({ label, value }: { label: string; value: number }) => (
-    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+    <div className="border border-gray-200 bg-gray-50 p-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{label}</p>
         <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
     </div>
@@ -517,7 +517,7 @@ const FilterSelect = ({
         <select
             value={value}
             onChange={event => onChange(event.target.value)}
-            className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none transition-all focus:ring-2 focus:ring-purple-500"
+            className="w-full border border-gray-200 px-3 py-2.5 text-sm outline-none transition-all focus:ring-2 focus:ring-purple-500"
         >
             {options.map(option => (
                 <option key={option} value={option}>
@@ -529,13 +529,13 @@ const FilterSelect = ({
 );
 
 // Investigation Modal
-const InvestigationModal = ({ 
-    accident, 
-    isOpen, 
-    onClose, 
-    data, 
-    setData, 
-    onSubmit 
+const InvestigationModal = ({
+    accident,
+    isOpen,
+    onClose,
+    data,
+    setData,
+    onSubmit
 }: {
     accident: OccupationalAccident;
     isOpen: boolean;
@@ -548,17 +548,17 @@ const InvestigationModal = ({
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
                     <div>
                         <h3 className="text-xl font-bold text-gray-900">Incident Investigation</h3>
                         <p className="text-sm text-gray-500">{accident.jobSite} - {accident.date}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 transition-colors">
                         <X className="h-5 w-5 text-gray-500" />
                     </button>
                 </div>
-                
+
                 <form onSubmit={onSubmit} className="p-6 space-y-6">
                     {/* Root Cause Analysis */}
                     <div className="space-y-3">
@@ -569,9 +569,9 @@ const InvestigationModal = ({
                                     key={key}
                                     type="button"
                                     onClick={() => setData({ ...data, rootCause: key as any })}
-                                    className={`p-3 rounded-lg border-2 text-left transition-all ${
-                                        data.rootCause === key 
-                                            ? 'border-purple-500 bg-purple-50' 
+                                    className={`p-3 border-2 text-left transition-all ${
+                                        data.rootCause === key
+                                            ? 'border-purple-500 bg-purple-50'
                                             : 'border-gray-200 hover:border-gray-300'
                                     }`}
                                 >
@@ -590,7 +590,7 @@ const InvestigationModal = ({
                                 type="date"
                                 value={data.investigationDate}
                                 onChange={e => setData({ ...data, investigationDate: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                                className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -598,7 +598,7 @@ const InvestigationModal = ({
                             <select
                                 value={data.status}
                                 onChange={e => setData({ ...data, status: e.target.value as any })}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                                className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
                             >
                                 <option value="Open">Open</option>
                                 <option value="Under Investigation">Under Investigation</option>
@@ -614,7 +614,7 @@ const InvestigationModal = ({
                             placeholder="e.g. Safety Manager"
                             value={data.investigatorName}
                             onChange={e => setData({ ...data, investigatorName: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                            className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
                         />
                     </div>
 
@@ -625,7 +625,7 @@ const InvestigationModal = ({
                             rows={3}
                             value={data.correctiveActions}
                             onChange={e => setData({ ...data, correctiveActions: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                            className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
                         />
                     </div>
 
@@ -636,13 +636,13 @@ const InvestigationModal = ({
                             rows={3}
                             value={data.preventiveMeasures}
                             onChange={e => setData({ ...data, preventiveMeasures: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                            className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
                         />
                     </div>
 
                     <button
                         type="submit"
-                        className="w-full py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200"
+                        className="w-full py-3 bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200"
                     >
                         Save Investigation Report
                     </button>

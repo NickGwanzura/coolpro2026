@@ -1,0 +1,48 @@
+import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
+import { db } from '@/db/client';
+import { supplierComplianceApplications } from '@/db/schema/index';
+import { requireRole } from '@/lib/server/auth';
+import type { SupplierComplianceApplication } from '@/types/index';
+
+function toSupplierComplianceApplication(row: typeof supplierComplianceApplications.$inferSelect): SupplierComplianceApplication {
+  return {
+    id: row.id,
+    supplierEmail: row.supplierEmail,
+    supplierName: row.supplierName,
+    certificateType: row.certificateType as SupplierComplianceApplication['certificateType'],
+    monthCoverage: row.monthCoverage,
+    sitesCovered: Number(row.sitesCovered),
+    contactPerson: row.contactPerson,
+    supportingSummary: row.supportingSummary,
+    status: row.status as SupplierComplianceApplication['status'],
+    submittedAt: row.submittedAt.toISOString(),
+    notes: row.notes ?? undefined,
+  };
+}
+
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    requireRole(req, ['org_admin', 'regulator']);
+  } catch (e) {
+    return e as Response;
+  }
+
+  const { id } = await params;
+  const [row] = await db
+    .select()
+    .from(supplierComplianceApplications)
+    .where(eq(supplierComplianceApplications.id, id))
+    .limit(1);
+  if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  const body = await req.json().catch(() => ({})) as { notes?: string };
+
+  const [updated] = await db
+    .update(supplierComplianceApplications)
+    .set({ status: 'rejected', notes: body.notes ?? row.notes })
+    .where(eq(supplierComplianceApplications.id, id))
+    .returning();
+
+  return NextResponse.json(toSupplierComplianceApplication(updated));
+}

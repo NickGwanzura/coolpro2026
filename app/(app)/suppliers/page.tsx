@@ -1,17 +1,19 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
 import SupplierManagement from '@/components/SupplierManagement';
-import { getSession, type UserSession } from '@/lib/auth';
+import { useAuth } from '@/lib/auth';
 
 export default function SuppliersPage() {
-    const session = useSyncExternalStore< UserSession | null >(
-        () => () => undefined,
-        () => getSession(),
-        () => null
-    );
-
+    const { user: session, isLoading } = useAuth();
     const isVendor = session?.role === 'vendor';
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="h-8 w-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

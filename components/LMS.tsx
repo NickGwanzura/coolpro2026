@@ -27,7 +27,7 @@ const LMS: React.FC = () => {
         return (
           <div 
             key={course.id} 
-            className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col hover:shadow-lg hover:border-blue-300 transition-all duration-200 group"
+            className="bg-white border border-gray-200 overflow-hidden flex flex-col hover:shadow-lg hover:border-blue-300 transition-all duration-200 group"
           >
             {/* Image Area */}
             <div className="h-40 bg-gray-100 relative overflow-hidden">
@@ -75,7 +75,7 @@ const LMS: React.FC = () => {
                   />
                 </div>
                 <button 
-                  className={`w-full mt-3 py-2.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2 ${
+                  className={`w-full mt-3 py-2.5 font-semibold text-sm transition-colors flex items-center justify-center gap-2 ${
                     isCompleted 
                       ? 'bg-gray-100 text-gray-500 cursor-default' 
                       : isInProgress

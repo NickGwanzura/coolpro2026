@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { verifySessionEdge } from '@/lib/server/auth-edge';
 
 const PROTECTED_ROUTE_PREFIXES = [
     '/dashboard',
@@ -20,36 +21,40 @@ const PROTECTED_ROUTE_PREFIXES = [
 ] as const;
 
 const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
-    { prefix: '/admin', roles: ['program_admin'] },
-    { prefix: '/nou-dashboard', roles: ['program_admin', 'org_admin'] },
-    { prefix: '/suppliers', roles: ['vendor', 'org_admin', 'program_admin'] },
+    { prefix: '/admin', roles: ['org_admin'] },
+    { prefix: '/nou-dashboard', roles: ['org_admin', 'regulator'] },
+    { prefix: '/suppliers/approvals', roles: ['org_admin', 'regulator'] },
+    { prefix: '/suppliers/reorder', roles: ['vendor'] },
+    { prefix: '/suppliers/verify-buyer', roles: ['vendor'] },
+    { prefix: '/suppliers', roles: ['vendor', 'org_admin'] },
     { prefix: '/supplier-compliance', roles: ['vendor'] },
-    { prefix: '/technician-registry', roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
-    { prefix: '/job-planner', roles: ['technician'] },
-    { prefix: '/field-scheduling', roles: ['technician'] },
+    { prefix: '/technician-registry', roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'regulator'] },
+    { prefix: '/job-planner', roles: ['technician', 'org_admin'] },
+    { prefix: '/field-scheduling', roles: ['technician', 'org_admin'] },
     { prefix: '/jobs/request-coc', roles: ['technician'] },
-    { prefix: '/jobs', roles: ['technician', 'org_admin', 'program_admin'] },
-    { prefix: '/learn', roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
-    { prefix: '/sizing-tool', roles: ['technician'] },
-    { prefix: '/field-toolkit', roles: ['technician'] },
-    { prefix: '/certifications', roles: ['technician', 'trainer', 'org_admin', 'program_admin'] },
-    { prefix: '/rewards', roles: ['technician', 'vendor', 'org_admin', 'program_admin'] },
-    { prefix: '/safety', roles: ['technician', 'org_admin', 'program_admin'] },
+    { prefix: '/jobs', roles: ['technician', 'org_admin'] },
+    { prefix: '/learn/approvals', roles: ['regulator', 'org_admin'] },
+    { prefix: '/learn/manage', roles: ['trainer', 'lecturer'] },
+    { prefix: '/learn', roles: ['technician', 'trainer', 'lecturer', 'org_admin'] },
+    { prefix: '/sizing-tool', roles: ['technician', 'org_admin'] },
+    { prefix: '/field-toolkit', roles: ['technician', 'org_admin'] },
+    { prefix: '/certifications', roles: ['technician', 'trainer', 'lecturer', 'org_admin'] },
+    { prefix: '/rewards', roles: ['technician', 'vendor', 'org_admin'] },
+    { prefix: '/safety', roles: ['technician', 'trainer', 'lecturer', 'org_admin'] },
+    { prefix: '/dashboard', roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'regulator'] },
 ];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Check for auth cookie
-    const authCookie = request.cookies.get('coolpro_auth');
-    const roleCookie = request.cookies.get('coolpro_role');
-    const isAuthenticated = authCookie?.value === '1';
-    const role = roleCookie?.value;
+    const sessionToken = request.cookies.get('coolpro_session')?.value ?? null;
+    let session = sessionToken ? await verifySessionEdge(sessionToken) : null;
 
-    // Define protected routes (app shell)
+    const isAuthenticated = session !== null;
+    const role = session?.role ?? null;
+
     const isProtectedRoute = PROTECTED_ROUTE_PREFIXES.some(prefix => pathname.startsWith(prefix));
 
-    // If trying to access protected route without auth, redirect to login
     if (isProtectedRoute && !isAuthenticated) {
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('next', pathname);
@@ -62,14 +67,6 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
-    if (pathname === '/dashboard' && role === 'vendor') {
-        return NextResponse.redirect(new URL('/suppliers', request.url));
-    }
-
-    if (pathname === '/dashboard' && role === 'trainer') {
-        return NextResponse.redirect(new URL('/learn', request.url));
-    }
-
     const matchedRule = ROUTE_ROLE_RULES.find(({ prefix }) => pathname.startsWith(prefix));
     if (matchedRule) {
         if (!role || !matchedRule.roles.includes(role)) {
@@ -77,9 +74,7 @@ export function middleware(request: NextRequest) {
         }
     }
 
-    // Root path shows landing page
     if (pathname === '/') {
-        // Show landing page for all users (authenticated or not)
         return NextResponse.next();
     }
 
@@ -88,13 +83,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - api (API routes)
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         */
         '/((?!api|_next/static|_next/image|favicon.ico).*)',
     ],
 };

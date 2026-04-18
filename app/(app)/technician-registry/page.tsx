@@ -2,17 +2,21 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronRight, Download, Mail, Phone, Search } from 'lucide-react';
+import { ChevronRight, Download, Eye, Mail, Phone, Search, ShieldCheck } from 'lucide-react';
 import autoTable from 'jspdf-autotable';
 import { jsPDF } from 'jspdf';
 import { Technician } from '@/types/index';
-import { MOCK_TECHNICIANS, TECHNICIAN_SPECIALIZATIONS, ZIMBABWE_PROVINCES } from '@/constants/registry';
+import { useAuth } from '@/lib/auth';
+import { useTechnicians } from '@/lib/api';
+import { TECHNICIAN_SPECIALIZATIONS, ZIMBABWE_PROVINCES } from '@/constants/registry';
 
 type CertificationFilter = '' | 'valid' | 'expired' | 'pending';
 
 function TechnicianRegistryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user: session } = useAuth();
+  const isRegulator = session?.role === 'regulator';
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
@@ -45,10 +49,13 @@ function TechnicianRegistryContent() {
     );
   }, [selectedProvince]);
 
+  const { data: techniciansData, error: techniciansError, isLoading: techniciansLoading } = useTechnicians(searchTerm.trim() || undefined);
+
   const filteredTechnicians = useMemo(() => {
+    const data = techniciansData ?? [];
     const term = searchTerm.trim().toLowerCase();
 
-    return MOCK_TECHNICIANS.filter(tech => {
+    return data.filter(tech => {
       const matchesSearch =
         !term ||
         [
@@ -112,7 +119,7 @@ function TechnicianRegistryContent() {
     const doc = new jsPDF({ orientation: 'landscape' });
 
     doc.setFontSize(18);
-    doc.text('HEVACRAZ Technician Registry Report', 14, 18);
+    doc.text('National RAC Technician Verification and Competency Registry Report', 14, 18);
     doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleString('en-ZW')}`, 14, 26);
     doc.text(`Records: ${filteredTechnicians.length}`, 14, 32);
@@ -163,18 +170,34 @@ function TechnicianRegistryContent() {
     );
   };
 
+  if (techniciansLoading) {
+    return <div className="p-8 text-sm text-slate-500">Loading…</div>;
+  }
+
+  if (techniciansError) {
+    return <div className="p-8 text-sm text-red-600">Failed to load. {techniciansError.message}</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tech Registry</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">Tech Registry</h1>
+            {isRegulator && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Viewing as NOU
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-gray-500">
             All registered technicians, searchable by province, town, specialization, and status.
           </p>
         </div>
         <button
           onClick={exportPdf}
-          className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
+          className="inline-flex items-center gap-2 bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
         >
           <Download className="h-4 w-4" />
           Export PDF Report
@@ -190,7 +213,7 @@ function TechnicianRegistryContent() {
         <SummaryCard label="Valid Certs" value={registrySummary.validCertificates} />
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="border border-gray-200 bg-white p-6 shadow-sm">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="xl:col-span-2">
             <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">Search</label>
@@ -201,7 +224,7 @@ function TechnicianRegistryContent() {
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Name, registration, ID, employer, email, contact, town..."
-                className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-4 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 py-2.5 pl-10 pr-4 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -247,7 +270,7 @@ function TechnicianRegistryContent() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="border border-gray-200 bg-white shadow-sm">
         <div className="divide-y divide-gray-200">
           {filteredTechnicians.map(technician => (
             <div key={technician.id} className="p-6 transition-colors hover:bg-gray-50">
@@ -295,13 +318,23 @@ function TechnicianRegistryContent() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => router.push(`/technician-registry/${technician.id}`)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-blue-600"
-                >
-                  View Profile
-                  <ChevronRight className="h-4 w-4" />
-                </button>
+                {isRegulator ? (
+                  <button
+                    onClick={() => router.push(`/technician-registry/${technician.id}`)}
+                    className="inline-flex items-center gap-2 border border-purple-200 bg-purple-50 px-5 py-2.5 text-sm font-bold text-purple-700 transition-all hover:bg-purple-100"
+                  >
+                    <Eye className="h-4 w-4" />
+                    View Record
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => router.push(`/technician-registry/${technician.id}`)}
+                    className="inline-flex items-center gap-2 bg-gray-900 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-blue-600"
+                  >
+                    View Profile
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -321,7 +354,7 @@ function TechnicianRegistryContent() {
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="border border-gray-200 bg-white p-5 shadow-sm">
       <p className="text-sm font-semibold text-gray-500">{label}</p>
       <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
     </div>
@@ -345,7 +378,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={event => onChange(event.target.value)}
-        className="w-full rounded-xl border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+        className="w-full border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
       >
         <option value="">All {label}</option>
         {options.map(option => (

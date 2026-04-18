@@ -7,32 +7,50 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:seed": "tsx db/seed.ts"
   },
   "dependencies": {
     "@google/genai": "^1.42.0",
+    "@neondatabase/serverless": "^1.1.0",
+    "@next/swc-darwin-arm64": "^16.1.6",
+    "canvg": "^4.0.3",
     "clsx": "^2.1.1",
+    "dompurify": "^3.4.0",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
     "geist": "^1.7.0",
     "groq": "^5.10.0",
     "groq-sdk": "^0.37.0",
+    "html2canvas": "^1.4.1",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.574.0",
     "next": "16.1.6",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.7.0",
-    "tailwind-merge": "^3.4.1"
+    "swr": "^2.4.1",
+    "tailwind-merge": "^3.4.1",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/oxide-darwin-arm64": "^4.2.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.24",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "lightningcss-darwin-arm64": "^1.32.0",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

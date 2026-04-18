@@ -1,36 +1,17 @@
 'use client';
 
-import { useMemo, useSyncExternalStore } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { Building2, ShieldCheck, Truck } from 'lucide-react';
 import RewardsHub from '@/components/RewardsHub';
 import VendorRewardsPanel from '@/components/VendorRewardsPanel';
 import { MOCK_APPROVED_SUPPLIERS } from '@/constants/suppliers';
-import { getSession, type UserSession } from '@/lib/auth';
-import { STORAGE_KEYS } from '@/lib/platformStore';
-import type { SupplierRegistration } from '@/types/index';
+import { useAuth } from '@/lib/auth';
+import { useSupplierApplications } from '@/lib/api';
 
 export default function RewardsPage() {
-    const session = useSyncExternalStore<UserSession | null>(
-        () => () => undefined,
-        () => getSession(),
-        () => null
-    );
-    const supplierApplications = useSyncExternalStore(
-        () => () => undefined,
-        () => {
-            if (typeof window === 'undefined') return [] as SupplierRegistration[];
-            const raw = window.localStorage.getItem(STORAGE_KEYS.supplierApplications);
-            if (!raw) return [] as SupplierRegistration[];
-
-            try {
-                return JSON.parse(raw) as SupplierRegistration[];
-            } catch {
-                return [] as SupplierRegistration[];
-            }
-        },
-        () => [] as SupplierRegistration[]
-    );
+    const { user: session, isLoading } = useAuth();
+    const { data: supplierApplications = [] } = useSupplierApplications();
 
     const supplierSummary = useMemo(() => {
         const pendingApplications = supplierApplications.filter(
@@ -44,7 +25,7 @@ export default function RewardsPage() {
         };
     }, [supplierApplications]);
 
-    const isAdmin = session?.role === 'org_admin' || session?.role === 'program_admin';
+    const isAdmin = session?.role === 'org_admin';
     const isVendor = session?.role === 'vendor';
 
     if (session && isVendor) {
@@ -65,7 +46,7 @@ export default function RewardsPage() {
                 {!isAdmin ? (
                     <Link
                         href="/supplier-compliance"
-                        className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                        className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
                     >
                         <Building2 className="h-4 w-4" />
                         Compliance Module
@@ -73,7 +54,7 @@ export default function RewardsPage() {
                 ) : (
                     <Link
                         href="/suppliers"
-                        className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                        className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
                     >
                         <Building2 className="h-4 w-4" />
                         Open Supplier Management
@@ -81,35 +62,35 @@ export default function RewardsPage() {
                 )}
             </div>
             <section className="grid gap-4 md:grid-cols-3">
-                <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <article className="border border-gray-200 bg-white p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <p className="text-sm text-gray-500">Approved supplier partners</p>
                             <p className="mt-2 text-3xl font-bold text-gray-900">{supplierSummary.approvedSuppliers}</p>
                         </div>
-                        <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700">
+                        <div className="bg-emerald-50 p-3 text-emerald-700">
                             <ShieldCheck className="h-5 w-5" />
                         </div>
                     </div>
                 </article>
-                <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <article className="border border-gray-200 bg-white p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <p className="text-sm text-gray-500">Applications in review</p>
                             <p className="mt-2 text-3xl font-bold text-gray-900">{supplierSummary.pendingApplications}</p>
                         </div>
-                        <div className="rounded-2xl bg-amber-50 p-3 text-amber-700">
+                        <div className="bg-amber-50 p-3 text-amber-700">
                             <Building2 className="h-5 w-5" />
                         </div>
                     </div>
                 </article>
-                <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <article className="border border-gray-200 bg-white p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <p className="text-sm text-gray-500">Refrigerant coverage</p>
                             <p className="mt-2 text-3xl font-bold text-gray-900">{supplierSummary.refrigerantCoverage}</p>
                         </div>
-                        <div className="rounded-2xl bg-slate-50 p-3 text-slate-700">
+                        <div className="bg-slate-50 p-3 text-slate-700">
                             <Truck className="h-5 w-5" />
                         </div>
                     </div>

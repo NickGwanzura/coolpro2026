@@ -1,12 +1,13 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import type { UserRole } from '@/types/index';
 
 export interface UserSession {
     id: string;
     name: string;
     email: string;
-    role: 'technician' | 'trainer' | 'vendor' | 'org_admin' | 'program_admin';
+    role: UserRole;
     region: string;
     isDemo: boolean;
 }
@@ -44,11 +45,19 @@ export const MOCK_USERS: Record<string, UserSession> = {
         region: 'Gweru',
         isDemo: true,
     },
-    program_admin: {
-        id: 'admin-001',
-        name: 'Demo Program Admin',
-        email: 'admin@coolpro.demo',
-        role: 'program_admin',
+    lecturer: {
+        id: 'lect-001',
+        name: 'Demo Lecturer',
+        email: 'lecturer@coolpro.demo',
+        role: 'lecturer',
+        region: 'Harare',
+        isDemo: true,
+    },
+    regulator: {
+        id: 'reg-001',
+        name: 'Demo Regulator',
+        email: 'regulator@coolpro.demo',
+        role: 'regulator',
         region: 'Harare',
         isDemo: true,
     },
@@ -56,39 +65,35 @@ export const MOCK_USERS: Record<string, UserSession> = {
 
 export function getSession(): UserSession | null {
     if (typeof window === 'undefined') return null;
-    const stored = localStorage.getItem('coolpro_session');
-    return stored ? JSON.parse(stored) : null;
+    const stored = localStorage.getItem('coolpro_user');
+    return stored ? JSON.parse(stored) as UserSession : null;
 }
 
-export function login(role: string, region: string): UserSession {
-    const baseUser = MOCK_USERS[role] || MOCK_USERS.technician;
-    const session: UserSession = {
-        ...baseUser,
-        region: region || baseUser.region,
-        isDemo: true,
-    };
-
+export async function login(role: string, region: string): Promise<UserSession> {
+    const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, region }),
+    });
+    if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+    const data = await res.json() as { user: UserSession };
     if (typeof window !== 'undefined') {
-        localStorage.setItem('coolpro_session', JSON.stringify(session));
-        document.cookie = `coolpro_auth=1; path=/; max-age=86400; SameSite=Lax`;
-        document.cookie = `coolpro_role=${session.role}; path=/; max-age=86400; SameSite=Lax`;
+        localStorage.setItem('coolpro_user', JSON.stringify(data.user));
     }
-
-    return session;
+    return data.user;
 }
 
-export function logout() {
+export async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
     if (typeof window !== 'undefined') {
-        localStorage.removeItem('coolpro_session');
-        document.cookie = 'coolpro_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        document.cookie = 'coolpro_role=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        localStorage.removeItem('coolpro_user');
         window.location.href = '/login';
     }
 }
 
 interface AuthContextType {
     user: UserSession | null;
-    login: (email: string) => Promise<void>;
+    login: (role: string, region?: string) => Promise<void>;
     logout: () => void;
     isLoading: boolean;
     demo?: (role: string, region: string) => void;
@@ -101,30 +106,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const session = getSession();
-        setUser(session);
-        setIsLoading(false);
+        fetch('/api/auth/session')
+            .then(r => r.json())
+            .then((data: { user: UserSession | null }) => {
+                if (data.user) {
+                    setUser(data.user);
+                    localStorage.setItem('coolpro_user', JSON.stringify(data.user));
+                } else {
+                    const cached = getSession();
+                    setUser(cached);
+                }
+            })
+            .catch(() => {
+                setUser(getSession());
+            })
+            .finally(() => setIsLoading(false));
     }, []);
 
-    const handleLogin = async (email: string) => {
-        // In real app, this would authenticate with backend
-        // For demo, we'll just set a mock session
-        const session = login('technician', 'Harare');
+    const handleLogin = async (role: string, region = 'Harare') => {
+        const session = await login(role, region);
         setUser(session);
     };
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         setUser(null);
     };
 
     const demoLogin = (role: string, region: string) => {
-        const session = login(role, region);
-        setUser(session);
+        handleLogin(role, region);
     };
 
     return (
-        <AuthContext.Provider value={{ user: user, login: handleLogin, logout: handleLogout, isLoading, demo: demoLogin }}>
+        <AuthContext.Provider value={{ user, login: handleLogin, logout: handleLogout, isLoading, demo: demoLogin }}>
             {children}
         </AuthContext.Provider>
     );

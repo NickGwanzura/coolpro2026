@@ -399,7 +399,7 @@ const FieldToolkit: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+    <div className="bg-white border border-gray-200 overflow-hidden shadow-sm">
       {/* Tab Headers */}
       <div className="flex border-b border-gray-200 bg-gray-50/50">
         <button
@@ -430,7 +430,7 @@ const FieldToolkit: React.FC = () => {
             }`}
         >
           <FileText className="h-4 w-4" />
-          Refrigerant Log
+          Refrigerant Charge and Recovery Tracking Register
         </button>
       </div>
 
@@ -438,10 +438,10 @@ const FieldToolkit: React.FC = () => {
         {activeTab === 'checklist' ? (
           <div className="space-y-6">
             {/* Checklist Type Switcher */}
-            <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+            <div className="flex gap-2 p-1 bg-gray-100 ">
               <button
                 onClick={() => { setChecklistType('installation'); setCheckedItems([]); }}
-                className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+                className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-all ${
                   checklistType === 'installation' ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -449,7 +449,7 @@ const FieldToolkit: React.FC = () => {
               </button>
               <button
                 onClick={() => { setChecklistType('regassing'); setCheckedItems([]); }}
-                className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+                className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-all ${
                   checklistType === 'regassing' ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -464,7 +464,7 @@ const FieldToolkit: React.FC = () => {
             <div className="space-y-6">
               {(checklistType === 'installation' ? checklistItems : regassingChecklistItems).map((category, catIndex) => (
                 <div key={catIndex} className="space-y-3">
-                  <h5 className="text-sm font-bold text-gray-900 bg-gray-100 px-3 py-2 rounded-lg">
+                  <h5 className="text-sm font-bold text-gray-900 bg-gray-100 px-3 py-2 ">
                     {category.category}
                   </h5>
                   {category.items.map((item, itemIndex) => {
@@ -472,7 +472,7 @@ const FieldToolkit: React.FC = () => {
                     return (
                       <label
                         key={itemIndex}
-                        className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+                        className="flex items-start gap-4 p-4 border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
                       >
                         <input
                           type="checkbox"
@@ -505,7 +505,7 @@ const FieldToolkit: React.FC = () => {
               ))}
             </div>
             <div className="pt-6">
-              <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors">
+              <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 font-semibold hover:bg-gray-800 transition-colors">
                 <Save className="h-4 w-4" />
                 Complete & Save Locally
               </button>
@@ -514,7 +514,7 @@ const FieldToolkit: React.FC = () => {
         ) : activeTab === 'installations' ? (
           <div className="space-y-8">
             {/* New Installation Form */}
-            <div className="space-y-6 bg-gray-50/50 p-6 rounded-2xl border border-gray-200">
+            <div className="space-y-6 bg-gray-50/50 p-6 border border-gray-200">
               <div className="flex items-center gap-2 text-blue-700 font-semibold mb-2">
                 <PlusCircle className="h-5 w-5" />
                 New Installation
@@ -526,7 +526,7 @@ const FieldToolkit: React.FC = () => {
                   <input
                     value={installationForm.clientName}
                     onChange={(e) => setInstallationForm({ ...installationForm, clientName: e.target.value })}
-                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. Shoprite Bulawayo"
                   />
                 </div>
@@ -535,7 +535,7 @@ const FieldToolkit: React.FC = () => {
                   <select
                     value={installationForm.jobType}
                     onChange={(e) => setInstallationForm({ ...installationForm, jobType: e.target.value as JobType })}
-                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
                   >
                     <option value="COLD_ROOM">Cold Room</option>
                     <option value="C40_FREEZER">C40 Freezer</option>
@@ -548,7 +548,7 @@ const FieldToolkit: React.FC = () => {
                   <textarea
                     value={installationForm.jobDetails}
                     onChange={(e) => setInstallationForm({ ...installationForm, jobDetails: e.target.value })}
-                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
                     placeholder="Describe the installation work performed..."
                     rows={3}
                   />
@@ -558,7 +558,7 @@ const FieldToolkit: React.FC = () => {
                   <input
                     value={installationForm.floorSpace}
                     onChange={(e) => setInstallationForm({ ...installationForm, floorSpace: e.target.value })}
-                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. 24"
                   />
                 </div>
@@ -577,7 +577,7 @@ const FieldToolkit: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center gap-2 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                    className="w-full border-2 border-dashed border-gray-300 p-4 flex flex-col items-center gap-2 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
                   >
                     <Upload className="h-6 w-6" />
                     <span className="text-sm font-medium">Click to upload images</span>
@@ -586,7 +586,7 @@ const FieldToolkit: React.FC = () => {
                     <div className="grid grid-cols-3 gap-2 mt-2">
                       {uploadedImages.map((img, i) => (
                         <div key={i} className="relative">
-                          <img src={img} alt={`Upload ${i + 1}`} className="w-full h-20 object-cover rounded-lg" />
+                          <img src={img} alt={`Upload ${i + 1}`} className="w-full h-20 object-cover " />
                           <button
                             onClick={() => removeImage(i)}
                             className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 text-xs"
@@ -602,7 +602,7 @@ const FieldToolkit: React.FC = () => {
 
               <button
                 onClick={handleInstallationSubmit}
-                className="flex items-center justify-center gap-2 bg-blue-600 text-white w-full py-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
+                className="flex items-center justify-center gap-2 bg-blue-600 text-white w-full py-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
               >
                 <Save className="h-5 w-5" />
                 Submit Installation
@@ -623,7 +623,7 @@ const FieldToolkit: React.FC = () => {
                   installations.map((inst) => (
                     <div
                       key={inst.id}
-                      className="p-4 rounded-2xl border border-gray-200 bg-white hover:border-blue-200 transition-all"
+                      className="p-4 border border-gray-200 bg-white hover:border-blue-200 transition-all"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="space-y-1">
@@ -648,7 +648,7 @@ const FieldToolkit: React.FC = () => {
                           {!inst.cocRequested && (
                             <button
                               onClick={() => requestCOC(inst.id)}
-                              className="flex items-center gap-2 bg-amber-100 text-amber-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-amber-200 transition-colors"
+                              className="flex items-center gap-2 bg-amber-100 text-amber-700 px-4 py-2 text-sm font-semibold hover:bg-amber-200 transition-colors"
                             >
                               <FileCheck className="h-4 w-4" />
                               Request COC
@@ -657,7 +657,7 @@ const FieldToolkit: React.FC = () => {
                           {inst.cocRequested && !inst.cocApproved && (
                             <button
                               onClick={() => approveCOC(inst.id)}
-                              className="flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-200 transition-colors"
+                              className="flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 text-sm font-semibold hover:bg-green-200 transition-colors"
                             >
                               <FileCheck className="h-4 w-4" />
                               Approve COC
@@ -666,7 +666,7 @@ const FieldToolkit: React.FC = () => {
                           {inst.cocApproved && (
                             <button
                               onClick={() => generateCOCCertificate(inst)}
-                              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors"
+                              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:bg-blue-700 transition-colors"
                             >
                               <Download className="h-4 w-4" />
                               Download COC
@@ -677,7 +677,7 @@ const FieldToolkit: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
+                  <div className="text-center py-12 bg-gray-50 border border-dashed border-gray-300">
                     <p className="text-gray-500 font-medium">No installations recorded yet.</p>
                   </div>
                 )}
@@ -687,7 +687,7 @@ const FieldToolkit: React.FC = () => {
         ) : (
           <div className="space-y-8">
             {/* Compliance Notice */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+            <div className="bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
               <ShieldCheck className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-amber-800">Compliance Notice</p>
@@ -699,7 +699,7 @@ const FieldToolkit: React.FC = () => {
             </div>
 
             {/* Form Section */}
-            <div className="space-y-6 bg-gray-50/50 p-6 rounded-2xl border border-gray-200">
+            <div className="space-y-6 bg-gray-50/50 p-6 border border-gray-200">
               <div className="flex items-center gap-2 text-blue-700 font-semibold mb-2">
                 <PlusCircle className="h-5 w-5" />
                 New Log Entry
@@ -711,7 +711,7 @@ const FieldToolkit: React.FC = () => {
                   <input
                     value={formData.clientName}
                     onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. Shoprite Bulawayo"
                   />
                 </div>
@@ -720,7 +720,7 @@ const FieldToolkit: React.FC = () => {
                   <input
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. Unit 3 Roof, Aisle 4 Freezer"
                   />
                 </div>
@@ -729,7 +729,7 @@ const FieldToolkit: React.FC = () => {
                   <select
                     value={formData.jobType}
                     onChange={(e) => setFormData({ ...formData, jobType: e.target.value as JobType })}
-                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
                   >
                     <option value="COLD_ROOM">Cold Room</option>
                     <option value="C40_FREEZER">C40 Freezer</option>
@@ -743,7 +743,7 @@ const FieldToolkit: React.FC = () => {
                     type="number"
                     value={formData.amount}
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
                     placeholder="0.00"
                   />
                 </div>
@@ -752,7 +752,7 @@ const FieldToolkit: React.FC = () => {
                   <select
                     value={formData.refrigerantType}
                     onChange={(e) => setFormData({ ...formData, refrigerantType: e.target.value })}
-                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
                   >
                     <option>R-290</option>
                     <option>R-744 (CO2)</option>
@@ -764,7 +764,7 @@ const FieldToolkit: React.FC = () => {
                   <select
                     value={formData.approvedSupplierId}
                     onChange={(e) => setFormData({ ...formData, approvedSupplierId: e.target.value })}
-                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
                   >
                     <option value="">Select approved supplier</option>
                     {MOCK_APPROVED_SUPPLIERS.map((supplier) => (
@@ -782,7 +782,7 @@ const FieldToolkit: React.FC = () => {
                   <input
                     value={formData.pesepayTransactionId}
                     onChange={(e) => setFormData({ ...formData, pesepayTransactionId: e.target.value })}
-                    className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. MOCK-20260331-001"
                   />
                 </div>
@@ -793,7 +793,7 @@ const FieldToolkit: React.FC = () => {
                       <button
                         key={type}
                         onClick={() => setFormData({ ...formData, actionType: type as any })}
-                        className={`py-3 rounded-xl font-medium border transition-all ${formData.actionType === type
+                        className={`py-3 font-medium border transition-all ${formData.actionType === type
                             ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                             : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'
                           }`}
@@ -806,14 +806,14 @@ const FieldToolkit: React.FC = () => {
               </div>
 
               {!formData.approvedSupplierId && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   Purchases from unapproved suppliers are not eligible for rewards points and will be flagged in the NOU compliance report.
                 </div>
               )}
 
               <button
                 onClick={handleLogSubmit}
-                className="flex items-center justify-center gap-2 bg-blue-600 text-white w-full py-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
+                className="flex items-center justify-center gap-2 bg-blue-600 text-white w-full py-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
               >
                 <Save className="h-5 w-5" />
                 Log Event & Ready for Sync
@@ -838,7 +838,7 @@ const FieldToolkit: React.FC = () => {
                   logs.map((log) => (
                     <div
                       key={log.id}
-                      className="p-4 rounded-2xl border border-gray-200 bg-white hover:border-blue-200 transition-all group"
+                      className="p-4 border border-gray-200 bg-white hover:border-blue-200 transition-all group"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="space-y-1">
@@ -882,7 +882,7 @@ const FieldToolkit: React.FC = () => {
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => downloadPDF(log)}
-                            className="flex items-center gap-2 bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-100 transition-colors border border-gray-200"
+                            className="flex items-center gap-2 bg-gray-50 text-gray-700 px-4 py-2 text-sm font-semibold hover:bg-gray-100 transition-colors border border-gray-200"
                           >
                             <Download className="h-4 w-4" />
                             PDF
@@ -892,7 +892,7 @@ const FieldToolkit: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
+                  <div className="text-center py-12 bg-gray-50 border border-dashed border-gray-300">
                     <p className="text-gray-500 font-medium">No logs recorded yet.</p>
                   </div>
                 )}
@@ -900,8 +900,8 @@ const FieldToolkit: React.FC = () => {
             </div>
 
             {/* Offline Sync State */}
-            <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-4">
-              <div className="bg-amber-100 p-2 rounded-lg">
+            <div className="bg-amber-50 border border-amber-200 p-4 flex items-start gap-4">
+              <div className="bg-amber-100 p-2 ">
                 <WifiOff className="h-5 w-5 text-amber-600" />
               </div>
               <div>

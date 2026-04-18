@@ -1,228 +1,426 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, Globe2, Mic, MicOff, Radio, Volume2, Waves, X } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
+import { useEmergencyMode } from '@/lib/emergencyMode';
+import { useI18n } from '@/lib/i18n';
+import { prependCollectionItem, readCollection, STORAGE_KEYS } from '@/lib/platformStore';
+import { buildSafetyAssistantResponse, getEmergencySafetyScripts, getRiskSummary } from '@/lib/refrigerantIntelligence';
+import type { SafetySession } from '@/types/index';
+import { RefrigerantRiskBadge } from './RefrigerantRiskBadge';
+
+type BrowserSpeechRecognitionResult = {
+  0: { transcript: string };
+};
+
+type BrowserSpeechRecognitionEvent = {
+  results: ArrayLike<BrowserSpeechRecognitionResult>;
+};
+
+type BrowserSpeechRecognitionErrorEvent = {
+  error: string;
+};
+
+interface BrowserSpeechRecognition {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type RecognitionConstructor = new () => BrowserSpeechRecognition;
+
+function buildContextualResponse(query: string, emergencyMode: boolean, language: 'en' | 'fr') {
+  const trimmed = query.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (!trimmed) {
+    return language === 'fr'
+      ? 'Posez une question de securite, de refrigerant, ou de certificat pour commencer.'
+      : 'Ask a safety, refrigerant, or certificate question to get started.';
+  }
+
+  if (lower.includes('coc')) {
+    return language === 'fr'
+      ? 'Le flux COC reste dans Field Toolkit. Confirmez l’installation, joignez les photos, puis soumettez la demande avant emission.'
+      : 'The COC workflow stays in Field Toolkit. Confirm the installation, attach photos, then submit the request before issuance.';
+  }
+
+  if (lower.includes('certificate') || lower.includes('certification')) {
+    return language === 'fr'
+      ? 'Utilisez le portail public de verification avec le numero de certificat ou le code QR pour confirmer le statut et la date d’expiration.'
+      : 'Use the public verification portal with the certificate number or QR code to confirm status and expiry.';
+  }
+
+  const baseline = buildSafetyAssistantResponse(trimmed, language);
+
+  if (!emergencyMode) {
+    return baseline;
+  }
+
+  const scripts = getEmergencySafetyScripts(language);
+  const emergencySteps = scripts
+    .slice(0, 2)
+    .map((script) => `${script.refrigerantCode}: ${script.steps[0]}`)
+    .join(' ');
+
+  return `${baseline} ${emergencySteps}`;
+}
 
 export function FloatingVoiceButton() {
-  const [isVisible, setIsVisible] = useState(true);
-  const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [isRecording, setIsRecording] = useState(false);
-  const [showOverlay, setShowOverlay] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const dragStartRef = useRef({ x: 0, y: 0 });
+  const { user } = useAuth();
+  const { language, speechLocale } = useI18n();
+  const { emergencyMode, toggleEmergencyMode } = useEmergencyMode();
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const [browserCapabilities] = useState(() => {
+    if (typeof window === 'undefined') {
+      return { speechSupported: false };
+    }
 
-  // Handle scroll-based visibility (auto-hide on scroll down, peek on scroll up)
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        // Scrolling down - hide button
-        setIsVisible(false);
-      } else {
-        // Scrolling up - show button
-        setIsVisible(true);
-      }
-      
-      setLastScrollY(currentScrollY);
+    const browserWindow = window as Window & {
+      SpeechRecognition?: RecognitionConstructor;
+      webkitSpeechRecognition?: RecognitionConstructor;
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
-
-  // Handle drag functionality
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setDragOffset({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
-    });
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
-      setPosition({
-        x: e.clientX - dragOffset.x,
-        y: e.clientY - dragOffset.y
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+    return {
+      speechSupported: Boolean(browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition),
+    };
+  });
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported] = useState(browserCapabilities.speechSupported);
+  const [query, setQuery] = useState('');
+  const [transcript, setTranscript] = useState('');
+  const [response, setResponse] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [sessions, setSessions] = useState<SafetySession[]>(() =>
+    readCollection<SafetySession>(STORAGE_KEYS.voiceSessions, [])
+  );
 
   useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
-      };
+    if (typeof window === 'undefined') return;
+
+    const browserWindow = window as Window & {
+      SpeechRecognition?: RecognitionConstructor;
+      webkitSpeechRecognition?: RecognitionConstructor;
+      speechSynthesis?: SpeechSynthesis;
+    };
+
+    const RecognitionClass = browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition;
+    if (!RecognitionClass) {
+      return;
     }
-  }, [isDragging, dragOffset]);
 
-  // Handle touch events for mobile
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    setIsDragging(true);
-    setDragOffset({
-      x: touch.clientX - position.x,
-      y: touch.clientY - position.y
-    });
+    const recognition = new RecognitionClass();
+    recognition.lang = speechLocale;
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (event) => {
+      const nextTranscript = Array.from(event.results)
+        .map((result) => result[0].transcript)
+        .join(' ')
+        .trim();
+      setTranscript(nextTranscript);
+      setQuery(nextTranscript);
+    };
+    recognition.onerror = (event) => {
+      setErrorMessage(`Voice input error: ${event.error}`);
+      setIsListening(false);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      recognition.stop();
+      recognitionRef.current = null;
+    };
+  }, [speechLocale]);
+
+  const latestRisk = useMemo(() => getRiskSummary(query || transcript), [query, transcript]);
+  const recentSessions = sessions.slice(0, 3);
+
+  const speakResponse = (message: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = speechLocale;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
   };
 
-  const handleTouchMove = (e: TouchEvent) => {
-    if (isDragging) {
-      const touch = e.touches[0];
-      setPosition({
-        x: touch.clientX - dragOffset.x,
-        y: touch.clientY - dragOffset.y
-      });
+  const persistSession = (nextQuery: string, nextResponse: string) => {
+    const risk = getRiskSummary(nextQuery);
+    const session: SafetySession = {
+      id: `voice-${Date.now()}`,
+      technicianId: user?.id ?? 'public-user',
+      query: nextQuery,
+      response: nextResponse,
+      sourceDocuments: emergencyMode
+        ? ['Offline safety scripts', 'Mock WhatGas refrigerant intelligence']
+        : ['Mock WhatGas refrigerant intelligence', 'HEVACRAZ workflow guidance'],
+      refrigerantClass: risk?.profile.ashraeSafetyClass,
+      createdAt: new Date().toISOString(),
+      language,
+      emergencyMode,
+    };
+
+    const nextSessions = prependCollectionItem<SafetySession>(STORAGE_KEYS.voiceSessions, session, sessions);
+    setSessions(nextSessions);
+  };
+
+  const submitQuery = (value: string) => {
+    const nextQuery = value.trim();
+    if (!nextQuery) return;
+
+    const nextResponse = buildContextualResponse(nextQuery, emergencyMode, language);
+    setResponse(nextResponse);
+    setErrorMessage('');
+    persistSession(nextQuery, nextResponse);
+    speakResponse(nextResponse);
+  };
+
+  const startListening = () => {
+    if (!recognitionRef.current) {
+      setErrorMessage('Voice capture is not available in this browser.');
+      return;
     }
+
+    setErrorMessage('');
+    setTranscript('');
+    setQuery('');
+    setIsListening(true);
+    recognitionRef.current.lang = speechLocale;
+    recognitionRef.current.start();
   };
 
-  const handleTouchEnd = () => {
-    setIsDragging(false);
+  const stopListening = () => {
+    recognitionRef.current?.stop();
+    setIsListening(false);
   };
 
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('touchmove', handleTouchMove, { passive: true });
-      window.addEventListener('touchend', handleTouchEnd);
-      return () => {
-        window.removeEventListener('touchmove', handleTouchMove);
-        window.removeEventListener('touchend', handleTouchEnd);
-      };
-    }
-  }, [isDragging, dragOffset]);
-
-  // Handle voice recording (simulated)
-  const startRecording = () => {
-    setIsRecording(true);
-  };
-
-  const stopRecording = () => {
-    setIsRecording(false);
-  };
+  const quickPrompts = [
+    'R-290 leak response',
+    'R-32 pre-job checklist',
+    'COC request status',
+    'Certificate verification help',
+  ];
 
   return (
     <>
-      {/* Floating Voice Button */}
-      <div
-        className={`fixed z-50 transition-all duration-300 ease-in-out ${
-          isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4 pointer-events-none'
-        }`}
-        style={{
-          right: `${position.x}px`,
-          bottom: `${position.y}px`,
-          position: 'fixed'
-        }}
-      >
+      <div className="fixed bottom-5 right-5 z-50">
         <button
-          ref={buttonRef}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
           onClick={() => setShowOverlay(true)}
-          onMouseUp={stopRecording}
-          onMouseLeave={stopRecording}
-          onTouchEnd={stopRecording}
-          className={`group relative w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 ${
-            isRecording 
-              ? 'bg-red-500 scale-110 animate-pulse' 
-              : 'bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 hover:scale-105'
+          className={`group relative flex h-16 w-16 items-center justify-center rounded-full shadow-2xl transition-all duration-300 hover:scale-105 ${
+            emergencyMode
+              ? 'bg-gradient-to-br from-red-600 to-red-700'
+              : 'bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500'
           }`}
           aria-label="Voice assistant"
         >
-          {/* Pulse animation when recording */}
-          {isRecording && (
-            <span className="absolute w-full h-full rounded-full bg-red-400 animate-ping opacity-75"></span>
-          )}
-          
-          {/* Microphone icon */}
-          {isRecording ? (
-            <Mic className="w-7 h-7 text-white" />
-          ) : (
-            <Mic className="w-6 h-6 text-white group-hover:w-7 group-hover:h-7 transition-all" />
-          )}
-          
-          {/* Tooltip on hover */}
-          <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap pointer-events-none">
-            {isRecording ? 'Release to stop' : 'Tap to open • Hold to talk'}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+          {isListening && <span className="absolute inset-0 rounded-full bg-red-400/70 animate-ping" />}
+          {isListening ? <Mic className="relative z-10 h-7 w-7 text-white" /> : <Mic className="h-6 w-6 text-white" />}
+          <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 whitespace-nowrap bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
+            {emergencyMode ? 'Emergency safety assistant' : 'Voice assistant'}
           </div>
         </button>
       </div>
 
-      {/* Voice Interface Overlay */}
       {showOverlay && (
-        <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center">
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:w-[500px] sm:max-h-[80vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">Voice Assistant</h3>
-              <button 
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center">
+          <div className="max-h-[88vh] w-full overflow-hidden -3xl bg-white sm:w-[560px] sm:">
+            <div className="flex items-center justify-between border-b border-gray-100 p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Voice AI Safety Desk</h3>
+                <p className="text-sm text-gray-500">
+                  {language === 'fr' ? 'Assistant vocal EN / FR pour la securite RAC' : 'EN / FR refrigerant-aware field guidance'}
+                </p>
+              </div>
+              <button
                 onClick={() => setShowOverlay(false)}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                className="rounded-full p-2 transition-colors hover:bg-gray-100"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="h-5 w-5 text-gray-500" />
               </button>
             </div>
 
-            {/* Voice visualization area */}
-            <div className="p-8 flex flex-col items-center justify-center min-h-[300px]">
-              {/* Animated voice waves */}
-              <div className={`relative w-32 h-32 rounded-full flex items-center justify-center mb-6 ${
-                isRecording ? 'bg-red-50' : 'bg-gray-50'
-              }`}>
-                {/* Outer ring animations */}
-                {isRecording && (
-                  <>
-                    <span className="absolute w-full h-full rounded-full border-2 border-red-400 animate-ping opacity-30"></span>
-                    <span className="absolute w-24 h-24 rounded-full border-2 border-red-400 animate-ping opacity-50" style={{ animationDelay: '0.2s' }}></span>
-                    <span className="absolute w-20 h-20 rounded-full border-2 border-red-400 animate-ping opacity-70" style={{ animationDelay: '0.4s' }}></span>
-                  </>
+            <div className="space-y-5 overflow-y-auto p-5">
+              <div
+                className={`border p-4 ${
+                  emergencyMode ? 'border-red-200 bg-red-50' : 'border-blue-100 bg-blue-50'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    {emergencyMode ? (
+                      <AlertTriangle className="h-5 w-5 text-red-600" />
+                    ) : (
+                      <Radio className="h-5 w-5 text-blue-600" />
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {emergencyMode ? 'Emergency Mode active' : 'Operational Mode active'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {isSpeechSupported ? `Voice locale: ${speechLocale}` : 'Voice capture unavailable, use text input.'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={toggleEmergencyMode}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                      emergencyMode ? 'bg-red-600 text-white' : 'bg-white text-blue-700'
+                    }`}
+                  >
+                    {emergencyMode ? 'Disable' : 'Enable'} emergency mode
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600">
+                  <Globe2 className="h-3.5 w-3.5" />
+                  {language === 'fr' ? 'Francais' : 'English'}
+                </div>
+                {latestRisk && (
+                  <div className="rounded-full border border-gray-200 bg-white px-2 py-1">
+                    <RefrigerantRiskBadge color={latestRisk.color} label={latestRisk.label} />
+                  </div>
                 )}
-                
-                {/* Center microphone */}
-                <div className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  isRecording ? 'bg-red-500 scale-110' : 'bg-orange-500'
-                }`}>
-                  {isRecording ? (
-                    <Mic className="w-8 h-8 text-white animate-pulse" />
-                  ) : (
-                    <Mic className="w-7 h-7 text-white" />
+              </div>
+
+              <div className="border border-gray-200 bg-gray-50 p-6">
+                <div className="mb-4 flex items-center justify-center">
+                  <div
+                    className={`relative flex h-28 w-28 items-center justify-center rounded-full ${
+                      isListening ? 'bg-red-50' : 'bg-white'
+                    }`}
+                  >
+                    {isListening && (
+                      <>
+                        <span className="absolute inset-0 rounded-full border-2 border-red-400/40 animate-ping" />
+                        <span
+                          className="absolute inset-3 rounded-full border-2 border-red-400/60 animate-ping"
+                          style={{ animationDelay: '0.2s' }}
+                        />
+                      </>
+                    )}
+                    <div
+                      className={`relative z-10 flex h-16 w-16 items-center justify-center rounded-full ${
+                        isListening ? 'bg-red-500' : 'bg-orange-500'
+                      }`}
+                    >
+                      {isListening ? <Mic className="h-8 w-8 text-white" /> : <Waves className="h-8 w-8 text-white" />}
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-center text-lg font-medium text-gray-700">
+                  {isListening ? 'Listening for field guidance...' : 'Speak or type a safety question'}
+                </p>
+                <p className="mt-1 text-center text-sm text-gray-500">
+                  {emergencyMode
+                    ? 'Emergency mode adds offline safety scripts and faster response prompts.'
+                    : 'Ask about refrigerant class, leak response, COC steps, or certificate verification.'}
+                </p>
+
+                <div className="mt-5 flex flex-wrap justify-center gap-3">
+                  <button
+                    onClick={isListening ? stopListening : startListening}
+                    className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white ${
+                      isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-500 hover:bg-orange-600'
+                    }`}
+                  >
+                    {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    {isListening ? 'Stop listening' : 'Start voice capture'}
+                  </button>
+                  {response && (
+                    <button
+                      onClick={() => speakResponse(response)}
+                      className="inline-flex items-center gap-2 rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+                    >
+                      <Volume2 className="h-4 w-4" />
+                      Replay response
+                    </button>
                   )}
                 </div>
               </div>
 
-              {/* Status text */}
-              <p className="text-lg font-medium text-gray-700 mb-2">
-                {isRecording ? 'Listening...' : 'Tap & hold to speak'}
-              </p>
-              <p className="text-sm text-gray-500 text-center">
-                {isRecording 
-                  ? 'Speak your query clearly' 
-                  : 'Or tap to open voice commands'}
-              </p>
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold text-gray-700">Prompt</label>
+                <textarea
+                  rows={3}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Example: What safety controls do I need before charging R-290?"
+                  className="w-full border border-gray-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                />
+                <div className="flex flex-wrap gap-2">
+                  {quickPrompts.map((prompt) => (
+                    <button
+                      key={prompt}
+                      onClick={() => {
+                        setQuery(prompt);
+                        submitQuery(prompt);
+                      }}
+                      className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-200"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => submitQuery(query)}
+                  className="w-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Generate response
+                </button>
+                {transcript && (
+                  <div className="border border-orange-100 bg-orange-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">Transcript</p>
+                    <p className="mt-2 text-sm text-orange-900">{transcript}</p>
+                  </div>
+                )}
+                {errorMessage && (
+                  <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{errorMessage}</div>
+                )}
+              </div>
 
-              {/* Quick action buttons */}
-              <div className="flex flex-wrap gap-2 mt-6 justify-center">
-                <button className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-700 transition-colors">
-                  Find a technician
-                </button>
-                <button className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-700 transition-colors">
-                  COC status
-                </button>
-                <button className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-700 transition-colors">
-                  Sizing calculator
-                </button>
+              {response && (
+                <div className="border border-gray-200 bg-white p-5 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">Assistant response</p>
+                  <p className="mt-3 text-sm leading-6 text-gray-700">{response}</p>
+                  {latestRisk && (
+                    <div className="mt-4 border border-gray-100 bg-gray-50 p-4">
+                      <p className="text-sm font-semibold text-gray-900">{latestRisk.profile.code} risk summary</p>
+                      <p className="mt-1 text-sm text-gray-600">{latestRisk.guidance}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="border border-gray-200 bg-white p-5">
+                <p className="text-sm font-semibold text-gray-900">Recent safety sessions</p>
+                <div className="mt-3 space-y-3">
+                  {recentSessions.length === 0 ? (
+                    <p className="text-sm text-gray-500">No sessions saved yet.</p>
+                  ) : (
+                    recentSessions.map((session) => (
+                      <div key={session.id} className="bg-gray-50 p-3">
+                        <p className="text-sm font-semibold text-gray-900">{session.query}</p>
+                        <p className="mt-1 text-xs text-gray-500">{new Date(session.createdAt).toLocaleString('en-ZW')}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>

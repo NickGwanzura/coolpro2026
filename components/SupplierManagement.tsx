@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
     ArrowRight,
@@ -18,21 +18,14 @@ import {
     Truck,
     Users,
 } from 'lucide-react';
-import { getSession } from '@/lib/auth';
-import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
+import { useAuth } from '@/lib/auth';
+import { useSupplierApplications, approveSupplierApplication, rejectSupplierApplication, type SupplierApplicationRecord } from '@/lib/api';
 import { MOCK_APPROVED_SUPPLIERS } from '@/constants/suppliers';
 import VendorReportingPanel from '@/components/VendorReportingPanel';
 import type {
     ApprovedSupplier,
-    SupplierRegistration,
     SupplierRegistrationStatus,
 } from '@/types/index';
-
-type SupplierApplicationRecord = SupplierRegistration & {
-    reviewedAt?: string;
-    reviewedBy?: string;
-    reviewNote?: string;
-};
 
 type StatusFilter = SupplierRegistrationStatus | 'all';
 
@@ -90,30 +83,15 @@ function Badge({
 }
 
 export default function SupplierManagement() {
-    const session = useSyncExternalStore(
-        () => () => undefined,
-        () => getSession(),
-        () => null
-    );
-    const storedApplications = useSyncExternalStore(
-        () => () => undefined,
-        () =>
-            readCollection<SupplierApplicationRecord>(
-                STORAGE_KEYS.supplierApplications,
-                [],
-                [STORAGE_KEYS.supplierProfilesLegacy]
-            ),
-        () => []
-    );
-    const [localApplications, setLocalApplications] = useState<SupplierApplicationRecord[] | null>(null);
+    const { user: session, isLoading } = useAuth();
+    const { data: applications = [], isLoading: applicationsLoading, error: applicationsError } = useSupplierApplications();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [provinceFilter, setProvinceFilter] = useState('all');
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    const applications = localApplications ?? storedApplications;
 
     const isVendor = session?.role === 'vendor';
-    const canReview = session ? ['org_admin', 'program_admin'].includes(session.role) : false;
+    const canReview = session ? ['org_admin'].includes(session.role) : false;
     const myApplications = useMemo(() => {
         if (!session) return [];
         const email = session.email.toLowerCase();
@@ -196,31 +174,17 @@ export default function SupplierManagement() {
         },
     ] as const;
 
-    const updateStatus = (id: string, status: SupplierRegistrationStatus) => {
-        const nextApplications = applications.map(application => {
-            if (application.id !== id) return application;
-
-            return {
-                ...application,
-                status,
-                reviewedAt: new Date().toISOString(),
-                reviewedBy: session?.name ?? 'System',
-                reviewNote:
-                    status === 'approved'
-                        ? 'Approved in the demo review flow.'
-                        : status === 'rejected'
-                            ? 'Rejected in the demo review flow.'
-                            : 'Sent back to review queue.',
-            };
-        });
-
-        setLocalApplications(nextApplications);
-        writeCollection(STORAGE_KEYS.supplierApplications, nextApplications);
+    const updateStatus = async (id: string, status: SupplierRegistrationStatus) => {
+        if (status === 'approved') {
+            await approveSupplierApplication(id);
+        } else if (status === 'rejected') {
+            await rejectSupplierApplication(id);
+        }
     };
 
     return (
         <div className="space-y-6">
-            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <section className="border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                     <div className="max-w-3xl space-y-3">
                         <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-600">
@@ -238,14 +202,14 @@ export default function SupplierManagement() {
                     <div className="flex flex-wrap gap-3">
                         <Link
                             href="/supplier-register"
-                            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                            className="inline-flex items-center gap-2 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
                         >
                             Register supplier
                             <ArrowRight className="h-4 w-4" />
                         </Link>
                         <Link
                             href="/nou-dashboard"
-                            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                            className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
                         >
                             View NOU dashboard
                         </Link>
@@ -264,9 +228,9 @@ export default function SupplierManagement() {
                     };
 
                     return (
-                        <div key={item.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <div key={item.label} className="border border-gray-200 bg-white p-5 shadow-sm">
                             <div className="flex items-center justify-between">
-                                <div className={`rounded-xl p-3 ${toneClasses[item.tone]}`}>
+                                <div className={`p-3 ${toneClasses[item.tone]}`}>
                                     <Icon className="h-5 w-5" />
                                 </div>
                                 <Sparkles className="h-4 w-4 text-gray-300" />
@@ -286,7 +250,7 @@ export default function SupplierManagement() {
             )}
 
             {isVendor && (
-                <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <section className="border border-gray-200 bg-white p-6 shadow-sm">
                     <div className="flex items-start justify-between gap-4">
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Your account</p>
@@ -299,7 +263,7 @@ export default function SupplierManagement() {
                     </div>
 
                     {myApplications.length === 0 ? (
-                        <div className="mt-6 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6">
+                        <div className="mt-6 border border-dashed border-gray-200 bg-gray-50 p-6">
                             <div className="flex items-start gap-4">
                                 <CircleDashed className="mt-0.5 h-5 w-5 text-gray-400" />
                                 <div className="space-y-2">
@@ -309,7 +273,7 @@ export default function SupplierManagement() {
                                     </p>
                                     <Link
                                         href="/supplier-register"
-                                        className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800"
+                                        className="inline-flex items-center gap-2 bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800"
                                     >
                                         Register as supplier
                                         <ArrowRight className="h-4 w-4" />
@@ -319,7 +283,7 @@ export default function SupplierManagement() {
                         </div>
                     ) : (
                         <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-                            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+                            <div className="border border-gray-200 bg-gray-50 p-5">
                                 <div className="flex items-start justify-between gap-4">
                                     <div>
                                         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Latest application</p>
@@ -343,7 +307,7 @@ export default function SupplierManagement() {
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                            <div className="border border-gray-200 bg-white p-5">
                                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Next step</p>
                                 <ul className="mt-4 space-y-3 text-sm leading-6 text-gray-600">
                                     <li className="flex items-start gap-3">
@@ -367,7 +331,7 @@ export default function SupplierManagement() {
 
             {canReview && (
                 <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <div className="border border-gray-200 bg-white p-6 shadow-sm">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Review queue</p>
@@ -377,7 +341,7 @@ export default function SupplierManagement() {
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                                <div className="flex items-center gap-2 border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                                     <Filter className="h-4 w-4" />
                                     <select
                                         value={statusFilter}
@@ -391,7 +355,7 @@ export default function SupplierManagement() {
                                         <option value="rejected">Rejected</option>
                                     </select>
                                 </div>
-                                <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                                <div className="flex items-center gap-2 border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                                     <MapPin className="h-4 w-4" />
                                     <select
                                         value={provinceFilter}
@@ -408,7 +372,7 @@ export default function SupplierManagement() {
                                             ))}
                                     </select>
                                 </div>
-                                <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                                <label className="flex items-center gap-2 border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                                     <Search className="h-4 w-4" />
                                     <input
                                         value={search}
@@ -420,7 +384,8 @@ export default function SupplierManagement() {
                             </div>
                         </div>
 
-                        <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200">
+                        <div className="mt-6 overflow-x-auto border border-gray-200">
+                         <div className="min-w-[560px]">
                             <div className="grid grid-cols-[1.4fr_0.8fr_0.7fr_0.6fr] gap-4 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
                                 <span>Company</span>
                                 <span>Location</span>
@@ -442,7 +407,7 @@ export default function SupplierManagement() {
                                                 type="button"
                                                 onClick={() => setSelectedId(application.id)}
                                                 className={`grid w-full grid-cols-[1.4fr_0.8fr_0.7fr_0.6fr] gap-4 px-4 py-4 text-left transition hover:bg-gray-50 ${
-                                                    isSelected ? 'bg-blue-50/40' : 'bg-white'
+                                                    isSelected ? 'bg-[#5A7D5A]/5' : 'bg-white'
                                                 }`}
                                             >
                                                 <div className="min-w-0">
@@ -472,11 +437,12 @@ export default function SupplierManagement() {
                                     })
                                 )}
                             </div>
+                         </div>
                         </div>
                     </div>
 
                     <aside className="space-y-6">
-                        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="border border-gray-200 bg-white p-6 shadow-sm">
                             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Selected application</p>
                             {selectedApplication ? (
                                 <div className="mt-4 space-y-4">
@@ -494,7 +460,7 @@ export default function SupplierManagement() {
                                         </Badge>
                                     </div>
 
-                                    <div className="space-y-3 rounded-2xl bg-gray-50 p-4 text-sm text-gray-700">
+                                    <div className="space-y-3 bg-gray-50 p-4 text-sm text-gray-700">
                                         <p><span className="font-semibold text-gray-900">Province:</span> {selectedApplication.province}</p>
                                         <p><span className="font-semibold text-gray-900">City:</span> {selectedApplication.city}</p>
                                         <p><span className="font-semibold text-gray-900">Type:</span> {selectedApplication.supplierType.replace('-', ' ')}</p>
@@ -522,7 +488,7 @@ export default function SupplierManagement() {
                                     </div>
 
                                     {(selectedApplication.reviewedAt || selectedApplication.reviewNote) && (
-                                        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                                        <div className="border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
                                             <p className="font-semibold text-gray-900">Review note</p>
                                             <p className="mt-1">{selectedApplication.reviewNote ?? 'Review details recorded locally.'}</p>
                                             {selectedApplication.reviewedAt && (
@@ -538,7 +504,7 @@ export default function SupplierManagement() {
                                             <button
                                                 type="button"
                                                 onClick={() => updateStatus(selectedApplication.id, 'under-review')}
-                                                className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+                                                className="inline-flex items-center gap-2 border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
                                             >
                                                 <Clock3 className="h-4 w-4" />
                                                 Under review
@@ -546,7 +512,7 @@ export default function SupplierManagement() {
                                             <button
                                                 type="button"
                                                 onClick={() => updateStatus(selectedApplication.id, 'approved')}
-                                                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                                                className="inline-flex items-center gap-2 bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
                                             >
                                                 <CheckCircle2 className="h-4 w-4" />
                                                 Approve
@@ -554,7 +520,7 @@ export default function SupplierManagement() {
                                             <button
                                                 type="button"
                                                 onClick={() => updateStatus(selectedApplication.id, 'rejected')}
-                                                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                                                className="inline-flex items-center gap-2 border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
                                             >
                                                 <ShieldAlert className="h-4 w-4" />
                                                 Reject
@@ -563,13 +529,13 @@ export default function SupplierManagement() {
                                     )}
                                 </div>
                             ) : (
-                                <div className="mt-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-500">
+                                <div className="mt-4 border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-500">
                                     No application selected.
                                 </div>
                             )}
                         </div>
 
-                        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="border border-gray-200 bg-white p-6 shadow-sm">
                             <div className="flex items-start justify-between gap-4">
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Approved suppliers</p>
@@ -579,7 +545,7 @@ export default function SupplierManagement() {
                             </div>
                             <div className="mt-4 space-y-3">
                                 {approvedSupplierList.map((supplier) => (
-                                    <div key={supplier.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                                    <div key={supplier.id} className="border border-gray-200 bg-gray-50 p-4">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
                                                 <p className="truncate text-sm font-semibold text-gray-900">{supplier.name}</p>
@@ -603,7 +569,7 @@ export default function SupplierManagement() {
             )}
 
             {!canReview && (
-                <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <section className="border border-gray-200 bg-white p-6 shadow-sm">
                     <div className="flex items-start gap-4">
                         <ShieldCheck className="mt-0.5 h-5 w-5 text-blue-600" />
                         <div className="space-y-2">
@@ -630,7 +596,7 @@ function InfoCard({
     wide?: boolean;
 }) {
     return (
-        <div className={wide ? 'sm:col-span-2 rounded-2xl border border-gray-200 bg-white p-4' : 'rounded-2xl border border-gray-200 bg-white p-4'}>
+        <div className={wide ? 'sm:col-span-2 border border-gray-200 bg-white p-4' : 'border border-gray-200 bg-white p-4'}>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">{label}</p>
             <p className="mt-2 text-sm font-semibold text-gray-900">{value}</p>
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import type { SupplierRegistration } from '@/types/index';
-import { prependCollectionItem, readCollection, STORAGE_KEYS } from '@/lib/platformStore';
+import { createSupplierApplication } from '@/lib/api';
 
 const SUPPLIER_TYPES: Array<SupplierRegistration['supplierType']> = [
   'importer',
@@ -73,10 +73,6 @@ export default function SupplierRegistrationForm() {
   const [submitted, setSubmitted] = useState<SupplierRegistration | null>(null);
   const [savedCount, setSavedCount] = useState(0);
 
-  useEffect(() => {
-    setSavedCount(readCollection<SupplierRegistration>(STORAGE_KEYS.supplierApplications, []).length);
-  }, []);
-
   const toggleRefrigerant = (code: string) => {
     setForm(prev => ({
       ...prev,
@@ -86,7 +82,7 @@ export default function SupplierRegistrationForm() {
     }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!form.companyName || !form.registrationNumber || !form.contactName || !form.email || !form.phone) {
@@ -99,8 +95,7 @@ export default function SupplierRegistrationForm() {
       return;
     }
 
-    const record: SupplierRegistration = {
-      id: `SUP-APP-${Date.now()}`,
+    const record = await createSupplierApplication({
       companyName: form.companyName,
       tradingName: form.tradingName || undefined,
       registrationNumber: form.registrationNumber,
@@ -116,18 +111,9 @@ export default function SupplierRegistrationForm() {
       pesepayMerchantId: form.pesepayMerchantId || undefined,
       website: form.website || undefined,
       notes: form.notes || undefined,
-      status: 'submitted',
-      submittedAt: new Date().toISOString(),
-    };
+    });
 
-    const nextApplications = prependCollectionItem<SupplierRegistration>(
-      STORAGE_KEYS.supplierApplications,
-      record,
-      [],
-      [STORAGE_KEYS.supplierProfilesLegacy]
-    );
-    setSavedCount(nextApplications.length);
-
+    setSavedCount(prev => prev + 1);
     setSubmitted(record);
     setMessage('');
   };

@@ -1,0 +1,751 @@
+{
+  "id": "565b211d-e454-4b45-9531-63c4f17aafd6",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region": {
+          "name": "region",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "registration_no": {
+          "name": "registration_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qr_token": {
+          "name": "qr_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "user_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "is_demo": {
+          "name": "is_demo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.courses": {
+      "name": "courses",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "lecturer_id": {
+          "name": "lecturer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lecturer_name": {
+          "name": "lecturer_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modules": {
+          "name": "modules",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "status": {
+          "name": "status",
+          "type": "course_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "rejection_reason": {
+          "name": "rejection_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_submissions": {
+      "name": "exam_submissions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "course_id": {
+          "name": "course_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "course_title": {
+          "name": "course_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_name": {
+          "name": "student_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "answers": {
+          "name": "answers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "score": {
+          "name": "score",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "passed": {
+          "name": "passed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feedback": {
+          "name": "feedback",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "exam_submission_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "submitted_at": {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "graded_at": {
+          "name": "graded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_submissions_course_id_courses_id_fk": {
+          "name": "exam_submissions_course_id_courses_id_fk",
+          "tableFrom": "exam_submissions",
+          "tableTo": "courses",
+          "columnsFrom": [
+            "course_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.supplier_reorders": {
+      "name": "supplier_reorders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "vendor_id": {
+          "name": "vendor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendor_name": {
+          "name": "vendor_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gas_type": {
+          "name": "gas_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity_kg": {
+          "name": "quantity_kg",
+          "type": "numeric(10, 3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supplier_notes": {
+          "name": "supplier_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "status": {
+          "name": "status",
+          "type": "reorder_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending_hevacraz'"
+        },
+        "hevacraz_reviewer_id": {
+          "name": "hevacraz_reviewer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hevacraz_reviewed_at": {
+          "name": "hevacraz_reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nou_reviewer_id": {
+          "name": "nou_reviewer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nou_reviewed_at": {
+          "name": "nou_reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rejection_reason": {
+          "name": "rejection_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rejected_by": {
+          "name": "rejected_by",
+          "type": "rejected_by",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.technician_verifications": {
+      "name": "technician_verifications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "vendor_id": {
+          "name": "vendor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendor_name": {
+          "name": "vendor_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "method": {
+          "name": "method",
+          "type": "verification_method",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "query": {
+          "name": "query",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "technician_id": {
+          "name": "technician_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "result": {
+          "name": "result",
+          "type": "verification_result",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.technicians": {
+      "name": "technicians",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "national_id": {
+          "name": "national_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "registration_number": {
+          "name": "registration_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region": {
+          "name": "region",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "province": {
+          "name": "province",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "district": {
+          "name": "district",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contact_number": {
+          "name": "contact_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "specialization": {
+          "name": "specialization",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "certifications": {
+          "name": "certifications",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "training_history": {
+          "name": "training_history",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "employment_status": {
+          "name": "employment_status",
+          "type": "employment_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'employed'"
+        },
+        "employer": {
+          "name": "employer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refrigerants_handled": {
+          "name": "refrigerants_handled",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "supplier_id": {
+          "name": "supplier_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "registration_date": {
+          "name": "registration_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expiry_date": {
+          "name": "expiry_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "technician_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "last_renewal_date": {
+          "name": "last_renewal_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "next_renewal_date": {
+          "name": "next_renewal_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qr_token": {
+          "name": "qr_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "technicians_registration_number_unique": {
+          "name": "technicians_registration_number_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "registration_number"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.user_role": {
+      "name": "user_role",
+      "schema": "public",
+      "values": [
+        "technician",
+        "trainer",
+        "lecturer",
+        "vendor",
+        "org_admin",
+        "regulator"
+      ]
+    },
+    "public.user_status": {
+      "name": "user_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "inactive",
+        "suspended",
+        "pending"
+      ]
+    },
+    "public.course_status": {
+      "name": "course_status",
+      "schema": "public",
+      "values": [
+        "draft",
+        "pending_nou",
+        "approved",
+        "rejected"
+      ]
+    },
+    "public.exam_submission_status": {
+      "name": "exam_submission_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "graded"
+      ]
+    },
+    "public.rejected_by": {
+      "name": "rejected_by",
+      "schema": "public",
+      "values": [
+        "hevacraz",
+        "nou"
+      ]
+    },
+    "public.reorder_status": {
+      "name": "reorder_status",
+      "schema": "public",
+      "values": [
+        "pending_hevacraz",
+        "pending_nou",
+        "approved",
+        "rejected"
+      ]
+    },
+    "public.verification_method": {
+      "name": "verification_method",
+      "schema": "public",
+      "values": [
+        "reg_number",
+        "qr",
+        "name"
+      ]
+    },
+    "public.verification_result": {
+      "name": "verification_result",
+      "schema": "public",
+      "values": [
+        "valid",
+        "expired",
+        "revoked",
+        "not_found"
+      ]
+    },
+    "public.certification_status": {
+      "name": "certification_status",
+      "schema": "public",
+      "values": [
+        "valid",
+        "expired",
+        "pending"
+      ]
+    },
+    "public.employment_status": {
+      "name": "employment_status",
+      "schema": "public",
+      "values": [
+        "employed",
+        "self-employed",
+        "unemployed"
+      ]
+    },
+    "public.technician_status": {
+      "name": "technician_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "inactive",
+        "suspended",
+        "pending"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

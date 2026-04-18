@@ -4,9 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, UserPlus, Save, Plus, X } from 'lucide-react';
 import { ZIMBABWE_PROVINCES, TECHNICIAN_SPECIALIZATIONS } from '@/constants/registry';
+import { useToast } from '@/components/ui/Toast';
+import { readCollection, writeCollection } from '@/lib/platformStore';
+
+const TECHNICIANS_STORAGE_KEY = 'coolpro_technicians';
 
 export default function AddTechnicianPage() {
   const router = useRouter();
+  const { success, error } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     nationalId: '',
@@ -111,11 +116,26 @@ export default function AddTechnicianPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // In a real application, this would send data to the server
-    console.log('Form submitted:', formData);
-    
-    // Redirect back to manage page
+
+    if (!formData.name || !formData.nationalId || !formData.registrationNumber || !formData.specialization) {
+      error('Please fill in all required fields (Name, National ID, Registration Number, Specialization)');
+      return;
+    }
+
+    const newTechnician = {
+      id: `tech-${Date.now()}`,
+      ...formData,
+      status: 'pending' as const,
+      registrationDate: new Date().toISOString().split('T')[0],
+      expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000 * 2).toISOString().split('T')[0],
+      certifications: formData.certifications.map((c, i) => ({ ...c, id: `cert-${Date.now()}-${i}`, status: 'valid' as const })),
+      trainingHistory: formData.trainingHistory.map((t, i) => ({ ...t, id: `train-${Date.now()}-${i}` })),
+    };
+
+    const existing = readCollection(TECHNICIANS_STORAGE_KEY, []);
+    writeCollection(TECHNICIANS_STORAGE_KEY, [newTechnician, ...existing]);
+
+    success(`${formData.name} has been added to the registry (pending approval)`);
     router.push('/technician-registry/manage');
   };
 
@@ -127,7 +147,7 @@ export default function AddTechnicianPage() {
       <div className="flex items-center gap-4">
         <button
           onClick={() => router.push('/technician-registry/manage')}
-          className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+          className="p-2 hover:bg-gray-100 transition-colors"
         >
           <ArrowLeft className="h-5 w-5 text-gray-600" />
         </button>
@@ -140,7 +160,7 @@ export default function AddTechnicianPage() {
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Personal Information */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <div className="bg-white border border-gray-200 shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -149,7 +169,7 @@ export default function AddTechnicianPage() {
                 type="text"
                 name="name"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.name}
                 onChange={handleInputChange}
               />
@@ -160,7 +180,7 @@ export default function AddTechnicianPage() {
                 type="text"
                 name="nationalId"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.nationalId}
                 onChange={handleInputChange}
                 placeholder="e.g. 12-3456789A12"
@@ -172,7 +192,7 @@ export default function AddTechnicianPage() {
                 type="text"
                 name="registrationNumber"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.registrationNumber}
                 onChange={handleInputChange}
                 placeholder="e.g. ZIM/TECH/2024/001"
@@ -183,7 +203,7 @@ export default function AddTechnicianPage() {
               <select
                 name="specialization"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.specialization}
                 onChange={handleInputChange}
               >
@@ -199,7 +219,7 @@ export default function AddTechnicianPage() {
                 type="tel"
                 name="contactNumber"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.contactNumber}
                 onChange={handleInputChange}
                 placeholder="+263 77 123 4567"
@@ -210,7 +230,7 @@ export default function AddTechnicianPage() {
               <input
                 type="email"
                 name="email"
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder="email@example.com"
@@ -220,7 +240,7 @@ export default function AddTechnicianPage() {
         </div>
 
         {/* Employment Information */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <div className="bg-white border border-gray-200 shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Employment Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -228,7 +248,7 @@ export default function AddTechnicianPage() {
               <select
                 name="employmentStatus"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.employmentStatus}
                 onChange={handleInputChange}
               >
@@ -243,7 +263,7 @@ export default function AddTechnicianPage() {
                 <input
                   type="text"
                   name="employer"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={formData.employer}
                   onChange={handleInputChange}
                 />
@@ -253,7 +273,7 @@ export default function AddTechnicianPage() {
         </div>
 
         {/* Location */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <div className="bg-white border border-gray-200 shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Location</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -261,7 +281,7 @@ export default function AddTechnicianPage() {
               <select
                 name="province"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.province}
                 onChange={handleProvinceChange}
               >
@@ -276,7 +296,7 @@ export default function AddTechnicianPage() {
               <select
                 name="district"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.district}
                 onChange={handleInputChange}
                 disabled={!selectedProvince}
@@ -293,7 +313,7 @@ export default function AddTechnicianPage() {
                 type="text"
                 name="region"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.region}
                 onChange={handleInputChange}
                 disabled
@@ -303,13 +323,13 @@ export default function AddTechnicianPage() {
         </div>
 
         {/* Certifications */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <div className="bg-white border border-gray-200 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Certifications</h2>
             <button
               type="button"
               onClick={handleAddCertification}
-              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
+              className="px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-1"
             >
               <Plus className="h-4 w-4" />
               Add Certification
@@ -317,12 +337,12 @@ export default function AddTechnicianPage() {
           </div>
           <div className="space-y-4">
             {formData.certifications.map((cert, index) => (
-              <div key={index} className="border border-gray-200 rounded-xl p-4">
+              <div key={index} className="border border-gray-200 p-4">
                 <div className="flex justify-end mb-3">
                   <button
                     type="button"
                     onClick={() => handleRemoveCertification(index)}
-                    className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-1 text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -333,7 +353,7 @@ export default function AddTechnicianPage() {
                     <input
                       type="text"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={cert.name}
                       onChange={(e) => handleCertificationChange(index, 'name', e.target.value)}
                     />
@@ -343,7 +363,7 @@ export default function AddTechnicianPage() {
                     <input
                       type="text"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={cert.issuingBody}
                       onChange={(e) => handleCertificationChange(index, 'issuingBody', e.target.value)}
                     />
@@ -353,7 +373,7 @@ export default function AddTechnicianPage() {
                     <input
                       type="text"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={cert.certificateNumber}
                       onChange={(e) => handleCertificationChange(index, 'certificateNumber', e.target.value)}
                     />
@@ -363,7 +383,7 @@ export default function AddTechnicianPage() {
                     <input
                       type="date"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={cert.dateIssued}
                       onChange={(e) => handleCertificationChange(index, 'dateIssued', e.target.value)}
                     />
@@ -373,7 +393,7 @@ export default function AddTechnicianPage() {
                     <input
                       type="date"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={cert.expiryDate}
                       onChange={(e) => handleCertificationChange(index, 'expiryDate', e.target.value)}
                     />
@@ -385,13 +405,13 @@ export default function AddTechnicianPage() {
         </div>
 
         {/* Training History */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <div className="bg-white border border-gray-200 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Training History</h2>
             <button
               type="button"
               onClick={handleAddTraining}
-              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
+              className="px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-1"
             >
               <Plus className="h-4 w-4" />
               Add Training
@@ -399,12 +419,12 @@ export default function AddTechnicianPage() {
           </div>
           <div className="space-y-4">
             {formData.trainingHistory.map((training, index) => (
-              <div key={index} className="border border-gray-200 rounded-xl p-4">
+              <div key={index} className="border border-gray-200 p-4">
                 <div className="flex justify-end mb-3">
                   <button
                     type="button"
                     onClick={() => handleRemoveTraining(index)}
-                    className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-1 text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -415,7 +435,7 @@ export default function AddTechnicianPage() {
                     <input
                       type="text"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={training.courseName}
                       onChange={(e) => handleTrainingChange(index, 'courseName', e.target.value)}
                     />
@@ -425,7 +445,7 @@ export default function AddTechnicianPage() {
                     <input
                       type="text"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={training.provider}
                       onChange={(e) => handleTrainingChange(index, 'provider', e.target.value)}
                     />
@@ -435,7 +455,7 @@ export default function AddTechnicianPage() {
                     <input
                       type="date"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={training.dateCompleted}
                       onChange={(e) => handleTrainingChange(index, 'dateCompleted', e.target.value)}
                     />
@@ -445,7 +465,7 @@ export default function AddTechnicianPage() {
                     <input
                       type="text"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={training.duration}
                       onChange={(e) => handleTrainingChange(index, 'duration', e.target.value)}
                       placeholder="e.g. 40 hours"
@@ -455,7 +475,7 @@ export default function AddTechnicianPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Certificate Number</label>
                     <input
                       type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={training.certificateNumber}
                       onChange={(e) => handleTrainingChange(index, 'certificateNumber', e.target.value)}
                     />
@@ -471,13 +491,13 @@ export default function AddTechnicianPage() {
           <button
             type="button"
             onClick={() => router.push('/technician-registry/manage')}
-            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+            className="px-6 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-2"
           >
             <Save className="h-4 w-4" />
             Save Technician

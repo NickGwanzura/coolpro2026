@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useMemo, useState } from 'react';
 import {
     ArrowDownLeft,
     ArrowUpRight,
@@ -12,8 +12,7 @@ import {
     Search,
     Truck,
 } from 'lucide-react';
-import { MOCK_TECHNICIANS } from '@/constants/registry';
-import { DEMO_VENDOR_EMAIL, MOCK_VENDOR_LEDGER } from '@/constants/vendorLedger';
+import { useSupplierLedger, createLedgerEntry, useTechnicians } from '@/lib/api';
 import { STORAGE_KEYS, readCollection, writeCollection } from '@/lib/platformStore';
 import type { RefrigerantLog, SupplierLedgerDirection, SupplierLedgerEntry, SupplierRegistration } from '@/types/index';
 import type { UserSession } from '@/lib/auth';
@@ -75,14 +74,14 @@ export default function VendorReportingPanel({
     const [monthFilter, setMonthFilter] = useState('all');
     const [refrigerantFilter, setRefrigerantFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>('all');
-    const [localEntries, setLocalEntries] = useState<SupplierLedgerEntry[] | null>(null);
     const [formMessage, setFormMessage] = useState('');
+    const { data: techniciansData } = useTechnicians();
     const activeTechnicians = useMemo(
-        () => MOCK_TECHNICIANS.filter(technician => technician.status === 'active'),
-        []
+        () => (techniciansData ?? []).filter(technician => technician.status === 'active'),
+        [techniciansData]
     );
     const [saleForm, setSaleForm] = useState<SaleFormState>({
-        technicianId: activeTechnicians[0]?.id ?? '',
+        technicianId: '',
         refrigerant: application?.refrigerantsSupplied[0] ?? 'R-290',
         quantityKg: '25',
         unitPriceUsd: '28',
@@ -93,31 +92,11 @@ export default function VendorReportingPanel({
         notes: '',
     });
 
-    const storedEntries = useSyncExternalStore(
-        () => () => undefined,
-        () => {
-            if (typeof window === 'undefined') return MOCK_VENDOR_LEDGER;
-            const raw = window.localStorage.getItem(STORAGE_KEYS.supplierLedger);
-            if (!raw) return MOCK_VENDOR_LEDGER;
-
-            try {
-                return JSON.parse(raw) as SupplierLedgerEntry[];
-            } catch {
-                return MOCK_VENDOR_LEDGER;
-            }
-        },
-        () => MOCK_VENDOR_LEDGER
-    );
-
-    const allEntries = localEntries ?? storedEntries;
+    const { data: allEntries = [] } = useSupplierLedger();
 
     const supplierEntries = useMemo(() => {
-        const bySession = allEntries.filter(entry => entry.supplierEmail === session.email);
-        if (bySession.length > 0) return bySession;
-        return session.role === 'vendor'
-            ? allEntries.filter(entry => entry.supplierEmail === DEMO_VENDOR_EMAIL)
-            : [];
-    }, [allEntries, session.email, session.role]);
+        return allEntries.filter(entry => entry.supplierEmail === session.email);
+    }, [allEntries, session.email]);
 
     const filteredEntries = useMemo(() => {
         const searchValue = search.trim().toLowerCase();
@@ -193,12 +172,7 @@ export default function VendorReportingPanel({
         setSaleForm((current) => ({ ...current, [key]: value }));
     };
 
-    const saveLedgerEntries = (entries: SupplierLedgerEntry[]) => {
-        setLocalEntries(entries);
-        writeCollection(STORAGE_KEYS.supplierLedger, entries);
-    };
-
-    const handleSaleSubmit = (event: React.FormEvent) => {
+    const handleSaleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         const technician = activeTechnicians.find(item => item.id === saleForm.technicianId);
         const quantityKg = Number(saleForm.quantityKg);
@@ -214,8 +188,25 @@ export default function VendorReportingPanel({
             return;
         }
 
-        const entry: SupplierLedgerEntry = {
-            id: `ledger-${Date.now()}`,
+        const transactionDateIso = new Date(`${saleForm.transactionDate}T12:00:00.000Z`).toISOString();
+        const linkedRefrigerantLog: RefrigerantLog = {
+            id: `supplier-log-${Date.now()}`,
+            technicianId: technician.id,
+            technicianName: technician.name,
+            clientName: technician.employer ?? technician.name,
+            location: technician.province,
+            jobType: 'COLD_ROOM',
+            refrigerantType: saleForm.refrigerant,
+            amount: quantityKg,
+            actionType: 'Charge',
+            timestamp: transactionDateIso,
+            approvedSupplierId: supplierName.toLowerCase().replace(/\s+/g, '-'),
+            approvedSupplierName: supplierName,
+            supplierVerified: true,
+            pesepayTransactionId: saleForm.invoiceNumber.trim(),
+        };
+
+        await createLedgerEntry({
             supplierEmail: session.email,
             supplierName,
             direction: 'sale',
@@ -230,31 +221,13 @@ export default function VendorReportingPanel({
             unitPriceUsd,
             totalValueUsd: quantityKg * unitPriceUsd,
             invoiceNumber: saleForm.invoiceNumber.trim(),
-            transactionDate: new Date(`${saleForm.transactionDate}T12:00:00.000Z`).toISOString(),
+            transactionDate: transactionDateIso,
             referenceMonth: saleForm.transactionDate.slice(0, 7),
             reportedToNou: saleForm.reportedToNou,
             clientReported: saleForm.clientReported,
             notes: saleForm.notes.trim() || `Sold to registered technician ${technician.registrationNumber}.`,
-        };
-        const linkedRefrigerantLog: RefrigerantLog = {
-            id: `supplier-log-${Date.now()}`,
-            technicianId: technician.id,
-            technicianName: technician.name,
-            clientName: technician.employer ?? technician.name,
-            location: technician.province,
-            jobType: 'COLD_ROOM',
-            refrigerantType: saleForm.refrigerant,
-            amount: quantityKg,
-            actionType: 'Charge',
-            timestamp: entry.transactionDate,
-            approvedSupplierId: supplierName.toLowerCase().replace(/\s+/g, '-'),
-            approvedSupplierName: supplierName,
-            supplierVerified: true,
-            pesepayTransactionId: entry.invoiceNumber,
-        };
+        });
 
-        const nextEntries = [entry, ...allEntries];
-        saveLedgerEntries(nextEntries);
         writeCollection(
             STORAGE_KEYS.fieldToolkitLogs,
             [linkedRefrigerantLog, ...readCollection<RefrigerantLog>(STORAGE_KEYS.fieldToolkitLogs, [])]

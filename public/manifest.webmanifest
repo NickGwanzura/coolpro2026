@@ -1,0 +1,9 @@
+{
+  "name": "HEVACRAZ Emergency Mode",
+  "short_name": "HEVACRAZ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#dc2626",
+  "description": "HEVACRAZ field safety tools with offline emergency scripts."
+}

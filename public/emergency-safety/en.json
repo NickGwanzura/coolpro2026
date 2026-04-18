@@ -1,0 +1,22 @@
+{
+  "scripts": [
+    {
+      "title": "Propane leak response",
+      "refrigerantCode": "R-290",
+      "steps": [
+        "Isolate ignition sources and electrical switching.",
+        "Ventilate the work area immediately.",
+        "Do not restart the system until leak clearance is recorded."
+      ]
+    },
+    {
+      "title": "A2L charging controls",
+      "refrigerantCode": "R-32",
+      "steps": [
+        "Confirm continuous ventilation before charging.",
+        "Verify the leak detector is present and calibrated.",
+        "Capture the pre-job sign-off before restoring power."
+      ]
+    }
+  ]
+}
