@@ -1,48 +1,57 @@
 'use client';
 
-import { Award, FileCheck, Search, Calculator, GraduationCap, Gift, ShieldCheck, Users } from 'lucide-react';
-import { ArrowRight } from 'lucide-react';
+import {
+  Award,
+  FileCheck,
+  Search,
+  Calculator,
+  GraduationCap,
+  Gift,
+  ShieldCheck,
+  Users,
+  ArrowRight,
+} from 'lucide-react';
 import Link from 'next/link';
 import { FinalCTA } from '@/components/marketing/FinalCTA';
 
 const MEMBER_BENEFITS = [
   {
-    icon: <Award className="h-6 w-6" />,
+    icon: <Award className="h-5 w-5" />,
     title: 'Legal recognition',
     body: 'NOU-aligned certification that satisfies Zimbabwean refrigerant-handling law and EPR audits.',
   },
   {
-    icon: <FileCheck className="h-6 w-6" />,
+    icon: <FileCheck className="h-5 w-5" />,
     title: 'COC issuance',
-    body: 'Issue Certificates of Conformity directly from the platform no paper, no middleman.',
+    body: 'Issue Certificates of Conformity directly from the platform. No paper, no middleman.',
   },
   {
-    icon: <Search className="h-6 w-6" />,
+    icon: <Search className="h-5 w-5" />,
     title: 'Discoverability',
     body: 'Public, searchable registry profile. Businesses verify you before awarding contracts.',
   },
   {
-    icon: <Calculator className="h-6 w-6" />,
+    icon: <Calculator className="h-5 w-5" />,
     title: 'Professional tools',
-    body: 'Sizing calculators, field toolkits, job logging priced for a membership, not per seat.',
+    body: 'Sizing calculators, field toolkits, and job logging. Priced for a membership, not per seat.',
   },
   {
-    icon: <GraduationCap className="h-6 w-6" />,
+    icon: <GraduationCap className="h-5 w-5" />,
     title: 'Continuing education',
     body: 'Learning Hub, exam marking, and CPD credits that stack toward higher-tier certifications.',
   },
   {
-    icon: <Gift className="h-6 w-6" />,
+    icon: <Gift className="h-5 w-5" />,
     title: 'Rewards & discounts',
-    body: 'Earn points on compliant work; redeem for tools, training, and supplier vouchers.',
+    body: 'Earn points on compliant work. Redeem for tools, training, and supplier vouchers.',
   },
   {
-    icon: <ShieldCheck className="h-6 w-6" />,
+    icon: <ShieldCheck className="h-5 w-5" />,
     title: 'Supplier protection',
-    body: 'Gas suppliers verify your certification before sale stops counterfeit and improper dispensing.',
+    body: 'Gas suppliers verify your certification before sale, stopping counterfeit and improper dispensing.',
   },
   {
-    icon: <Users className="h-6 w-6" />,
+    icon: <Users className="h-5 w-5" />,
     title: 'Community & referrals',
     body: 'Network of 500+ verified technicians, trainers, and lecturers across all ten provinces.',
   },
@@ -82,55 +91,69 @@ export default function AboutPage() {
   return (
     <div style={{ backgroundColor: '#ffffff' }}>
       {/* Page header */}
-      <div className="pt-28 pb-16" style={{ backgroundColor: '#FAFAF9' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-[#D97706] text-xs font-semibold tracking-widest uppercase mb-3">About HEVACRAZ</p>
-          <h1 className="text-4xl sm:text-5xl font-bold" style={{ color: '#1C1917' }}>
-            Real outcomes, measured in<br />work won and compliance earned.
+      <section className="pt-28 sm:pt-32 pb-16 sm:pb-20 relative overflow-hidden" style={{ backgroundColor: '#FAFAF9' }}>
+        <div
+          aria-hidden
+          className="absolute -top-24 -right-24 w-[420px] h-[420px] rounded-full opacity-[0.07] pointer-events-none"
+          style={{ background: 'radial-gradient(closest-side, #D97706, transparent 70%)' }}
+        />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-[#D97706] text-xs font-semibold tracking-[0.24em] uppercase mb-4">About HEVACRAZ</p>
+          <h1 className="text-[2.25rem] sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1]" style={{ color: '#1C1917' }}>
+            Real outcomes, measured in
+            <br className="hidden sm:block" />{' '}
+            <span className="text-[#D97706]">work won</span> and{' '}
+            <span className="text-[#5A7D5A]">compliance earned.</span>
           </h1>
-          <p className="mt-6 max-w-2xl text-gray-600 leading-relaxed text-lg">
-            HEVACRAZ membership is not a badge it&rsquo;s a toolkit, a registry, and a
-            regulatory shortcut that together move technicians from informal repair
-            work into audited, certified, higher-paying jobs.
+          <p className="mt-6 max-w-2xl text-gray-600 leading-relaxed text-base sm:text-lg">
+            HEVACRAZ membership is not a badge. It&rsquo;s a toolkit, a registry, and a regulatory
+            shortcut that together move technicians from informal repair work into audited,
+            certified, higher-paying jobs.
           </p>
         </div>
-      </div>
+      </section>
 
       {/* How Members Benefit */}
-      <section className="py-20" style={{ backgroundColor: '#1C1917' }}>
+      <section className="py-20 sm:py-24 relative" style={{ backgroundColor: '#1C1917' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mb-14">
-            <div className="lg:col-span-1">
-              <p className="text-[#D97706] text-xs font-semibold tracking-widest uppercase mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-14 mb-14">
+            <div className="lg:col-span-1 lg:sticky lg:top-28 lg:self-start">
+              <p className="text-[#D97706] text-xs font-semibold tracking-[0.24em] uppercase mb-4">
                 Why Members Join
               </p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
-                8 outcomes that change your career trajectory.
+              <h2 className="text-3xl sm:text-4xl font-bold text-white leading-tight tracking-tight">
+                Eight outcomes that change your career trajectory.
               </h2>
-              <p className="text-white/60 mt-6 leading-relaxed">
-                From certification to supplier protection every benefit is designed to move the needle on income, compliance, and reputation.
+              <p className="text-white/60 mt-5 leading-relaxed">
+                From certification to supplier protection, every benefit is designed to move the
+                needle on income, compliance, and reputation.
               </p>
               <Link
                 href="/membership"
-                className="mt-8 inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white"
+                className="group mt-8 inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all duration-200 hover:brightness-110 shadow-sm hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]"
                 style={{ backgroundColor: '#D97706' }}
               >
                 See Membership Plans
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
               </Link>
             </div>
 
-            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {MEMBER_BENEFITS.map((item, i) => (
                 <div
                   key={i}
-                  className="p-6 border border-white/10 transition-colors hover:bg-white/5"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
+                  className="group p-5 sm:p-6 border border-white/10 transition-all duration-300 hover:bg-white/[0.06] hover:border-[#D97706]/30 hover:-translate-y-0.5"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
                 >
-                  <div className="p-2 inline-block mb-4" style={{ backgroundColor: 'rgba(217,119,6,0.15)', color: '#D97706' }}>
-                    {item.icon}
+                  <div className="flex items-start gap-3 mb-3">
+                    <div
+                      className="shrink-0 p-2 transition-colors duration-300 group-hover:bg-[#D97706]/25"
+                      style={{ backgroundColor: 'rgba(217,119,6,0.15)', color: '#D97706' }}
+                    >
+                      {item.icon}
+                    </div>
+                    <h3 className="text-base font-bold text-white pt-1 tracking-tight">{item.title}</h3>
                   </div>
-                  <h3 className="text-base font-bold text-white mb-2">{item.title}</h3>
                   <p className="text-sm text-white/60 leading-relaxed">{item.body}</p>
                 </div>
               ))}
@@ -138,87 +161,108 @@ export default function AboutPage() {
           </div>
 
           {/* Stats strip */}
-          <div className="border-t border-white/10 pt-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div>
-              <p className="text-3xl sm:text-4xl font-bold text-white">3.2×</p>
-              <p className="mt-1 text-xs text-white/50 uppercase tracking-widest">Avg income lift</p>
-            </div>
-            <div>
-              <p className="text-3xl sm:text-4xl font-bold text-white">48%</p>
-              <p className="mt-1 text-xs text-white/50 uppercase tracking-widest">More repeat clients</p>
-            </div>
-            <div>
-              <p className="text-3xl sm:text-4xl font-bold text-white">90 days</p>
-              <p className="mt-1 text-xs text-white/50 uppercase tracking-widest">To first COC issuance</p>
-            </div>
-            <div>
-              <p className="text-3xl sm:text-4xl font-bold text-white">$7</p>
-              <p className="mt-1 text-xs text-white/50 uppercase tracking-widest">Student entry price</p>
-            </div>
+          <div className="border-t border-white/10 pt-10 sm:pt-12 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            {[
+              { v: '3.2×', l: 'Avg income lift' },
+              { v: '48%', l: 'More repeat clients' },
+              { v: '90 days', l: 'To first COC issuance' },
+              { v: '$7', l: 'Student entry price' },
+            ].map((s) => (
+              <div key={s.l} className="group">
+                <p className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight transition-colors duration-300 group-hover:text-[#D97706]">
+                  {s.v}
+                </p>
+                <p className="mt-2 text-[11px] sm:text-xs text-white/50 uppercase tracking-[0.18em]">
+                  {s.l}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Member Success Stories */}
-      <section className="py-20" style={{ backgroundColor: '#ffffff' }}>
+      <section className="py-20 sm:py-24" style={{ backgroundColor: '#ffffff' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: '#1C1917' }}>Member Success Stories</h2>
-            <div className="w-24 h-1 mx-auto" style={{ backgroundColor: '#D97706' }}></div>
+          <div className="text-center mb-14 sm:mb-16">
+            <p className="text-[#D97706] text-xs font-semibold tracking-[0.24em] uppercase mb-3">
+              In their own words
+            </p>
+            <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-bold tracking-tight" style={{ color: '#1C1917' }}>
+              Member Success Stories
+            </h2>
+            <div className="w-20 h-[3px] mx-auto mt-5" style={{ backgroundColor: '#D97706' }} />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mb-12">
             {TESTIMONIALS.map((member, index) => (
-              <div
+              <article
                 key={index}
-                className="bg-white border overflow-hidden"
+                className="group bg-white border overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                 style={{ borderColor: '#E7E5E4' }}
               >
-                <div className="relative h-48 overflow-hidden">
+                <div className="relative h-48 sm:h-56 overflow-hidden">
                   <img
                     src={member.image}
-                    alt={member.name}
-                    className="w-full h-full object-cover"
+                    alt={`${member.name}, ${member.company}`}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                   <div className="absolute bottom-4 left-4 text-white">
-                    <p className="font-bold text-lg">{member.name}</p>
-                    <p className="text-sm text-white/80">{member.company}</p>
+                    <p className="font-bold text-lg tracking-tight">{member.name}</p>
+                    <p className="text-sm text-white/85">{member.company}</p>
                   </div>
                 </div>
                 <div className="p-6">
-                  <p className="text-gray-600 mb-6 leading-relaxed italic">&ldquo;{member.quote}&rdquo;</p>
+                  <p className="text-gray-700 mb-6 leading-relaxed italic">&ldquo;{member.quote}&rdquo;</p>
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div>
-                      <p className="text-xs text-gray-400">Member since</p>
-                      <p className="font-semibold" style={{ color: '#1C1917' }}>{member.memberSince}</p>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-widest">Member since</p>
+                      <p className="font-semibold mt-0.5" style={{ color: '#1C1917' }}>
+                        {member.memberSince}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-gray-400">COCs issued</p>
-                      <p className="font-bold text-lg" style={{ color: '#D97706' }}>{member.cocIssued}</p>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-widest">COCs issued</p>
+                      <p className="font-bold text-lg mt-0.5" style={{ color: '#D97706' }}>
+                        {member.cocIssued}
+                      </p>
                     </div>
                   </div>
-                  <button className="mt-4 w-full text-center text-sm font-medium" style={{ color: '#5A7D5A' }}>
-                    View {member.name.split(' ')[0]}&rsquo;s Registry Profile →
+                  <button className="group/btn mt-5 w-full inline-flex items-center justify-center gap-1.5 text-center text-sm font-medium transition-colors" style={{ color: '#5A7D5A' }}>
+                    View {member.name.split(' ')[0]}&rsquo;s Registry Profile
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-1" />
                   </button>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
 
           {/* Stats bar */}
-          <div className="py-8 px-6" style={{ backgroundColor: '#1C1917' }}>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
+          <div className="py-10 sm:py-12 px-6 relative overflow-hidden" style={{ backgroundColor: '#1C1917' }}>
+            <div
+              aria-hidden
+              className="absolute inset-x-0 top-0 h-px"
+              style={{ background: 'linear-gradient(90deg, transparent, rgba(217,119,6,0.5), transparent)' }}
+            />
+            <div className="relative grid grid-cols-1 sm:grid-cols-3 gap-10 sm:gap-8 text-center">
               <div>
-                <p className="text-3xl sm:text-4xl font-bold text-white">500+</p>
-                <p className="text-gray-300">Certified Technicians</p>
+                <p className="text-4xl sm:text-5xl font-bold text-white tracking-tight">500+</p>
+                <p className="mt-2 text-xs sm:text-sm text-gray-400 uppercase tracking-widest">
+                  Certified Technicians
+                </p>
               </div>
               <div>
-                <p className="text-3xl sm:text-4xl font-bold text-white">1,200+</p>
-                <p className="text-gray-300">COCs Issued</p>
+                <p className="text-4xl sm:text-5xl font-bold text-white tracking-tight">1,200+</p>
+                <p className="mt-2 text-xs sm:text-sm text-gray-400 uppercase tracking-widest">
+                  COCs Issued
+                </p>
               </div>
               <div>
-                <p className="text-3xl sm:text-4xl font-bold text-white">3,000+</p>
-                <p className="text-gray-300">Jobs Logged</p>
+                <p className="text-4xl sm:text-5xl font-bold text-white tracking-tight">3,000+</p>
+                <p className="mt-2 text-xs sm:text-sm text-gray-400 uppercase tracking-widest">
+                  Jobs Logged
+                </p>
               </div>
             </div>
           </div>

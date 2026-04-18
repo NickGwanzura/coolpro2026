@@ -85,25 +85,34 @@ export default function MembershipPage() {
   return (
     <div style={{ backgroundColor: '#FAFAF9' }}>
       {/* Page header */}
-      <div className="pt-28 pb-16" style={{ backgroundColor: '#FAFAF9' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-[#D97706] text-xs font-semibold tracking-widest uppercase mb-3">Membership</p>
-          <h1 className="text-4xl sm:text-5xl font-bold" style={{ color: '#1C1917' }}>Choose Your Path</h1>
-          <p className="mt-4 text-gray-600 text-lg max-w-xl mx-auto">
-            From student to enterprise find the plan that matches where you are and where you're headed.
+      <section className="pt-28 sm:pt-32 pb-14 sm:pb-16 relative overflow-hidden" style={{ backgroundColor: '#FAFAF9' }}>
+        <div
+          aria-hidden
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[640px] h-[200px] opacity-[0.08] pointer-events-none blur-3xl"
+          style={{ background: 'radial-gradient(closest-side, #D97706, transparent 70%)' }}
+        />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-[#D97706] text-xs font-semibold tracking-[0.24em] uppercase mb-3">Membership</p>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.08]" style={{ color: '#1C1917' }}>
+            Choose Your Path
+          </h1>
+          <p className="mt-5 text-base sm:text-lg text-gray-600 max-w-xl mx-auto leading-relaxed">
+            From student to enterprise, find the plan that matches where you are and where you&rsquo;re headed.
           </p>
         </div>
-      </div>
+      </section>
 
       {/* Pricing tiers */}
-      <section className="py-16" style={{ backgroundColor: '#FAFAF9' }}>
+      <section className="pb-16 sm:pb-20" style={{ backgroundColor: '#FAFAF9' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-stretch pt-4">
             {PRICING_TIERS.map((tier, index) => (
               <div
                 key={index}
-                className={`p-8 border-2 transition-all duration-300 ${
-                  tier.highlighted ? 'shadow-sm' : 'hover:shadow-sm'
+                className={`group relative flex flex-col p-7 sm:p-8 border-2 transition-all duration-300 ${
+                  tier.highlighted
+                    ? 'md:-translate-y-3 md:shadow-xl shadow-lg'
+                    : 'hover:-translate-y-1 hover:shadow-lg'
                 }`}
                 style={{
                   backgroundColor: tier.highlighted ? '#1C1917' : 'white',
@@ -112,45 +121,58 @@ export default function MembershipPage() {
               >
                 {tier.badge && (
                   <span
-                    className="text-xs font-bold px-2 py-0.5 uppercase tracking-wide"
+                    className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[11px] font-bold px-3 py-1 uppercase tracking-[0.18em] whitespace-nowrap"
                     style={{
                       backgroundColor: tier.highlighted
-                        ? 'rgba(217,119,6,0.2)'
+                        ? '#D97706'
                         : tier.name === 'Student'
-                        ? 'rgba(90,125,90,0.15)'
-                        : '#FAFAF9',
-                      color: tier.highlighted ? '#D97706' : tier.name === 'Student' ? '#5A7D5A' : '#1C1917',
+                        ? '#5A7D5A'
+                        : '#1C1917',
+                      color: 'white',
                     }}
                   >
                     {tier.badge}
                   </span>
                 )}
                 <h3
-                  className="text-2xl font-bold mt-4"
+                  className="text-xl sm:text-2xl font-bold tracking-tight mt-2"
                   style={{ color: tier.highlighted ? 'white' : '#1C1917' }}
                 >
                   {tier.name}
                 </h3>
-                <p
-                  className="text-3xl font-bold mt-2"
-                  style={{ color: tier.highlighted ? 'white' : '#1C1917' }}
-                >
-                  {tier.price}
-                </p>
-                <p className={tier.highlighted ? 'mt-2 text-gray-300' : 'mt-2 text-gray-500'}>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <p
+                    className="text-3xl sm:text-4xl font-bold tracking-tight"
+                    style={{ color: tier.highlighted ? 'white' : '#1C1917' }}
+                  >
+                    {tier.price.split('/')[0]}
+                  </p>
+                  {tier.price.includes('/') && (
+                    <span className={`text-sm ${tier.highlighted ? 'text-gray-400' : 'text-gray-500'}`}>
+                      /{tier.price.split('/')[1]}
+                    </span>
+                  )}
+                </div>
+                <p className={`mt-2 text-sm ${tier.highlighted ? 'text-gray-300' : 'text-gray-500'}`}>
                   {tier.description}
                 </p>
-                <ul className="mt-6 space-y-3">
+                <div className={`mt-6 h-px ${tier.highlighted ? 'bg-white/10' : 'bg-gray-100'}`} />
+                <ul className="mt-6 space-y-3 flex-1">
                   {tier.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5" style={{ color: tier.highlighted ? '#D97706' : '#5A7D5A' }} />
-                      <span className={tier.highlighted ? 'text-gray-200' : 'text-gray-600'}>{feature}</span>
+                    <li key={i} className="flex items-start gap-2.5">
+                      <CheckCircle
+                        className="h-5 w-5 shrink-0 mt-0.5"
+                        style={{ color: tier.highlighted ? '#D97706' : '#5A7D5A' }}
+                      />
+                      <span className={`text-sm sm:text-[15px] ${tier.highlighted ? 'text-gray-200' : 'text-gray-700'}`}>
+                        {feature}
+                      </span>
                     </li>
                   ))}
                 </ul>
                 <Link
                   href="/contact"
-                  className="block w-full mt-8 py-3 px-6 font-semibold transition-all duration-300 text-white text-center"
+                  className="mt-8 inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 font-semibold transition-all duration-200 text-white text-center hover:brightness-110 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2"
                   style={{ backgroundColor: tier.highlighted ? '#D97706' : '#1C1917' }}
                 >
                   {tier.cta}
@@ -158,41 +180,65 @@ export default function MembershipPage() {
               </div>
             ))}
           </div>
+          <p className="mt-10 text-center text-sm text-gray-500">
+            All plans are annual. Upgrade, downgrade, or cancel any time from your dashboard.
+          </p>
         </div>
       </section>
 
       {/* Pricing FAQs */}
-      <section className="py-20" style={{ backgroundColor: '#ffffff' }}>
+      <section className="py-20 sm:py-24" style={{ backgroundColor: '#ffffff' }}>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: '#1C1917' }}>
+          <div className="text-center mb-14 sm:mb-16">
+            <p className="text-[#D97706] text-xs font-semibold tracking-[0.24em] uppercase mb-3">FAQs</p>
+            <h2 className="text-3xl sm:text-4xl md:text-[2.5rem] font-bold tracking-tight" style={{ color: '#1C1917' }}>
               Membership Questions
             </h2>
-            <div className="w-24 h-1 mx-auto" style={{ backgroundColor: '#D97706' }}></div>
+            <div className="w-20 h-[3px] mx-auto mt-5" style={{ backgroundColor: '#D97706' }} />
           </div>
-          <div className="space-y-4">
-            {PRICING_FAQS.map((faq, index) => (
-              <div
-                key={index}
-                className="border overflow-hidden"
-                style={{ backgroundColor: 'white', borderColor: '#E7E5E4' }}
-              >
-                <button
-                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                  className="w-full px-6 py-5 text-left flex justify-between items-center hover:bg-gray-50 transition-colors"
-                >
-                  <span className="font-semibold text-lg" style={{ color: '#1C1917' }}>{faq.question}</span>
-                  <ArrowRight
-                    className={`h-5 w-5 transition-transform ${openFaq === index ? 'rotate-90' : ''}`}
-                    style={{ color: '#D4A574' }}
-                  />
-                </button>
-                {openFaq === index && (
-                  <div className="px-6 pb-5 text-gray-600 leading-relaxed">{faq.answer}</div>
-                )}
-              </div>
-            ))}
-          </div>
+          <ul className="space-y-3 sm:space-y-4">
+            {PRICING_FAQS.map((faq, index) => {
+              const open = openFaq === index;
+              return (
+                <li key={index}>
+                  <div
+                    className={`border overflow-hidden bg-white transition-all duration-200 ${
+                      open ? 'shadow-md border-[#D97706]/30' : 'hover:shadow-sm'
+                    }`}
+                    style={{ borderColor: open ? 'rgba(217,119,6,0.3)' : '#E7E5E4' }}
+                  >
+                    <button
+                      onClick={() => setOpenFaq(open ? null : index)}
+                      className="w-full px-5 sm:px-6 py-5 text-left flex justify-between items-center gap-4 transition-colors hover:bg-gray-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-inset"
+                      aria-expanded={open}
+                    >
+                      <span className="font-semibold text-base sm:text-lg tracking-tight" style={{ color: '#1C1917' }}>
+                        {faq.question}
+                      </span>
+                      <span
+                        className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 ${
+                          open ? 'bg-[#D97706] text-white rotate-90' : 'bg-[#FAFAF9] text-[#D4A574]'
+                        }`}
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                      </span>
+                    </button>
+                    <div
+                      className={`grid transition-all duration-300 ${
+                        open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="px-5 sm:px-6 pb-5 text-sm sm:text-[15px] text-gray-600 leading-relaxed">
+                          {faq.answer}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </section>
 

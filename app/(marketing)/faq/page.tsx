@@ -60,41 +60,77 @@ export default function FaqPage() {
 
   return (
     <div style={{ backgroundColor: '#ffffff' }}>
-      <div className="pt-28 pb-16" style={{ backgroundColor: '#FAFAF9' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-[#D97706] text-xs font-semibold tracking-widest uppercase mb-3">Support</p>
-          <h1 className="text-4xl sm:text-5xl font-bold" style={{ color: '#1C1917' }}>Frequently Asked Questions</h1>
-          <p className="mt-4 text-gray-600 text-lg max-w-2xl mx-auto">
-            Answers to the most common questions about HEVACRAZ membership, certification, compliance, and supplier flows.
+      <section className="pt-28 sm:pt-32 pb-14 sm:pb-16 relative overflow-hidden" style={{ backgroundColor: '#FAFAF9' }}>
+        <div
+          aria-hidden
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[640px] h-[200px] opacity-[0.08] pointer-events-none blur-3xl"
+          style={{ background: 'radial-gradient(closest-side, #D97706, transparent 70%)' }}
+        />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-[#D97706] text-xs font-semibold tracking-[0.24em] uppercase mb-3">Support</p>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.08]" style={{ color: '#1C1917' }}>
+            Frequently Asked Questions
+          </h1>
+          <p className="mt-5 text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
+            Answers to the most common questions about HEVACRAZ membership, certification,
+            compliance, and supplier flows.
           </p>
         </div>
-      </div>
+      </section>
 
-      <section className="py-20">
+      <section className="py-16 sm:py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="space-y-4">
-            {FAQS.map((faq, index) => (
-              <div
-                key={index}
-                className="border overflow-hidden"
-                style={{ backgroundColor: 'white', borderColor: '#E7E5E4' }}
-              >
-                <button
-                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                  className="w-full px-6 py-5 text-left flex justify-between items-center hover:bg-gray-50 transition-colors"
-                >
-                  <span className="font-semibold text-lg" style={{ color: '#1C1917' }}>{faq.question}</span>
-                  <ArrowRight
-                    className={`h-5 w-5 transition-transform ${openFaq === index ? 'rotate-90' : ''}`}
-                    style={{ color: '#D4A574' }}
-                  />
-                </button>
-                {openFaq === index && (
-                  <div className="px-6 pb-5 text-gray-600 leading-relaxed">{faq.answer}</div>
-                )}
-              </div>
-            ))}
-          </div>
+          <ul className="space-y-3 sm:space-y-4">
+            {FAQS.map((faq, index) => {
+              const open = openFaq === index;
+              return (
+                <li key={index}>
+                  <div
+                    className={`border overflow-hidden bg-white transition-all duration-200 ${
+                      open ? 'shadow-md border-[#D97706]/30' : 'hover:shadow-sm'
+                    }`}
+                    style={{ borderColor: open ? 'rgba(217,119,6,0.3)' : '#E7E5E4' }}
+                  >
+                    <button
+                      onClick={() => setOpenFaq(open ? null : index)}
+                      className="w-full px-5 sm:px-6 py-5 text-left flex justify-between items-center gap-4 transition-colors hover:bg-gray-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-inset"
+                      aria-expanded={open}
+                    >
+                      <span className="font-semibold text-base sm:text-lg tracking-tight" style={{ color: '#1C1917' }}>
+                        {faq.question}
+                      </span>
+                      <span
+                        className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 ${
+                          open ? 'bg-[#D97706] text-white rotate-90' : 'bg-[#FAFAF9] text-[#D4A574]'
+                        }`}
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                      </span>
+                    </button>
+                    <div
+                      className={`grid transition-all duration-300 ${
+                        open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="px-5 sm:px-6 pb-5 text-sm sm:text-[15px] text-gray-600 leading-relaxed">
+                          {faq.answer}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="mt-10 text-center text-sm text-gray-500">
+            Still have questions?{' '}
+            <a href="/contact" className="font-semibold hover:underline" style={{ color: '#D97706' }}>
+              Contact us
+            </a>
+            .
+          </p>
         </div>
       </section>
 

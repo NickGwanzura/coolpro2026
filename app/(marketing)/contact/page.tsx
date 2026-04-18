@@ -14,15 +14,23 @@ export default function ContactPage() {
 
   return (
     <div style={{ backgroundColor: '#ffffff' }}>
-      <div className="pt-28 pb-16" style={{ backgroundColor: '#FAFAF9' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-[#D97706] text-xs font-semibold tracking-widest uppercase mb-3">Get in touch</p>
-          <h1 className="text-4xl sm:text-5xl font-bold" style={{ color: '#1C1917' }}>Contact HEVACRAZ</h1>
-          <p className="mt-4 text-gray-600 text-lg max-w-2xl mx-auto">
-            Membership enquiries, supplier onboarding, training bookings, compliance questions we typically reply within one working day.
+      <section className="pt-28 sm:pt-32 pb-14 sm:pb-16 relative overflow-hidden" style={{ backgroundColor: '#FAFAF9' }}>
+        <div
+          aria-hidden
+          className="absolute top-0 right-0 w-[420px] h-[280px] opacity-[0.08] pointer-events-none blur-3xl"
+          style={{ background: 'radial-gradient(closest-side, #5A7D5A, transparent 70%)' }}
+        />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-[#D97706] text-xs font-semibold tracking-[0.24em] uppercase mb-3">Get in touch</p>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.08]" style={{ color: '#1C1917' }}>
+            Contact HEVACRAZ
+          </h1>
+          <p className="mt-5 text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
+            Membership enquiries, supplier onboarding, training bookings, compliance questions. We
+            typically reply within one working day.
           </p>
         </div>
-      </div>
+      </section>
 
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
