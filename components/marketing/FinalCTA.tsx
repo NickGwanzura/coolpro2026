@@ -28,7 +28,7 @@ export function FinalCTA() {
           Join Zimbabwe&apos;s leading professional association today.
         </p>
         <Link
-          href="/login"
+          href="/join"
           className="group inline-flex items-center gap-2 font-semibold py-4 px-10 text-base sm:text-lg shadow-sm hover:shadow-xl hover:brightness-110 transition-all duration-200 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]"
           style={{ backgroundColor: '#D97706' }}
         >

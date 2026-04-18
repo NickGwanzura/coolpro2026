@@ -171,7 +171,13 @@ export default function MembershipPage() {
                   ))}
                 </ul>
                 <Link
-                  href="/contact"
+                  href={
+                    tier.name === 'Student'
+                      ? '/join/student'
+                      : tier.name === 'Enterprise'
+                      ? '/contact?topic=enterprise'
+                      : '/join'
+                  }
                   className="mt-8 inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 font-semibold transition-all duration-200 text-white text-center hover:brightness-110 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2"
                   style={{ backgroundColor: tier.highlighted ? '#D97706' : '#1C1917' }}
                 >
