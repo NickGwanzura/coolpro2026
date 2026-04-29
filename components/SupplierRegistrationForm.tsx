@@ -1,20 +1,16 @@
 'use client';
 
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  ArrowRight,
-  Building2,
-  CheckCircle2,
-  FileCheck,
-  MapPin,
-  Sparkles,
-  ShieldCheck,
-  Truck,
-} from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, CheckCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import type { SupplierRegistration } from '@/types/index';
 import { createSupplierApplication } from '@/lib/api';
+
+const ACCENT = '#D97706';
+const ACCENT_TINT = 'rgba(217,119,6,0.10)';
+const BORDER = '#E5E0DB';
+const BG_INPUT = '#FAFAF9';
 
 const SUPPLIER_TYPES: Array<SupplierRegistration['supplierType']> = [
   'importer',
@@ -22,6 +18,12 @@ const SUPPLIER_TYPES: Array<SupplierRegistration['supplierType']> = [
   'distributor',
   'manufacturer',
   'service-partner',
+];
+
+const APPROVED_REFRIGERANTS = [
+  { code: 'R-290', safety: 'A3' },
+  { code: 'R-32', safety: 'A2L' },
+  { code: 'R-744', safety: 'A1' },
 ];
 
 type SupplierFormState = {
@@ -40,15 +42,10 @@ type SupplierFormState = {
   pesepayMerchantId: string;
   website: string;
   notes: string;
+  agree: boolean;
 };
 
-const APPROVED_REFRIGERANTS = [
-  { code: 'R-290', name: 'R-290', safety: 'A3' },
-  { code: 'R-32', name: 'R-32', safety: 'A2L' },
-  { code: 'R-744', name: 'R-744', safety: 'A1' },
-];
-
-const INITIAL_FORM: SupplierFormState = {
+const INITIAL: SupplierFormState = {
   companyName: '',
   tradingName: '',
   registrationNumber: '',
@@ -64,65 +61,63 @@ const INITIAL_FORM: SupplierFormState = {
   pesepayMerchantId: '',
   website: '',
   notes: '',
+  agree: false,
 };
 
 export default function SupplierRegistrationForm() {
-  const router = useRouter();
-  const [form, setForm] = useState<SupplierFormState>(INITIAL_FORM);
-  const [message, setMessage] = useState('');
+  const [form, setForm] = useState<SupplierFormState>(INITIAL);
   const [submitted, setSubmitted] = useState<SupplierRegistration | null>(null);
-  const [savedCount, setSavedCount] = useState(0);
-
-  const toggleRefrigerant = (code: string) => {
-    setForm(prev => ({
-      ...prev,
-      refrigerantsSupplied: prev.refrigerantsSupplied.includes(code)
-        ? prev.refrigerantsSupplied.filter(item => item !== code)
-        : [...prev.refrigerantsSupplied, code],
-    }));
-  };
-
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const update = <K extends keyof SupplierFormState>(key: K, value: SupplierFormState[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
+
+  const toggleRefrigerant = (code: string) =>
+    setForm((f) => ({
+      ...f,
+      refrigerantsSupplied: f.refrigerantsSupplied.includes(code)
+        ? f.refrigerantsSupplied.filter((c) => c !== code)
+        : [...f.refrigerantsSupplied, code],
+    }));
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submitting || !form.agree) return;
 
     if (!form.companyName || !form.registrationNumber || !form.contactName || !form.email || !form.phone) {
-      setMessage('Please complete the required company and contact fields.');
+      setError('Please complete the required company and contact fields.');
       return;
     }
-
     if (form.refrigerantsSupplied.length === 0) {
-      setMessage('Select at least one refrigerant category before submitting.');
+      setError('Select at least one refrigerant category before submitting.');
       return;
     }
 
     setSubmitting(true);
-    setMessage('');
+    setError(null);
     try {
       const record = await createSupplierApplication({
-        companyName: form.companyName,
-        tradingName: form.tradingName || undefined,
-        registrationNumber: form.registrationNumber,
+        companyName: form.companyName.trim(),
+        tradingName: form.tradingName.trim() || undefined,
+        registrationNumber: form.registrationNumber.trim(),
         supplierType: form.supplierType,
-        contactName: form.contactName,
-        email: form.email,
-        phone: form.phone,
+        contactName: form.contactName.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone: form.phone.trim(),
         province: form.province,
-        city: form.city,
-        address: form.address,
+        city: form.city.trim(),
+        address: form.address.trim(),
         refrigerantsSupplied: form.refrigerantsSupplied,
-        taxNumber: form.taxNumber || undefined,
-        pesepayMerchantId: form.pesepayMerchantId || undefined,
-        website: form.website || undefined,
-        notes: form.notes || undefined,
+        taxNumber: form.taxNumber.trim() || undefined,
+        pesepayMerchantId: form.pesepayMerchantId.trim() || undefined,
+        website: form.website.trim() || undefined,
+        notes: form.notes.trim() || undefined,
       });
-
-      setSavedCount(prev => prev + 1);
       setSubmitted(record);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Submission failed. Please try again.';
-      setMessage(errorMessage);
+      const message = err instanceof Error ? err.message : 'Submission failed. Please try again.';
+      setError(message);
     } finally {
       setSubmitting(false);
     }
@@ -130,323 +125,276 @@ export default function SupplierRegistrationForm() {
 
   if (submitted) {
     return (
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-start gap-4">
-            <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
-              <CheckCircle2 className="h-6 w-6" />
-            </div>
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">
-                Submission received
-              </p>
-              <h2 className="text-2xl font-bold text-gray-900">Supplier registration submitted</h2>
-              <p className="max-w-2xl text-sm leading-6 text-gray-600">
-                Your application is now in the HEVACRAZ review queue. The National Compliance Oversight
-                Unit will be notified once HEVACRAZ approves your supplier credentials.
-              </p>
-            </div>
+      <div className="bg-white border p-6 sm:p-8" style={{ borderColor: BORDER }}>
+        <div className="text-center py-10 sm:py-14">
+          <div className="inline-flex p-3 mb-4" style={{ backgroundColor: ACCENT_TINT }}>
+            <CheckCircle className="h-10 w-10" style={{ color: ACCENT }} />
           </div>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reference</p>
-              <p className="mt-2 text-lg font-bold text-gray-900">{submitted.id}</p>
-            </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Submitted</p>
-              <p className="mt-2 text-lg font-bold text-gray-900">
-                {new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(submitted.submittedAt))}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Business</p>
-              <p className="mt-2 text-lg font-bold text-gray-900">{submitted.companyName}</p>
-            </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Status</p>
-              <p className="mt-2 text-lg font-bold text-gray-900">Under review</p>
-            </div>
+          <h2 className="text-2xl font-bold" style={{ color: '#1C1917' }}>
+            Application submitted
+          </h2>
+          <p className="mt-3 text-gray-600 max-w-md mx-auto leading-relaxed">
+            Thanks, {submitted.companyName}. Your application is now in the HEVACRAZ review queue.
+            The National Compliance Oversight Unit will be notified once HEVACRAZ approves your
+            credentials.
+          </p>
+          <div
+            className="mt-5 inline-flex flex-col items-center gap-1 border px-4 py-3 text-xs"
+            style={{ borderColor: BORDER, backgroundColor: BG_INPUT }}
+          >
+            <span className="text-gray-500 uppercase tracking-[0.18em] font-semibold">
+              Reference
+            </span>
+            <span className="font-mono text-sm font-semibold" style={{ color: '#1C1917' }}>
+              {submitted.id.slice(0, 8).toUpperCase()}
+            </span>
           </div>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setSubmitted(null)}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-            >
-              Register Another Supplier
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/dashboard')}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+          <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-white text-sm transition-colors"
+              style={{ backgroundColor: ACCENT }}
             >
               Go to Dashboard
-            </button>
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-sm border transition-colors hover:bg-[#FAFAF9]"
+              style={{ borderColor: BORDER, color: '#1C1917' }}
+            >
+              Return home
+            </Link>
           </div>
-        </section>
-
-        <aside className="space-y-4">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">What happens next</p>
-            <ul className="mt-4 space-y-3 text-sm leading-6 text-gray-600">
-              <li className="flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-600" />
-                HEVACRAZ reviews your business registration and compliance documents.
-              </li>
-              <li className="flex items-start gap-3">
-                <FileCheck className="mt-0.5 h-4 w-4 text-blue-600" />
-                Approved suppliers appear in the NOU supplier monitoring module.
-              </li>
-              <li className="flex items-start gap-3">
-                <Truck className="mt-0.5 h-4 w-4 text-amber-600" />
-                Refrigerant categories are recorded for traceability across the supply chain.
-              </li>
-            </ul>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-gray-900 p-5 text-white shadow-lg">
-            <div className="flex items-center gap-3">
-              <Sparkles className="h-5 w-5 text-amber-400" />
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-gray-300">Saved submissions</p>
-            </div>
-            <p className="mt-3 text-3xl font-bold">{savedCount}</p>
-            <p className="mt-2 text-sm text-gray-300">Mock applications stored locally on this device.</p>
-          </div>
-        </aside>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Supplier onboarding</p>
-          <h2 className="text-2xl font-bold text-gray-900">Register your business as an approved supplier</h2>
-          <p className="max-w-2xl text-sm leading-6 text-gray-600">
-            Complete the registration below to enter the HEVACRAZ supplier review queue. Approved
-            suppliers gain access to the verified-buyer flow and the public supplier directory.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Company Name" required>
-              <input
+    <div className="bg-white border p-6 sm:p-8" style={{ borderColor: BORDER }}>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <fieldset className="space-y-5">
+          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 mb-3">
+            Company details
+          </legend>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Company name" required>
+              <Input
                 value={form.companyName}
-                onChange={(e) => setForm({ ...form, companyName: e.target.value })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                placeholder="e.g. Zimbabwe Refrigeration Supplies"
+                onChange={(v) => update('companyName', v)}
+                required
+                placeholder="Zimbabwe Refrigeration Supplies"
               />
             </Field>
-            <Field label="Trading Name">
-              <input
+            <Field label="Trading name">
+              <Input
                 value={form.tradingName}
-                onChange={(e) => setForm({ ...form, tradingName: e.target.value })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                placeholder="Optional trading name"
+                onChange={(v) => update('tradingName', v)}
+                placeholder="Optional"
               />
             </Field>
-            <Field label="Registration Number" required>
-              <input
+            <Field label="Registration number" required>
+              <Input
                 value={form.registrationNumber}
-                onChange={(e) => setForm({ ...form, registrationNumber: e.target.value })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                onChange={(v) => update('registrationNumber', v)}
+                required
                 placeholder="CR 123/2026"
               />
             </Field>
-            <Field label="Supplier Type" required>
-              <select
+            <Field label="Supplier type" required>
+              <Select
                 value={form.supplierType}
-                onChange={(e) => setForm({ ...form, supplierType: e.target.value as SupplierRegistration['supplierType'] })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                onChange={(v) => update('supplierType', v as SupplierRegistration['supplierType'])}
+                required
               >
                 {SUPPLIER_TYPES.map((type) => (
                   <option key={type} value={type}>
                     {type.replace('-', ' ')}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
-            <Field label="Contact Name" required>
-              <input
+          </div>
+        </fieldset>
+
+        <fieldset className="space-y-5 pt-5 border-t" style={{ borderColor: BORDER }}>
+          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 mb-3">
+            Contact
+          </legend>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Contact name" required>
+              <Input
                 value={form.contactName}
-                onChange={(e) => setForm({ ...form, contactName: e.target.value })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                placeholder="Primary contact person"
+                onChange={(v) => update('contactName', v)}
+                required
+                placeholder="Primary contact"
               />
             </Field>
             <Field label="Email" required>
-              <input
+              <Input
                 type="email"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                onChange={(v) => update('email', v)}
+                required
                 placeholder="supplier@example.co.zw"
               />
             </Field>
             <Field label="Phone" required>
-              <input
+              <Input
+                type="tel"
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                onChange={(v) => update('phone', v)}
+                required
                 placeholder="+263 77 000 0000"
               />
             </Field>
             <Field label="Province" required>
-              <select
+              <Select
                 value={form.province}
-                onChange={(e) => setForm({ ...form, province: e.target.value })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                onChange={(v) => update('province', v)}
+                required
               >
                 {ZIMBABWE_PROVINCES.map((province) => (
                   <option key={province.id} value={province.name}>
                     {province.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
-            <Field label="City / Town" required>
-              <input
+            <Field label="City / town" required>
+              <Input
                 value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                onChange={(v) => update('city', v)}
+                required
                 placeholder="Harare, Bulawayo, Mutare..."
               />
             </Field>
           </div>
-
-          <Field label="Physical Address" required>
-            <textarea
+          <Field label="Physical address" required>
+            <Textarea
               value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              onChange={(v) => update('address', v)}
+              required
               rows={3}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-              placeholder="Warehouse / office address"
+              placeholder="Warehouse or office address"
             />
           </Field>
+        </fieldset>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-gray-700">Refrigerants Supplied</p>
-              <span className="text-xs font-medium text-amber-700">Choose at least one</span>
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              {APPROVED_REFRIGERANTS.map((item) => {
-                const active = form.refrigerantsSupplied.includes(item.code);
-                return (
-                  <button
-                    key={item.code}
-                    type="button"
-                    onClick={() => toggleRefrigerant(item.code)}
-                    className={`rounded-2xl border px-4 py-4 text-left transition ${
-                      active
-                        ? 'border-blue-300 bg-blue-50 shadow-sm'
-                        : 'border-gray-200 bg-gray-50 hover:bg-white'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                    <p className="mt-1 text-xs text-gray-500">Safety class {item.safety}</p>
-                  </button>
-                );
-              })}
-            </div>
+        <fieldset className="space-y-3 pt-5 border-t" style={{ borderColor: BORDER }}>
+          <div className="flex items-baseline justify-between gap-2">
+            <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+              Refrigerants supplied
+            </legend>
+            <span className="text-[11px] font-medium" style={{ color: ACCENT }}>
+              Choose at least one
+            </span>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {APPROVED_REFRIGERANTS.map((item) => {
+              const active = form.refrigerantsSupplied.includes(item.code);
+              return (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={() => toggleRefrigerant(item.code)}
+                  className="border px-4 py-4 text-left transition-colors"
+                  style={{
+                    borderColor: active ? ACCENT : BORDER,
+                    backgroundColor: active ? ACCENT_TINT : '#ffffff',
+                  }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: '#1C1917' }}>
+                    {item.code}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">Safety class {item.safety}</p>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Tax Number">
-              <input
+        <fieldset className="space-y-5 pt-5 border-t" style={{ borderColor: BORDER }}>
+          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 mb-3">
+            Optional
+          </legend>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Tax number">
+              <Input
                 value={form.taxNumber}
-                onChange={(e) => setForm({ ...form, taxNumber: e.target.value })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                placeholder="Optional tax reference"
+                onChange={(v) => update('taxNumber', v)}
+                placeholder="Tax reference"
               />
             </Field>
-            <Field label="Pesepay Merchant ID">
-              <input
+            <Field label="Pesepay merchant ID">
+              <Input
                 value={form.pesepayMerchantId}
-                onChange={(e) => setForm({ ...form, pesepayMerchantId: e.target.value })}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                placeholder="Required for rewards onboarding"
+                onChange={(v) => update('pesepayMerchantId', v)}
+                placeholder="For verified purchases"
               />
             </Field>
           </div>
-
-          <Field label="Website / Notes">
-            <textarea
+          <Field label="Website / notes">
+            <Textarea
               value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              onChange={(v) => update('notes', v)}
               rows={3}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
               placeholder="Website, business notes, branch locations"
             />
           </Field>
+        </fieldset>
 
-          {message && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              {message}
-            </div>
-          )}
+        <fieldset className="pt-5 border-t" style={{ borderColor: BORDER }}>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.agree}
+              onChange={(e) => update('agree', e.target.checked)}
+              className="mt-1"
+              required
+            />
+            <span className="text-sm text-gray-600 leading-relaxed">
+              I confirm the information above is accurate. I consent to HEVACRAZ verifying my
+              business credentials with the registrar and listing my approved supplier profile in
+              the public supplier directory.
+            </span>
+          </label>
+        </fieldset>
 
+        {error && (
+          <div
+            className="border px-4 py-3 text-sm"
+            style={{ borderColor: '#F87171', backgroundColor: '#FEF2F2', color: '#991B1B' }}
+          >
+            {error}
+          </div>
+        )}
+
+        <div className="pt-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <button
             type="submit"
-            disabled={submitting}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={!form.agree || submitting}
+            className="group inline-flex items-center justify-center gap-2 font-semibold py-3.5 px-8 text-white text-sm transition-all duration-200 hover:brightness-110 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
+            style={{ backgroundColor: ACCENT }}
           >
-            {submitting ? 'Submitting...' : 'Submit Supplier Application'}
-            <ArrowRight className="h-4 w-4" />
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                Submit application
+                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+              </>
+            )}
           </button>
-        </form>
-      </section>
-
-      <aside className="space-y-4">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-blue-600" />
-            <h3 className="text-lg font-bold text-gray-900">Supplier requirements</h3>
-          </div>
-          <ul className="mt-4 space-y-3 text-sm leading-6 text-gray-600">
-            <li className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
-              Business registration details and contact information.
-            </li>
-            <li className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
-              At least one refrigerant category that you can reliably supply.
-            </li>
-            <li className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
-              Pesepay merchant ID if you want to connect rewards or verified purchases.
-            </li>
-          </ul>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-gray-900 p-5 text-white shadow-lg">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-amber-400" />
-            <h3 className="text-lg font-bold">Coverage</h3>
-          </div>
-          <p className="mt-3 text-sm leading-6 text-gray-300">
-            Supplier applications are accepted across all Zimbabwe provinces and reviewed by the
-            National Compliance Oversight Unit.
+          <p className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+            <ShieldCheck className="h-4 w-4" style={{ color: ACCENT }} />
+            HEVACRAZ verifies all submissions before publication.
           </p>
-          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Local submissions</p>
-            <p className="mt-2 text-2xl font-bold text-white">{savedCount}</p>
-          </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => router.push('/login')}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-        >
-          Back to Portal
-        </button>
-      </aside>
+      </form>
     </div>
   );
 }
@@ -461,12 +409,88 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <label className="space-y-2">
-      <span className="text-sm font-semibold text-gray-700">
+    <div>
+      <label className="block text-sm font-medium mb-2" style={{ color: '#1C1917' }}>
         {label}
-        {required ? <span className="ml-1 text-rose-500">*</span> : null}
-      </span>
+        {required ? <span className="ml-1" style={{ color: '#DC2626' }}>*</span> : null}
+      </label>
       {children}
-    </label>
+    </div>
+  );
+}
+
+function Input({
+  value,
+  onChange,
+  type = 'text',
+  required,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  required?: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      required={required}
+      placeholder={placeholder}
+      className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:border-transparent"
+      style={{ borderColor: BORDER }}
+    />
+  );
+}
+
+function Select({
+  value,
+  onChange,
+  required,
+  children,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      required={required}
+      className="w-full px-4 py-3 border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:border-transparent"
+      style={{ borderColor: BORDER }}
+    >
+      {children}
+    </select>
+  );
+}
+
+function Textarea({
+  value,
+  onChange,
+  required,
+  rows = 3,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  rows?: number;
+  placeholder?: string;
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      required={required}
+      rows={rows}
+      placeholder={placeholder}
+      className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:border-transparent"
+      style={{ borderColor: BORDER }}
+    />
   );
 }
