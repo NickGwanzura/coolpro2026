@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import './globals.css';
+import { FloatingVoiceButton } from '@/components/FloatingVoiceButton';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { AuthProvider } from '@/lib/auth';
 import { EmergencyModeProvider } from '@/lib/emergencyMode';
@@ -26,6 +27,7 @@ export default function RootLayout({
               <ToastProvider>
                 <OfflineBanner />
                 {children}
+                <FloatingVoiceButton />
               </ToastProvider>
             </AuthProvider>
           </EmergencyModeProvider>
