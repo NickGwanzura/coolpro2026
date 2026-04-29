@@ -40,7 +40,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'WhatGas + Risk Engine',
     href: '/whatgas',
     icon: Icons.Flask,
-    roles: ['technician', 'org_admin'],
+    roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'regulator'],
   },
   {
     label: 'Emergency Mode',

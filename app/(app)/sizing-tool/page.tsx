@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+import { ArrowRight, FlaskConical } from 'lucide-react';
 import { EmergencyModePanel } from '@/components/EmergencyModePanel';
-import { RefrigerantIntelligencePanel } from '@/components/RefrigerantIntelligencePanel';
 import SizingTool from '@/components/SizingTool';
 
 export default function SizingToolPage() {
@@ -10,10 +11,17 @@ export default function SizingToolPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Commercial Refrigeration System Sizing Tool</h1>
-                    <p className="text-gray-500 mt-1">Calculate refrigeration load, review WhatGas guidance, and surface refrigerant risk controls</p>
+                    <p className="text-gray-500 mt-1">Calculate refrigeration load, sizing breakdown, and recommended capacity</p>
                 </div>
+                <Link
+                    href="/whatgas"
+                    className="inline-flex items-center gap-2 border border-[#E5E0DB] bg-white px-4 py-2 text-sm font-semibold text-[#1C1917] hover:border-[#D97706] hover:text-[#D97706] transition-colors"
+                >
+                    <FlaskConical className="h-4 w-4" />
+                    WhatGas + Risk Engine
+                    <ArrowRight className="h-4 w-4" />
+                </Link>
             </div>
-            <RefrigerantIntelligencePanel initialCode="R-744" />
             <EmergencyModePanel />
             <SizingTool />
         </div>

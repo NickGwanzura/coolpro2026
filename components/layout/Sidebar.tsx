@@ -24,6 +24,7 @@ import {
     WifiOff,
     ChevronDown,
     UserCircle,
+    FlaskConical,
 } from 'lucide-react';
 import { useAuth, logout } from '@/lib/auth';
 import { useEmergencyMode } from '@/lib/emergencyMode';
@@ -60,6 +61,7 @@ const NAV_SECTIONS: NavSection[] = [
     {
         label: 'Tools',
         items: [
+            { name: 'WhatGas + Risk Engine', href: '/whatgas', icon: FlaskConical, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'regulator'] },
             { name: 'Sizing Tool', href: '/sizing-tool', icon: Calculator, roles: ['technician', 'org_admin'] },
         ],
     },
