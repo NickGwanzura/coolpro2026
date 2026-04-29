@@ -69,18 +69,29 @@ export function getSession(): UserSession | null {
     return stored ? JSON.parse(stored) as UserSession : null;
 }
 
-export async function login(role: string, region: string): Promise<UserSession> {
+async function postLogin(body: Record<string, string>): Promise<UserSession> {
     const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role, region }),
+        body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? `Login failed (${res.status})`);
+    }
     const data = await res.json() as { user: UserSession };
     if (typeof window !== 'undefined') {
         localStorage.setItem('coolpro_user', JSON.stringify(data.user));
     }
     return data.user;
+}
+
+export async function loginByEmail(email: string): Promise<UserSession> {
+    return postLogin({ email });
+}
+
+export async function login(role: string, region: string): Promise<UserSession> {
+    return postLogin({ role, region });
 }
 
 export async function logout() {
@@ -93,7 +104,7 @@ export async function logout() {
 
 interface AuthContextType {
     user: UserSession | null;
-    login: (role: string, region?: string) => Promise<void>;
+    login: (email: string) => Promise<void>;
     logout: () => void;
     isLoading: boolean;
     demo?: (role: string, region: string) => Promise<void>;
@@ -123,8 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .finally(() => setIsLoading(false));
     }, []);
 
-    const handleLogin = async (role: string, region = 'Harare') => {
-        const session = await login(role, region);
+    const handleLogin = async (email: string) => {
+        const session = await loginByEmail(email);
         setUser(session);
     };
 
@@ -134,7 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const demoLogin = async (role: string, region: string) => {
-        await handleLogin(role, region);
+        const session = await login(role, region);
+        setUser(session);
     };
 
     return (

@@ -88,8 +88,14 @@ function LoginPageContent() {
     if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
     setFieldErrors({});
     setIsLoading(true);
-    await login(email);
-    router.push(nextPath);
+    try {
+      await login(email);
+      router.push(nextPath);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login failed.';
+      setFieldErrors({ form: message });
+      setIsLoading(false);
+    }
   };
 
   const handleDemoAccess = async (role: UserRole) => {
@@ -172,6 +178,11 @@ function LoginPageContent() {
           <div className="p-6 space-y-5">
             {activeMode === 'signin' && (
               <form onSubmit={handleNormalLogin} className="space-y-4">
+                {fieldErrors.form && (
+                  <div className="border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                    {fieldErrors.form}
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wide text-[#78716C]">Work Email</label>
                   <div className="relative">

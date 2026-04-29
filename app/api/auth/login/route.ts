@@ -5,22 +5,42 @@ import { users } from '@/db/schema/index';
 import { signSession, sessionCookie } from '@/lib/server/auth';
 import type { UserSession } from '@/lib/auth';
 
-export async function POST(req: Request) {
-  const body = await req.json() as { role?: string; region?: string };
-  const { role, region } = body;
+const VALID_ROLES = ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'regulator'] as const;
+type ValidRole = (typeof VALID_ROLES)[number];
 
-  if (!role) {
-    return NextResponse.json({ error: 'role is required' }, { status: 400 });
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => ({})) as { role?: string; region?: string; email?: string };
+  const { role, region, email } = body;
+
+  if (!role && !email) {
+    return NextResponse.json({ error: 'email or role is required' }, { status: 400 });
   }
 
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.role, role as typeof users.$inferSelect.role))
-    .limit(1);
+  let user: typeof users.$inferSelect | undefined;
+  try {
+    if (role) {
+      if (!VALID_ROLES.includes(role as ValidRole)) {
+        return NextResponse.json({ error: 'Unknown role' }, { status: 400 });
+      }
+      [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, role as ValidRole))
+        .limit(1);
+    } else if (email) {
+      [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email.trim().toLowerCase()))
+        .limit(1);
+    }
+  } catch (err) {
+    console.error('[auth/login] DB lookup failed', err);
+    return NextResponse.json({ error: 'Login service unavailable' }, { status: 500 });
+  }
 
   if (!user) {
-    return NextResponse.json({ error: 'No demo user found for this role' }, { status: 404 });
+    return NextResponse.json({ error: 'No matching user found' }, { status: 401 });
   }
 
   const sessionPayload = {
