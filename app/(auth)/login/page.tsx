@@ -138,13 +138,12 @@ function LoginPageContent() {
 
   const tabs: { id: typeof activeMode; label: string }[] = [
     { id: 'signin',   label: 'Sign In' },
-    { id: 'demo',     label: 'Demo Access' },
     { id: 'supplier', label: 'Supplier' },
   ];
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-lg">
 
         {/* Brand */}
         <div className="text-center mb-8">
@@ -223,58 +222,56 @@ function LoginPageContent() {
                     : <><span>Sign In</span><ArrowRight className="h-4 w-4" /></>
                   }
                 </button>
-              </form>
-            )}
 
-            {activeMode === 'demo' && (
-              <div className="space-y-5">
-                <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-3 text-sm text-[#44403C]">
-                  <strong className="font-semibold text-[#1C1917]">Demo Mode</strong> No password required. Select a persona to explore role-specific tools.
-                </div>
-
-                {fieldErrors.form && (
-                  <div className="border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
-                    {fieldErrors.form}
+                {/* Divider + Demo personas */}
+                <div className="pt-2">
+                  <div className="relative flex items-center my-4">
+                    <div className="flex-grow border-t border-[#E7E5E4]" />
+                    <span className="flex-shrink mx-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A8A29E]">
+                      Or try a demo persona
+                    </span>
+                    <div className="flex-grow border-t border-[#E7E5E4]" />
                   </div>
-                )}
 
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#78716C]">Operating Region</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A8A29E]" />
-                    <select
-                      value={selectedRegion} onChange={e => setSelectedRegion(e.target.value)}
-                      className={`${inputCls} pl-9`}
-                    >
-                      {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
+                  <div className="space-y-1.5 mb-3">
+                    <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#78716C]">
+                      Operating Region
+                    </label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A8A29E]" />
+                      <select
+                        value={selectedRegion}
+                        onChange={(e) => setSelectedRegion(e.target.value)}
+                        className={`${inputCls} pl-9`}
+                      >
+                        {REGIONS.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[#78716C]">Choose Role</p>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {DEMO_ROLES.map(({ role, label, description, icon: Icon }) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {DEMO_ROLES.map(({ role, label, icon: Icon }) => (
                       <button
-                        key={role} type="button"
+                        key={role}
+                        type="button"
                         onClick={() => handleDemoAccess(role)}
                         disabled={isLoading}
-                        className="group border border-[#E7E5E4] bg-white p-3 text-left hover:border-[#D97706] hover:bg-[#FAFAF9] disabled:opacity-50 transition-colors"
+                        className="group inline-flex items-center gap-2 border border-[#E7E5E4] bg-white px-3 py-2 text-left text-sm hover:border-[#D97706] hover:bg-[#FAFAF9] disabled:opacity-50 transition-colors"
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center bg-[#D97706]/10 text-[#D97706] flex-shrink-0">
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-[#1C1917]">{label}</p>
-                            <p className="text-xs text-[#78716C] leading-snug mt-0.5">{description}</p>
-                          </div>
-                        </div>
+                        <span className="flex h-7 w-7 items-center justify-center bg-[#D97706]/10 text-[#D97706] flex-shrink-0">
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="font-semibold text-[#1C1917] truncate">{label}</span>
                       </button>
                     ))}
                   </div>
+                  <p className="mt-2 text-[11px] text-[#A8A29E]">
+                    Demo personas log you in instantly without a password.
+                  </p>
                 </div>
-              </div>
+              </form>
             )}
 
             {activeMode === 'supplier' && (
