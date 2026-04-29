@@ -52,3 +52,52 @@ export async function GET(req: Request) {
   const rows = await db.select().from(technicians);
   return NextResponse.json(rows.map(toTechnician));
 }
+
+export async function POST(req: Request) {
+  try {
+    requireRole(req, ['trainer', 'lecturer', 'org_admin', 'regulator']);
+  } catch (e) {
+    return e as Response;
+  }
+
+  const body = (await req.json().catch(() => ({}))) as Partial<Technician>;
+
+  const required: Array<keyof Technician> = [
+    'name', 'nationalId', 'registrationNumber', 'region', 'province',
+    'district', 'contactNumber', 'specialization',
+  ];
+  for (const key of required) {
+    if (!body[key]) {
+      return NextResponse.json({ error: `${key} is required` }, { status: 400 });
+    }
+  }
+
+  const today = new Date();
+  const expiry = new Date(today);
+  expiry.setFullYear(today.getFullYear() + 2);
+
+  const [inserted] = await db
+    .insert(technicians)
+    .values({
+      name: String(body.name).trim(),
+      nationalId: String(body.nationalId).trim(),
+      registrationNumber: String(body.registrationNumber).trim(),
+      region: String(body.region).trim(),
+      province: String(body.province).trim(),
+      district: String(body.district).trim(),
+      contactNumber: String(body.contactNumber).trim(),
+      email: body.email ?? null,
+      specialization: String(body.specialization).trim(),
+      certifications: body.certifications ?? [],
+      trainingHistory: body.trainingHistory ?? [],
+      employmentStatus: (body.employmentStatus ?? 'employed') as 'employed' | 'self-employed' | 'unemployed',
+      employer: body.employer ?? null,
+      refrigerantsHandled: body.refrigerantsHandled ?? [],
+      registrationDate: body.registrationDate ?? today.toISOString().split('T')[0],
+      expiryDate: body.expiryDate ?? expiry.toISOString().split('T')[0],
+      status: (body.status ?? 'pending') as 'active' | 'inactive' | 'suspended' | 'pending',
+    })
+    .returning();
+
+  return NextResponse.json(toTechnician(inserted), { status: 201 });
+}

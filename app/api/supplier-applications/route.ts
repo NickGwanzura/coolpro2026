@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq, or } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { supplierApplications } from '@/db/schema/index';
-import { readSessionFromRequest, requireRole } from '@/lib/server/auth';
+import { readSessionFromRequest } from '@/lib/server/auth';
 import type { SupplierRegistration } from '@/types/index';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): SupplierRegistration & {
   reviewedAt?: string;
@@ -62,24 +64,60 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'companyName, contactName, and email are required' }, { status: 400 });
   }
 
+  const email = String(body.email).trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) {
+    return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+  }
+
+  const registrationNumber = (body.registrationNumber ?? '').trim();
+
+  if (registrationNumber || email) {
+    const dupes = await db
+      .select({ id: supplierApplications.id, status: supplierApplications.status })
+      .from(supplierApplications)
+      .where(
+        and(
+          or(
+            registrationNumber
+              ? eq(supplierApplications.registrationNumber, registrationNumber)
+              : undefined,
+            eq(supplierApplications.email, email),
+          ),
+          or(
+            eq(supplierApplications.status, 'submitted'),
+            eq(supplierApplications.status, 'under-review'),
+            eq(supplierApplications.status, 'approved'),
+          ),
+        ),
+      )
+      .limit(1);
+
+    if (dupes.length > 0) {
+      return NextResponse.json(
+        { error: 'A supplier with this email or registration number already has an active application.' },
+        { status: 409 },
+      );
+    }
+  }
+
   const [inserted] = await db
     .insert(supplierApplications)
     .values({
-      companyName: body.companyName,
-      tradingName: body.tradingName,
-      registrationNumber: body.registrationNumber ?? '',
+      companyName: body.companyName.trim(),
+      tradingName: body.tradingName ?? null,
+      registrationNumber,
       supplierType: (body.supplierType ?? 'distributor') as typeof supplierApplications.$inferInsert['supplierType'],
-      contactName: body.contactName,
-      email: body.email,
+      contactName: body.contactName.trim(),
+      email,
       phone: body.phone ?? '',
       province: body.province ?? '',
       city: body.city ?? '',
       address: body.address ?? '',
       refrigerantsSupplied: body.refrigerantsSupplied ?? [],
-      taxNumber: body.taxNumber,
-      pesepayMerchantId: body.pesepayMerchantId,
-      website: body.website,
-      notes: body.notes,
+      taxNumber: body.taxNumber ?? null,
+      pesepayMerchantId: body.pesepayMerchantId ?? null,
+      website: body.website ?? null,
+      notes: body.notes ?? null,
       status: 'submitted',
       submittedAt: new Date(),
       createdAt: new Date(),

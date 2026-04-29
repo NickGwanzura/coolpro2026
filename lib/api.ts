@@ -13,6 +13,8 @@ import type {
   SupplierRegistration,
   SupplierComplianceApplication,
   SupplierLedgerEntry,
+  StudentApplication,
+  TechnicianApplication,
 } from '@/types/index';
 
 async function fetcher<T>(url: string): Promise<T> {
@@ -203,6 +205,12 @@ export async function updateTechnician(id: string, body: Partial<Technician>): P
   return result;
 }
 
+export async function createTechnician(body: Partial<Technician>): Promise<Technician> {
+  const result = await post<Technician>('/api/technicians', body);
+  await mutate('/api/technicians');
+  return result;
+}
+
 export async function deleteTechnician(id: string): Promise<void> {
   const res = await fetch(`/api/technicians/${id}`, {
     method: 'DELETE',
@@ -292,6 +300,68 @@ export function useSupplierLedger(supplierId?: string) {
 export async function createLedgerEntry(body: Omit<SupplierLedgerEntry, 'id'>): Promise<SupplierLedgerEntry> {
   const result = await post<SupplierLedgerEntry>('/api/supplier-ledger', body);
   await mutate('/api/supplier-ledger');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Student applications (public submit + admin review)
+// ---------------------------------------------------------------------------
+
+export type StudentApplicationInput = Omit<StudentApplication, 'id' | 'status' | 'submittedAt' | 'reviewedAt' | 'reviewedBy' | 'reviewNote'>;
+
+export function useStudentApplications() {
+  return useSWR<StudentApplication[]>('/api/student-applications', fetcher);
+}
+
+export async function createStudentApplication(body: StudentApplicationInput): Promise<StudentApplication> {
+  const result = await post<StudentApplication>('/api/student-applications', body);
+  await mutate('/api/student-applications');
+  return result;
+}
+
+export async function approveStudentApplication(id: string): Promise<StudentApplication> {
+  const result = await post<StudentApplication>(`/api/student-applications/${id}/approve`);
+  await mutate('/api/student-applications');
+  return result;
+}
+
+export async function rejectStudentApplication(id: string, notes?: string): Promise<StudentApplication> {
+  const result = await post<StudentApplication>(`/api/student-applications/${id}/reject`, { notes });
+  await mutate('/api/student-applications');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Technician applications (public self-registration + admin review)
+// ---------------------------------------------------------------------------
+
+export type TechnicianApplicationInput = Omit<
+  TechnicianApplication,
+  'id' | 'status' | 'submittedAt' | 'reviewedAt' | 'reviewedBy' | 'reviewNote' | 'approvedTechnicianId'
+>;
+
+export function useTechnicianApplications() {
+  return useSWR<TechnicianApplication[]>('/api/technician-applications', fetcher);
+}
+
+export async function createTechnicianApplication(
+  body: TechnicianApplicationInput,
+): Promise<TechnicianApplication> {
+  const result = await post<TechnicianApplication>('/api/technician-applications', body);
+  await mutate('/api/technician-applications');
+  return result;
+}
+
+export async function approveTechnicianApplication(id: string): Promise<TechnicianApplication> {
+  const result = await post<TechnicianApplication>(`/api/technician-applications/${id}/approve`);
+  await mutate('/api/technician-applications');
+  await mutate('/api/technicians');
+  return result;
+}
+
+export async function rejectTechnicianApplication(id: string, notes?: string): Promise<TechnicianApplication> {
+  const result = await post<TechnicianApplication>(`/api/technician-applications/${id}/reject`, { notes });
+  await mutate('/api/technician-applications');
   return result;
 }
 

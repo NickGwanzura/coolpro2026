@@ -5,13 +5,14 @@ import {
   GraduationCap,
   Building2,
   Factory,
+  Wrench,
   CheckCircle,
   ArrowRight,
   ShieldCheck,
 } from 'lucide-react';
 
 type JoinPath = {
-  slug: 'student' | 'supplier' | 'business';
+  slug: 'student' | 'technician' | 'supplier' | 'business';
   eyebrow: string;
   icon: React.ReactNode;
   title: string;
@@ -46,6 +47,27 @@ const PATHS: JoinPath[] = [
     href: '/join/student',
     accent: '#5A7D5A',
     accentBg: 'rgba(90,125,90,0.1)',
+  },
+  {
+    slug: 'technician',
+    eyebrow: 'Certified Technicians',
+    icon: <Wrench className="h-6 w-6" />,
+    title: 'Technician',
+    price: 'Apply',
+    priceNote: 'verification required',
+    blurb:
+      'For working refrigeration and HVAC technicians. Get listed on the national verification registry so businesses and clients can confirm your credentials.',
+    features: [
+      'Public registry listing',
+      'Credential verification',
+      'Job leads from verified buyers',
+      'Refrigerant handling permits',
+      'CPD and renewal reminders',
+    ],
+    cta: 'Register as Technician',
+    href: '/join/technician',
+    accent: '#1E40AF',
+    accentBg: 'rgba(30,64,175,0.10)',
   },
   {
     slug: 'supplier',
@@ -95,7 +117,7 @@ export default function JoinPage() {
   return (
     <div style={{ backgroundColor: '#ffffff' }}>
       {/* Hero */}
-      <section className="relative pt-28 sm:pt-32 pb-14 sm:pb-16 overflow-hidden" style={{ backgroundColor: '#FAFAF9' }}>
+      <section className="relative pt-28 sm:pt-32 pb-14 sm:pb-16 overflow-hidden" style={{ backgroundColor: '#ffffff' }}>
         <div
           aria-hidden
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[720px] h-[240px] opacity-[0.08] pointer-events-none blur-3xl"
@@ -125,7 +147,7 @@ export default function JoinPage() {
       {/* Three paths */}
       <section className="pb-20 sm:pb-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-stretch">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 items-stretch">
             {PATHS.map((p) => (
               <div
                 key={p.slug}

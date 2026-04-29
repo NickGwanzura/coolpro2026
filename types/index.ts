@@ -234,6 +234,58 @@ export interface SupplierLedgerEntry {
   notes?: string;
 }
 
+export type ApplicationStatus = 'submitted' | 'under-review' | 'approved' | 'rejected';
+
+export interface StudentApplication {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  polytech: string;
+  fieldOfStudy: string;
+  studentIdNumber: string;
+  enrolmentYear: number;
+  idDocumentName?: string;
+  status: ApplicationStatus;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+  submittedAt: string;
+}
+
+export interface TechnicianApplicationCertification {
+  name: string;
+  issuingBody: string;
+  dateIssued?: string;
+  expiryDate?: string;
+  certificateNumber?: string;
+}
+
+export interface TechnicianApplication {
+  id: string;
+  name: string;
+  nationalId: string;
+  registrationNumber: string;
+  email: string;
+  contactNumber: string;
+  province: string;
+  district: string;
+  region: string;
+  specialization: string;
+  employmentStatus: 'employed' | 'self-employed' | 'unemployed';
+  employer?: string;
+  yearsExperience: number;
+  certifications: TechnicianApplicationCertification[];
+  refrigerantsHandled: string[];
+  status: ApplicationStatus;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+  approvedTechnicianId?: string;
+  submittedAt: string;
+}
+
 export type SupplierComplianceStatus = 'draft' | 'submitted' | 'under-review' | 'approved' | 'rejected';
 
 export interface SupplierComplianceApplication {

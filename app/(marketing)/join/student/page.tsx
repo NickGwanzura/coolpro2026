@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { GraduationCap, ArrowLeft, CheckCircle, Upload, ArrowRight } from 'lucide-react';
+import { GraduationCap, ArrowLeft, CheckCircle, Upload, ArrowRight, Loader2 } from 'lucide-react';
+import { createStudentApplication } from '@/lib/api';
+import type { StudentApplication } from '@/types/index';
 
 const POLYTECHS = [
   'Harare Polytechnic',
@@ -24,7 +26,9 @@ const FIELDS_OF_STUDY = [
 ];
 
 export default function JoinStudentPage() {
-  const [submitted, setSubmitted] = useState(false);
+  const [application, setApplication] = useState<StudentApplication | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -38,10 +42,31 @@ export default function JoinStudentPage() {
   });
   const [idFile, setIdFile] = useState<File | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.agree) return;
-    setSubmitted(true);
+    if (!form.agree || submitting) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const record = await createStudentApplication({
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone: form.phone.trim(),
+        polytech: form.polytech,
+        fieldOfStudy: form.fieldOfStudy,
+        studentIdNumber: form.studentId.trim(),
+        enrolmentYear: Number(form.enrolmentYear),
+        idDocumentName: idFile?.name,
+      });
+      setApplication(record);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Submission failed.';
+      setError(message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
@@ -49,7 +74,7 @@ export default function JoinStudentPage() {
   };
 
   return (
-    <div style={{ backgroundColor: '#FAFAF9' }}>
+    <div style={{ backgroundColor: '#ffffff' }}>
       <section className="pt-28 sm:pt-32 pb-10">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link
@@ -86,7 +111,7 @@ export default function JoinStudentPage() {
       <section className="pb-20 sm:pb-24">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white border p-6 sm:p-8" style={{ borderColor: '#E5E0DB' }}>
-            {submitted ? (
+            {application ? (
               <div className="text-center py-10 sm:py-14">
                 <div className="inline-flex p-3 mb-4" style={{ backgroundColor: 'rgba(90,125,90,0.12)' }}>
                   <CheckCircle className="h-10 w-10" style={{ color: '#5A7D5A' }} />
@@ -95,10 +120,14 @@ export default function JoinStudentPage() {
                   Application received
                 </h2>
                 <p className="mt-3 text-gray-600 max-w-md mx-auto leading-relaxed">
-                  Thanks, {form.firstName || 'student'}. We&rsquo;ve logged your application under{' '}
-                  <strong>{form.email}</strong>. The HEVACRAZ team will verify your student ID and
-                  respond within two working days.
+                  Thanks, {application.firstName}. We have logged your application under{' '}
+                  <strong>{application.email}</strong>. HEVACRAZ will verify your student ID and respond within two
+                  working days.
                 </p>
+                <div className="mt-5 inline-flex flex-col items-center gap-1 rounded-lg border px-4 py-3 text-xs" style={{ borderColor: '#E5E0DB', backgroundColor: '#FAFAF9' }}>
+                  <span className="text-gray-500 uppercase tracking-[0.18em] font-semibold">Reference</span>
+                  <span className="font-mono text-sm font-semibold" style={{ color: '#1C1917' }}>{application.id.slice(0, 8).toUpperCase()}</span>
+                </div>
                 <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
                   <Link
                     href="/"
@@ -301,15 +330,30 @@ export default function JoinStudentPage() {
                   </label>
                 </fieldset>
 
+                {error && (
+                  <div className="rounded border px-4 py-3 text-sm" style={{ borderColor: '#F87171', backgroundColor: '#FEF2F2', color: '#991B1B' }}>
+                    {error}
+                  </div>
+                )}
+
                 <div className="pt-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                   <button
                     type="submit"
-                    disabled={!form.agree}
+                    disabled={!form.agree || submitting}
                     className="group inline-flex items-center justify-center gap-2 font-semibold py-3.5 px-8 text-white text-sm transition-all duration-200 hover:brightness-110 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
                     style={{ backgroundColor: '#5A7D5A' }}
                   >
-                    Submit application
-                    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        Submit application
+                        <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+                      </>
+                    )}
                   </button>
                   <p className="text-xs text-gray-500">
                     Payment of $7/year is taken <strong>after</strong> verification succeeds.

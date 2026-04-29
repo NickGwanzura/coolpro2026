@@ -82,6 +82,8 @@ export default function SupplierRegistrationForm() {
     }));
   };
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -95,27 +97,35 @@ export default function SupplierRegistrationForm() {
       return;
     }
 
-    const record = await createSupplierApplication({
-      companyName: form.companyName,
-      tradingName: form.tradingName || undefined,
-      registrationNumber: form.registrationNumber,
-      supplierType: form.supplierType,
-      contactName: form.contactName,
-      email: form.email,
-      phone: form.phone,
-      province: form.province,
-      city: form.city,
-      address: form.address,
-      refrigerantsSupplied: form.refrigerantsSupplied,
-      taxNumber: form.taxNumber || undefined,
-      pesepayMerchantId: form.pesepayMerchantId || undefined,
-      website: form.website || undefined,
-      notes: form.notes || undefined,
-    });
-
-    setSavedCount(prev => prev + 1);
-    setSubmitted(record);
+    setSubmitting(true);
     setMessage('');
+    try {
+      const record = await createSupplierApplication({
+        companyName: form.companyName,
+        tradingName: form.tradingName || undefined,
+        registrationNumber: form.registrationNumber,
+        supplierType: form.supplierType,
+        contactName: form.contactName,
+        email: form.email,
+        phone: form.phone,
+        province: form.province,
+        city: form.city,
+        address: form.address,
+        refrigerantsSupplied: form.refrigerantsSupplied,
+        taxNumber: form.taxNumber || undefined,
+        pesepayMerchantId: form.pesepayMerchantId || undefined,
+        website: form.website || undefined,
+        notes: form.notes || undefined,
+      });
+
+      setSavedCount(prev => prev + 1);
+      setSubmitted(record);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Submission failed. Please try again.';
+      setMessage(errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -132,8 +142,8 @@ export default function SupplierRegistrationForm() {
               </p>
               <h2 className="text-2xl font-bold text-gray-900">Supplier registration submitted</h2>
               <p className="max-w-2xl text-sm leading-6 text-gray-600">
-                Your application is now in the mock review queue for the National Compliance Oversight Unit.
-                We have saved it locally on this device for the demo flow.
+                Your application is now in the HEVACRAZ review queue. The National Compliance Oversight
+                Unit will be notified once HEVACRAZ approves your supplier credentials.
               </p>
             </div>
           </div>
@@ -188,11 +198,11 @@ export default function SupplierRegistrationForm() {
               </li>
               <li className="flex items-start gap-3">
                 <FileCheck className="mt-0.5 h-4 w-4 text-blue-600" />
-                Approved suppliers can appear in the NOU supplier monitoring module.
+                Approved suppliers appear in the NOU supplier monitoring module.
               </li>
               <li className="flex items-start gap-3">
                 <Truck className="mt-0.5 h-4 w-4 text-amber-600" />
-                Your refrigerant categories are stored for the mock supply-chain flow.
+                Refrigerant categories are recorded for traceability across the supply chain.
               </li>
             </ul>
           </div>
@@ -217,8 +227,8 @@ export default function SupplierRegistrationForm() {
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Supplier onboarding</p>
           <h2 className="text-2xl font-bold text-gray-900">Register your business as an approved supplier</h2>
           <p className="max-w-2xl text-sm leading-6 text-gray-600">
-            Complete the mock registration form below to enter the HEVACRAZ supplier review flow.
-            This keeps all supplier data local to the demo and uses the existing Tailwind patterns.
+            Complete the registration below to enter the HEVACRAZ supplier review queue. Approved
+            suppliers gain access to the verified-buyer flow and the public supplier directory.
           </p>
         </div>
 
@@ -383,9 +393,10 @@ export default function SupplierRegistrationForm() {
 
           <button
             type="submit"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+            disabled={submitting}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Submit Supplier Application
+            {submitting ? 'Submitting...' : 'Submit Supplier Application'}
             <ArrowRight className="h-4 w-4" />
           </button>
         </form>
@@ -419,8 +430,8 @@ export default function SupplierRegistrationForm() {
             <h3 className="text-lg font-bold">Coverage</h3>
           </div>
           <p className="mt-3 text-sm leading-6 text-gray-300">
-            Supplier applications are accepted across all Zimbabwe provinces in the mock flow and can be reviewed
-            by the National Compliance Oversight Unit.
+            Supplier applications are accepted across all Zimbabwe provinces and reviewed by the
+            National Compliance Oversight Unit.
           </p>
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Local submissions</p>

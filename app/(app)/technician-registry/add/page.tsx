@@ -2,12 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, UserPlus, Save, Plus, X } from 'lucide-react';
+import { ArrowLeft, Save, Plus, X } from 'lucide-react';
 import { ZIMBABWE_PROVINCES, TECHNICIAN_SPECIALIZATIONS } from '@/constants/registry';
 import { useToast } from '@/components/ui/Toast';
-import { readCollection, writeCollection } from '@/lib/platformStore';
-
-const TECHNICIANS_STORAGE_KEY = 'coolpro_technicians';
+import { createTechnician } from '@/lib/api';
 
 export default function AddTechnicianPage() {
   const router = useRouter();
@@ -47,7 +45,6 @@ export default function AddTechnicianPage() {
 
   const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const province = e.target.value;
-    const selectedProvince = ZIMBABWE_PROVINCES.find(p => p.name === province);
     setFormData(prev => ({
       ...prev,
       province,
@@ -114,29 +111,55 @@ export default function AddTechnicianPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name || !formData.nationalId || !formData.registrationNumber || !formData.specialization) {
       error('Please fill in all required fields (Name, National ID, Registration Number, Specialization)');
       return;
     }
+    if (!formData.province || !formData.district) {
+      error('Please select a province and district.');
+      return;
+    }
 
-    const newTechnician = {
-      id: `tech-${Date.now()}`,
-      ...formData,
-      status: 'pending' as const,
-      registrationDate: new Date().toISOString().split('T')[0],
-      expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000 * 2).toISOString().split('T')[0],
-      certifications: formData.certifications.map((c, i) => ({ ...c, id: `cert-${Date.now()}-${i}`, status: 'valid' as const })),
-      trainingHistory: formData.trainingHistory.map((t, i) => ({ ...t, id: `train-${Date.now()}-${i}` })),
-    };
+    setSubmitting(true);
+    try {
+      const created = await createTechnician({
+        name: formData.name,
+        nationalId: formData.nationalId,
+        registrationNumber: formData.registrationNumber,
+        region: formData.region || formData.province,
+        province: formData.province,
+        district: formData.district,
+        contactNumber: formData.contactNumber,
+        email: formData.email || undefined,
+        specialization: formData.specialization,
+        employmentStatus: formData.employmentStatus as 'employed' | 'self-employed' | 'unemployed',
+        employer: formData.employer || undefined,
+        certifications: formData.certifications.map((c, i) => ({
+          ...c,
+          id: `cert-${Date.now()}-${i}`,
+          status: 'valid' as const,
+        })),
+        trainingHistory: formData.trainingHistory.map((t, i) => ({
+          ...t,
+          id: `train-${Date.now()}-${i}`,
+        })),
+        refrigerantsHandled: [],
+        status: 'pending',
+      });
 
-    const existing = readCollection(TECHNICIANS_STORAGE_KEY, []);
-    writeCollection(TECHNICIANS_STORAGE_KEY, [newTechnician, ...existing]);
-
-    success(`${formData.name} has been added to the registry (pending approval)`);
-    router.push('/technician-registry/manage');
+      success(`${created.name} has been added to the registry (pending approval)`);
+      router.push('/technician-registry/manage');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save technician.';
+      error(message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const selectedProvince = ZIMBABWE_PROVINCES.find(p => p.name === formData.province);
@@ -497,10 +520,11 @@ export default function AddTechnicianPage() {
           </button>
           <button
             type="submit"
-            className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-2"
+            disabled={submitting}
+            className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Save className="h-4 w-4" />
-            Save Technician
+            {submitting ? 'Saving...' : 'Save Technician'}
           </button>
         </div>
       </form>
