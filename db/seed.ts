@@ -27,6 +27,7 @@ const U = {
   tTendai: '00000000-0000-4000-8001-000000000001',
   tChiedza:'00000000-0000-4000-8001-000000000002',
   tBrightOn:'00000000-0000-4000-8001-000000000003',
+  tCaign:  '00000000-0000-4000-8001-000000000004',
   // courses
   cRac:    '00000000-0000-4000-8002-000000000001',
   cChain:  '00000000-0000-4000-8002-000000000002',
@@ -47,6 +48,7 @@ const U = {
   v1: '00000000-0000-4000-8005-000000000001',
   v2: '00000000-0000-4000-8005-000000000002',
   v3: '00000000-0000-4000-8005-000000000003',
+  v4: '00000000-0000-4000-8005-000000000004',
   // supplier applications
   sa1: '00000000-0000-4000-8006-000000000001',
   sa2: '00000000-0000-4000-8006-000000000002',
@@ -214,6 +216,37 @@ const seedTechnicians: (typeof schema.technicians.$inferInsert)[] = [
     expiryDate: '2026-05-31',
     status: 'active',
     qrToken: 'qr-brighton-dube-2024',
+  },
+  {
+    id: U.tCaign,
+    name: 'Caign Manyukwa',
+    nationalId: '38-2000303V15',
+    registrationNumber: 'TEC-2023-001',
+    region: 'Harare',
+    province: 'Harare',
+    district: 'Harare Central',
+    contactNumber: '+263771000004',
+    email: 'caign.manyukwa@hevacraz.demo',
+    specialization: 'Refrigeration & Air Conditioning',
+    certifications: [
+      {
+        id: 'cert-004',
+        name: 'Refrigeration & Air Conditioning Practitioner Certificate',
+        issuingBody: 'HEVACRAZ',
+        dateIssued: '2023-06-28',
+        expiryDate: '2025-06-27',
+        certificateNumber: 'HEVACRAZ-CERT-2023-001',
+        status: 'valid',
+      },
+    ],
+    trainingHistory: [],
+    employmentStatus: 'employed',
+    employer: 'HEVACRAZ (Chairman)',
+    refrigerantsHandled: ['R-410A', 'R-32', 'R-134a'],
+    registrationDate: '2023-06-28',
+    expiryDate: '2025-06-27',
+    status: 'active',
+    qrToken: 'qr-caign-manyukwa-2023',
   },
 ];
 
@@ -496,6 +529,16 @@ const seedVerifications: (typeof schema.technicianVerifications.$inferInsert)[] 
     query: 'John Unknown',
     result: 'not_found',
     createdAt: new Date('2026-04-15T11:00:00.000Z'),
+  },
+  {
+    id: U.v4,
+    vendorId: U.vendor,
+    vendorName: 'Demo Vendor',
+    method: 'reg_number',
+    query: 'TEC-2023-001',
+    technicianId: U.tCaign,
+    result: 'valid',
+    createdAt: new Date('2026-04-16T08:30:00.000Z'),
   },
 ];
 
