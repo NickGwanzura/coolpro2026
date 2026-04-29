@@ -96,7 +96,7 @@ interface AuthContextType {
     login: (role: string, region?: string) => Promise<void>;
     logout: () => void;
     isLoading: boolean;
-    demo?: (role: string, region: string) => void;
+    demo?: (role: string, region: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -133,8 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     };
 
-    const demoLogin = (role: string, region: string) => {
-        handleLogin(role, region);
+    const demoLogin = async (role: string, region: string) => {
+        await handleLogin(role, region);
     };
 
     return (

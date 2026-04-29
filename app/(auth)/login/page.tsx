@@ -93,8 +93,17 @@ function LoginPageContent() {
   };
 
   const handleDemoAccess = async (role: UserRole) => {
+    if (!demo) return;
     setIsLoading(true);
-    if (demo) { demo(role, selectedRegion); router.push(nextPath); }
+    setFieldErrors({});
+    try {
+      await demo(role, selectedRegion);
+      router.push(nextPath);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Demo login failed.';
+      setFieldErrors({ form: message });
+      setIsLoading(false);
+    }
   };
 
   const handleSupplierSubmit = async (e: React.FormEvent) => {
@@ -211,6 +220,12 @@ function LoginPageContent() {
                 <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-3 text-sm text-[#44403C]">
                   <strong className="font-semibold text-[#1C1917]">Demo Mode</strong> No password required. Select a persona to explore role-specific tools.
                 </div>
+
+                {fieldErrors.form && (
+                  <div className="border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                    {fieldErrors.form}
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold uppercase tracking-wide text-[#78716C]">Operating Region</label>
