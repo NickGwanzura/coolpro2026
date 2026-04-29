@@ -19,8 +19,8 @@ import {
   ShieldCheck,
   User,
 } from 'lucide-react';
+import useSWR from 'swr';
 import { CertificateQRCode } from '@/components/CertificateQRCode';
-import { useTechnicians } from '@/lib/api';
 import { MOCK_TRAINER_CERTIFICATE_REQUESTS } from '@/constants/training';
 import { readCollection, STORAGE_KEYS } from '@/lib/platformStore';
 import type { CertificateRecord, Technician, TrainerCertificateRequest } from '@/types/index';
@@ -180,7 +180,10 @@ export default function VerifyTechnicianPage() {
   const [certificateRecords] = useState<CertificateRecord[]>(initialState.certificateRecords);
   const [issuedRequests] = useState<TrainerCertificateRequest[]>(initialState.issuedRequests);
 
-  const { data: techniciansData, isLoading: techniciansLoading } = useTechnicians();
+  const { data: techniciansData, isLoading: techniciansLoading } = useSWR<Technician[]>(
+    '/api/public/technicians',
+    (url: string) => fetch(url).then((res) => (res.ok ? res.json() : []))
+  );
   const technicians = techniciansData ?? [];
 
   const availableCertificates = useMemo(
