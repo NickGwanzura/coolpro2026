@@ -19,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={GeistSans.variable}>
-      <body className="min-h-screen bg-[#FAFAF9] text-[#1C1917] antialiased font-sans">
+      <body className="min-h-screen bg-white text-[#1C1917] antialiased font-sans">
         <I18nProvider>
           <EmergencyModeProvider>
             <AuthProvider>

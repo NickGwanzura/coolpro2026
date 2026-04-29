@@ -239,7 +239,7 @@ export default function VerifyTechnicianPage() {
   const certificate = searchResult?.certificate ?? null;
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9]">
+    <div className="min-h-screen bg-white">
       <header className="border-b border-[#E7E5E4] bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex cursor-pointer items-center" onClick={() => router.push('/')}>

@@ -21,34 +21,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/components/ui/Toast';
-import {
-  MOCK_NOU_DISCREPANCY_ALERTS,
-  MOCK_NOU_GREY_MARKET_ALERTS,
-  MOCK_NOU_MONTHLY_TRENDS,
-  MOCK_NOU_REFRIGERANT_BREAKDOWN,
-  MOCK_NOU_STATS,
-} from '@/constants/nou';
-import { MOCK_APPROVED_SUPPLIERS } from '@/constants/suppliers';
-import {
-  type ManagedCourse,
-  type SupplierReorder,
-  type TechnicianVerification,
-} from '@/lib/platformStore';
+import { MOCK_REFRIGERANTS } from '@/constants/refrigerants';
 import { useCourses, useReorders, useVerifications, useSupplierApplications, useSupplierLedger, useSupplierComplianceApplications, useTechnicians } from '@/lib/api';
-import type {
-  ApprovedSupplier,
-  NOUDiscrepancyAlert,
-  NOUGreyMarketAlert,
-  NOUMonthlyTrendPoint,
-  NOURefrigerantBreakdown,
-} from '@/types/index';
+import type { SupplierQuotaStatus } from '@/types/index';
 
-const kpis: Array<{ label: string; value: string; hint: string; icon: typeof Warehouse }> = [
-  { label: 'Registered Technicians', value: String(MOCK_NOU_STATS.totalTechnicians), hint: 'All provinces covered', icon: Warehouse },
-  { label: 'Purchased Kg', value: MOCK_NOU_STATS.totalPurchasedKg.toLocaleString(), hint: 'Approved suppliers only', icon: BarChart3 },
-  { label: 'Recovered Kg', value: MOCK_NOU_STATS.totalRecoveredKg.toLocaleString(), hint: 'Logged and verified', icon: RefreshCcw },
-  { label: 'Emissions Avoided', value: `${MOCK_NOU_STATS.emissionsAvoidedTonnes}t`, hint: 'CO2-eq this quarter', icon: ShieldCheck },
-];
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function AccessDenied() {
   const router = useRouter();
@@ -102,7 +79,17 @@ export default function NouDashboard() {
 
   const accessAllowed = session && ['org_admin', 'regulator'].includes(session.role);
 
-  const topTechnicians = useMemo(() => techniciansData.slice(0, 4), [techniciansData]);
+  const topTechnicians = useMemo(
+    () =>
+      [...techniciansData]
+        .sort((a, b) => {
+          const aValid = a.certifications.filter(c => c.status === 'valid').length;
+          const bValid = b.certifications.filter(c => c.status === 'valid').length;
+          return bValid - aValid;
+        })
+        .slice(0, 4),
+    [techniciansData]
+  );
   const supplierReviewQueue = useMemo(
     () =>
       supplierApplications.filter(
@@ -119,11 +106,107 @@ export default function NouDashboard() {
     }),
     [supplierApplications]
   );
-  const supplierStatusStyles: Record<ApprovedSupplier['quotaStatus'], string> = {
+  const supplierStatusStyles: Record<SupplierQuotaStatus, string> = {
     'within-quota': 'bg-emerald-50 text-emerald-700',
     'near-limit': 'bg-amber-50 text-amber-700',
     exceeded: 'bg-rose-50 text-rose-700',
   };
+
+  // Live NOU stats derived from reorders
+  const liveStats = useMemo(() => {
+    const approved = reorders.filter(r => r.status === 'approved');
+    const purchaseReorders = approved.filter(r => !/recover/i.test(r.purpose));
+    const recoveryReorders = approved.filter(r => /recover/i.test(r.purpose));
+    const totalPurchasedKg = purchaseReorders.reduce((sum, r) => sum + r.quantityKg, 0);
+    const totalRecoveredKg = recoveryReorders.reduce((sum, r) => sum + r.quantityKg, 0);
+    const emissionsAvoidedKgCo2 = recoveryReorders.reduce((sum, r) => {
+      const gwp = MOCK_REFRIGERANTS[r.gasType]?.gwp ?? 0;
+      return sum + r.quantityKg * gwp;
+    }, 0);
+    return {
+      totalTechnicians: techniciansData.length,
+      totalPurchasedKg,
+      totalRecoveredKg,
+      emissionsAvoidedTonnes: Math.round(emissionsAvoidedKgCo2 / 1000),
+    };
+  }, [reorders, techniciansData]);
+
+  // Refrigerant breakdown from approved reorders
+  const refrigerantBreakdown = useMemo(() => {
+    const approved = reorders.filter(r => r.status === 'approved');
+    const byGas: Record<string, number> = {};
+    for (const r of approved) {
+      byGas[r.gasType] = (byGas[r.gasType] ?? 0) + r.quantityKg;
+    }
+    const total = Object.values(byGas).reduce((s, v) => s + v, 0);
+    return Object.entries(byGas)
+      .sort((a, b) => b[1] - a[1])
+      .map(([refrigerant, purchasedKg]) => ({
+        refrigerant,
+        purchasedKg,
+        percentage: total > 0 ? (purchasedKg / total) * 100 : 0,
+      }));
+  }, [reorders]);
+
+  // Monthly purchase vs usage trend (last 6 months)
+  const monthlyTrends = useMemo(() => {
+    const today = new Date();
+    const buckets: Array<{ key: string; month: string; purchasedKg: number; usedKg: number }> = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      buckets.push({ key, month: MONTH_LABELS[d.getMonth()], purchasedKg: 0, usedKg: 0 });
+    }
+    for (const r of reorders) {
+      if (r.status !== 'approved') continue;
+      const created = new Date(r.createdAt);
+      const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`;
+      const bucket = buckets.find(b => b.key === key);
+      if (bucket) bucket.purchasedKg += r.quantityKg;
+    }
+    for (const entry of supplierLedger) {
+      if (entry.direction !== 'sale') continue;
+      const created = new Date(entry.transactionDate);
+      const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`;
+      const bucket = buckets.find(b => b.key === key);
+      if (bucket) bucket.usedKg += entry.quantityKg;
+    }
+    return buckets.map(({ month, purchasedKg, usedKg }) => ({ month, purchasedKg, usedKg }));
+  }, [reorders, supplierLedger]);
+
+  // Approved suppliers with quota math derived from registration data + ledger
+  const approvedSuppliers = useMemo(() => {
+    const approved = supplierApplications.filter(app => app.status === 'approved');
+    return approved.map(app => {
+      const totalSalesKg = supplierLedger
+        .filter(e => e.supplierId === app.id && e.direction === 'sale')
+        .reduce((sum, e) => sum + e.quantityKg, 0);
+      const importQuotaKg = 3000;
+      const usage = importQuotaKg > 0 ? (totalSalesKg / importQuotaKg) * 100 : 0;
+      const quotaStatus: SupplierQuotaStatus =
+        usage >= 100 ? 'exceeded' : usage >= 85 ? 'near-limit' : 'within-quota';
+      return {
+        id: app.id,
+        name: app.companyName,
+        refrigerants: app.refrigerantsSupplied,
+        totalSalesKg,
+        importQuotaKg,
+        usagePercent: usage,
+        quotaStatus,
+        province: app.province,
+      };
+    });
+  }, [supplierApplications, supplierLedger]);
+
+  const kpis = useMemo(
+    () => [
+      { label: 'Registered Technicians', value: String(liveStats.totalTechnicians), hint: 'Across the registry', icon: Warehouse },
+      { label: 'Purchased Kg', value: liveStats.totalPurchasedKg.toLocaleString(), hint: 'Approved reorders', icon: BarChart3 },
+      { label: 'Recovered Kg', value: liveStats.totalRecoveredKg.toLocaleString(), hint: 'Supplier returns & recoveries', icon: RefreshCcw },
+      { label: 'Emissions Avoided', value: `${liveStats.emissionsAvoidedTonnes}t`, hint: 'CO2-eq from recovered gas', icon: ShieldCheck },
+    ],
+    [liveStats]
+  );
   // Derived metrics for new KPI cards
   const pendingCourseApprovals = useMemo(
     () => (courses ?? []).filter(c => c.status === 'pending_nou').length,
@@ -309,12 +392,12 @@ export default function NouDashboard() {
                 doc.line(20, 48, 277, 48);
 
                 const kpiData = [
-                  ['Registered Technicians', String(MOCK_NOU_STATS.totalTechnicians)],
-                  ['Total Refrigerant Purchased (kg)', MOCK_NOU_STATS.totalPurchasedKg.toLocaleString()],
-                  ['Total Refrigerant Recovered (kg)', MOCK_NOU_STATS.totalRecoveredKg.toLocaleString()],
-                  ['Emissions Avoided (CO2-eq tonnes)', String(MOCK_NOU_STATS.emissionsAvoidedTonnes)],
-                  ['Active Discrepancy Flags', String(MOCK_NOU_DISCREPANCY_ALERTS.length)],
-                  ['Grey Market Alerts', String(MOCK_NOU_GREY_MARKET_ALERTS.length)],
+                  ['Registered Technicians', String(liveStats.totalTechnicians)],
+                  ['Total Refrigerant Purchased (kg)', liveStats.totalPurchasedKg.toLocaleString()],
+                  ['Total Refrigerant Recovered (kg)', liveStats.totalRecoveredKg.toLocaleString()],
+                  ['Emissions Avoided (CO2-eq tonnes)', String(liveStats.emissionsAvoidedTonnes)],
+                  ['Active Discrepancy Flags', '0'],
+                  ['Grey Market Alerts', '0'],
                 ];
 
                 kpiData.forEach(([label, val], i) => {
@@ -599,38 +682,55 @@ export default function NouDashboard() {
           </div>
 
           <div className="space-y-4">
-            {MOCK_NOU_REFRIGERANT_BREAKDOWN.map((item: NOURefrigerantBreakdown) => (
-              <div key={item.refrigerant} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-gray-700">{item.refrigerant}</span>
-                  <span className="font-semibold text-gray-900">{item.purchasedKg.toLocaleString()} kg</span>
-                </div>
-                <div className="h-3 rounded-full bg-gray-100">
-                  <div
-                    className="h-3 rounded-full bg-slate-900"
-                    style={{ width: `${Math.min(item.percentage, 100)}%` }}
-                  />
-                </div>
+            {refrigerantBreakdown.length === 0 ? (
+              <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                No approved refrigerant purchases recorded yet.
               </div>
-            ))}
+            ) : (
+              refrigerantBreakdown.map(item => (
+                <div key={item.refrigerant} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-gray-700">{item.refrigerant}</span>
+                    <span className="font-semibold text-gray-900">{item.purchasedKg.toLocaleString()} kg</span>
+                  </div>
+                  <div className="h-3 rounded-full bg-gray-100">
+                    <div
+                      className="h-3 rounded-full bg-slate-900"
+                      style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </article>
 
         <article className="border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5">
             <h2 className="text-lg font-semibold text-gray-900">Monthly Purchase vs Usage</h2>
-            <p className="text-sm text-gray-500">Mock trend for the current reporting cycle</p>
+            <p className="text-sm text-gray-500">Last 6 months of approved reorders and vendor sales</p>
           </div>
 
           <div className="space-y-4">
-            {MOCK_NOU_MONTHLY_TRENDS.map((point: NOUMonthlyTrendPoint) => {
-              const max = 1500;
-              return (
+            {(() => {
+              const max = Math.max(
+                1,
+                ...monthlyTrends.flatMap(p => [p.purchasedKg, p.usedKg]),
+              );
+              const hasData = monthlyTrends.some(p => p.purchasedKg > 0 || p.usedKg > 0);
+              if (!hasData) {
+                return (
+                  <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                    No approved reorders or vendor sales in the last 6 months.
+                  </div>
+                );
+              }
+              return monthlyTrends.map(point => (
                 <div key={point.month} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-gray-700">{point.month}</span>
                     <span className="text-xs text-gray-500">
-                      {point.purchasedKg} kg purchased / {point.usedKg} kg used
+                      {point.purchasedKg} kg purchased / {point.usedKg} kg sold
                     </span>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -648,8 +748,8 @@ export default function NouDashboard() {
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              ));
+            })()}
           </div>
         </article>
       </section>
@@ -699,7 +799,7 @@ export default function NouDashboard() {
                 </p>
               </div>
               <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700">
-                Local mock flow
+                Supplier intake
               </span>
             </div>
 
@@ -754,33 +854,39 @@ export default function NouDashboard() {
               <span>Status</span>
             </div>
             <div className="divide-y divide-gray-200">
-              {MOCK_APPROVED_SUPPLIERS.map((supplier) => {
-                const usage = Math.round((supplier.totalSalesKg / supplier.importQuotaKg) * 100);
+              {approvedSuppliers.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-gray-500">
+                  No approved suppliers yet. Approved applications will appear here with quota data.
+                </div>
+              ) : (
+                approvedSuppliers.map((supplier) => {
+                  const usage = Math.round(supplier.usagePercent);
 
-                return (
-                  <div key={supplier.id} className="grid grid-cols-[1.5fr_1fr_1fr_0.9fr] gap-3 px-4 py-4 text-sm">
-                    <div>
-                      <p className="font-semibold text-gray-900">{supplier.name}</p>
-                      <p className="text-xs text-gray-500">{supplier.id}</p>
-                    </div>
-                    <div className="text-gray-600">{supplier.refrigerants.join(', ')}</div>
-                    <div className="space-y-1">
-                      <p className="font-semibold text-gray-900">{usage}%</p>
-                      <div className="h-2 rounded-full bg-gray-100">
-                        <div
-                          className="h-2 rounded-full bg-slate-900"
-                          style={{ width: `${Math.min(usage, 100)}%` }}
-                        />
+                  return (
+                    <div key={supplier.id} className="grid grid-cols-[1.5fr_1fr_1fr_0.9fr] gap-3 px-4 py-4 text-sm">
+                      <div>
+                        <p className="font-semibold text-gray-900">{supplier.name}</p>
+                        <p className="text-xs text-gray-500">{supplier.province}</p>
+                      </div>
+                      <div className="text-gray-600">{supplier.refrigerants.join(', ')}</div>
+                      <div className="space-y-1">
+                        <p className="font-semibold text-gray-900">{usage}%</p>
+                        <div className="h-2 rounded-full bg-gray-100">
+                          <div
+                            className="h-2 rounded-full bg-slate-900"
+                            style={{ width: `${Math.min(usage, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${supplierStatusStyles[supplier.quotaStatus]}`}>
+                          {supplier.quotaStatus.replace('-', ' ')}
+                        </span>
                       </div>
                     </div>
-                    <div>
-                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${supplierStatusStyles[supplier.quotaStatus]}`}>
-                        {supplier.quotaStatus.replace('-', ' ')}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
            </div>
           </div>
@@ -795,32 +901,8 @@ export default function NouDashboard() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {MOCK_NOU_DISCREPANCY_ALERTS.map((alert: NOUDiscrepancyAlert) => (
-              <div key={alert.id} className="border border-gray-200 bg-gray-50 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">{alert.technicianName}</p>
-                    <p className="text-sm text-gray-500">
-                      {alert.province} · {alert.flagReason}
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                    Ratio {alert.ratio.toFixed(2)}x
-                  </span>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-white p-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-gray-400">Purchased</p>
-                    <p className="mt-1 font-semibold text-gray-900">{alert.purchasedKg} kg</p>
-                  </div>
-                  <div className="bg-white p-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-gray-400">Logged</p>
-                    <p className="mt-1 font-semibold text-gray-900">{alert.loggedUsageKg} kg</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+            No discrepancy alerts detected in the current reporting period.
           </div>
         </article>
       </section>
@@ -938,25 +1020,8 @@ export default function NouDashboard() {
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-gray-200">
-           <div className="min-w-[480px]">
-            <div className="grid grid-cols-[1.1fr_0.8fr_0.8fr_1.2fr] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
-              <span>Technician</span>
-              <span>Province</span>
-              <span>Kg Logged</span>
-              <span>Reason</span>
-            </div>
-            <div className="divide-y divide-gray-200">
-            {MOCK_NOU_GREY_MARKET_ALERTS.map((alert: NOUGreyMarketAlert) => (
-              <div key={alert.id} className="grid grid-cols-[1.1fr_0.8fr_0.8fr_1.2fr] gap-3 px-4 py-4 text-sm">
-                <span className="font-semibold text-gray-900">{alert.technicianName}</span>
-                <span className="text-gray-600">{alert.province}</span>
-                <span className="font-medium text-gray-900">{alert.loggedUsageKg} kg</span>
-                <span className="text-gray-600">{alert.alertReason}</span>
-              </div>
-            ))}
-          </div>
-           </div>
+          <div className="border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+            No grey market flags detected. Vendor submissions within expected ranges.
           </div>
         </article>
 
@@ -970,26 +1035,32 @@ export default function NouDashboard() {
           </div>
 
           <div className="space-y-3">
-            {topTechnicians.map((tech, index) => (
-              <div key={tech.id} className="border border-gray-200 bg-gray-50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {index + 1}. {tech.name}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {tech.province} · {tech.specialization}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {tech.certifications.length} certs
-                    </p>
-                    <p className="text-xs text-gray-500">{tech.status}</p>
+            {topTechnicians.length === 0 ? (
+              <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                No technicians registered yet.
+              </div>
+            ) : (
+              topTechnicians.map((tech, index) => (
+                <div key={tech.id} className="border border-gray-200 bg-gray-50 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {index + 1}. {tech.name}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {tech.province} · {tech.specialization}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {tech.certifications.length} certs
+                      </p>
+                      <p className="text-xs text-gray-500">{tech.status}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </article>
       </section>

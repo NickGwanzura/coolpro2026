@@ -11,14 +11,15 @@ import {
     ClipboardList,
     ShieldCheck
 } from 'lucide-react';
-import { MOCK_JOBS, Job } from '@/constants/jobs';
+import { STORAGE_KEYS, readCollection } from '@/lib/platformStore';
+import { JobTypeLabels, type PlannerJob } from '@/types/index';
 
 function RequestCoCForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const jobId = searchParams.get('jobId');
 
-    const [job, setJob] = useState<Job | null>(null);
+    const [job, setJob] = useState<PlannerJob | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [formData, setFormData] = useState({
@@ -31,14 +32,15 @@ function RequestCoCForm() {
 
     useEffect(() => {
         if (jobId) {
-            const foundJob = MOCK_JOBS.find(j => j.id === jobId);
+            const jobs = readCollection<PlannerJob>(STORAGE_KEYS.plannerJobs, []);
+            const foundJob = jobs.find(j => j.id === jobId);
             if (foundJob) {
                 setJob(foundJob);
                 setFormData(prev => ({
                     ...prev,
-                    equipmentType: foundJob.equipmentType,
-                    serialNumber: foundJob.serialNumber || '',
-                    installationDate: foundJob.date
+                    equipmentType: JobTypeLabels[foundJob.jobType] ?? foundJob.jobType,
+                    serialNumber: '',
+                    installationDate: foundJob.scheduledDate
                 }));
             }
         }

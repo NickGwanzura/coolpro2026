@@ -81,7 +81,7 @@ export default function ForSuppliersPage() {
       </section>
 
       {/* 3-card grid */}
-      <section className="py-20 sm:py-24" style={{ backgroundColor: '#FAFAF9' }}>
+      <section className="py-20 sm:py-24" style={{ backgroundColor: '#ffffff' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14 sm:mb-16">
             <p className="text-[#D97706] text-xs font-semibold tracking-[0.24em] uppercase mb-3">

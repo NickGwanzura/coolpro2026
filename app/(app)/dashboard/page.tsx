@@ -3,7 +3,7 @@
 import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import { getSession, UserSession } from '@/lib/auth';
 import { STORAGE_KEYS, readCollection } from '@/lib/platformStore';
-import { useSupplierApplications } from '@/lib/api';
+import { useSupplierApplications, useTechnicians, useReorders } from '@/lib/api';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import {
     ClipboardCheck,
@@ -30,30 +30,6 @@ import Link from 'next/link';
 import OccupationalAccidentSection from '@/components/OccupationalAccidentSection';
 import { CertificateRecord, PlannerJob, RefrigerantLog } from '@/types/index';
 import { BRAND as colors } from '@/constants/colors';
-import { MOCK_JOBS } from '@/constants/jobs';
-
-
-const ADMIN_REGION_MULTIPLIERS: Record<string, number> = {
-    all: 1,
-    Harare: 1,
-    Bulawayo: 0.68,
-    Manicaland: 0.54,
-    Masvingo: 0.48,
-    Midlands: 0.6,
-    'Matabeleland North': 0.42,
-    'Matabeleland South': 0.38,
-    'Mashonaland West': 0.5,
-    'Mashonaland Central': 0.44,
-    'Mashonaland East': 0.52,
-};
-
-const ADMIN_BASE_BY_RANGE = {
-    today: { activeTechs: 24, totalJobs: 15, pendingCocs: 8, regions: 5, safetyIncidents: 2 },
-    week: { activeTechs: 31, totalJobs: 89, pendingCocs: 14, regions: 8, safetyIncidents: 4 },
-    month: { activeTechs: 52, totalJobs: 342, pendingCocs: 27, regions: 10, safetyIncidents: 7 },
-} as const;
-
-const roundedMetric = (value: number, minimum = 1) => Math.max(minimum, Math.round(value));
 
 export default function DashboardPage() {
     const [session, setSession] = useState<UserSession | null>(null);
@@ -61,6 +37,8 @@ export default function DashboardPage() {
     const [dateRange, setDateRange] = useState('today');
     const [regionFilter, setRegionFilter] = useState('all');
     const { data: supplierApplications = [] } = useSupplierApplications();
+    const { data: technicians = [] } = useTechnicians();
+    const { data: reorders = [] } = useReorders();
     const [plannerJobs, setPlannerJobs] = useState<PlannerJob[]>([]);
     const [refrigerantLogs, setRefrigerantLogs] = useState<RefrigerantLog[]>([]);
     const [certificateRecords, setCertificateRecords] = useState<CertificateRecord[]>([]);
@@ -122,17 +100,41 @@ export default function DashboardPage() {
     ];
 
     const adminMetrics = useMemo(() => {
-        const rangeMetrics = ADMIN_BASE_BY_RANGE[dateRange as keyof typeof ADMIN_BASE_BY_RANGE] ?? ADMIN_BASE_BY_RANGE.today;
-        const multiplier = ADMIN_REGION_MULTIPLIERS[regionFilter] ?? 1;
+        const now = Date.now();
+        const rangeMs = dateRange === 'today'
+            ? 24 * 60 * 60 * 1000
+            : dateRange === 'week'
+                ? 7 * 24 * 60 * 60 * 1000
+                : 30 * 24 * 60 * 60 * 1000;
+        const rangeStart = now - rangeMs;
+
+        const regionFilteredTechs = regionFilter === 'all'
+            ? technicians
+            : technicians.filter(tech => tech.province === regionFilter);
+
+        const activeTechs = regionFilteredTechs.filter(tech => tech.status === 'active').length;
+        const totalTechs = regionFilteredTechs.length;
+        const regions = regionFilter === 'all'
+            ? new Set(technicians.map(tech => tech.province)).size
+            : 1;
+
+        const reordersInRange = reorders.filter(reorder => {
+            const created = new Date(reorder.createdAt).getTime();
+            return created >= rangeStart;
+        });
+        const totalRefrigerantKg = reordersInRange.reduce((sum, reorder) => sum + reorder.quantityKg, 0);
+        const pendingReorderReviews = reorders.filter(
+            reorder => reorder.status === 'pending_hevacraz' || reorder.status === 'pending_nou'
+        ).length;
 
         return {
-            activeTechs: roundedMetric(rangeMetrics.activeTechs * multiplier),
-            totalJobs: roundedMetric(rangeMetrics.totalJobs * multiplier),
-            pendingCocs: roundedMetric(rangeMetrics.pendingCocs * multiplier),
-            regions: regionFilter === 'all' ? rangeMetrics.regions : 1,
-            safetyIncidents: roundedMetric(rangeMetrics.safetyIncidents * Math.max(multiplier, 0.5)),
+            activeTechs,
+            totalTechs,
+            totalRefrigerantKg,
+            pendingReorderReviews,
+            regions,
         };
-    }, [dateRange, regionFilter]);
+    }, [dateRange, regionFilter, technicians, reorders]);
 
     // Admin KPIs
     const adminStats = [
@@ -144,32 +146,32 @@ export default function DashboardPage() {
             trend: regionFilter === 'all' ? 'All registered regions' : `${regionFilter} only`
         },
         {
-            label: 'Total Jobs',
-            value: String(adminMetrics.totalJobs),
+            label: 'Total Technicians',
+            value: String(adminMetrics.totalTechs),
             icon: Wrench,
             color: 'emerald',
-            trend: regionFilter === 'all' ? 'Filtered by reporting range' : `Filtered to ${regionFilter}`
+            trend: regionFilter === 'all' ? 'Across the registry' : `Filtered to ${regionFilter}`
         },
         {
-            label: 'Pending COCs',
-            value: String(adminMetrics.pendingCocs),
+            label: 'Pending Reorder Reviews',
+            value: String(adminMetrics.pendingReorderReviews),
             icon: Award,
             color: 'amber',
-            trend: 'Awaiting review'
+            trend: 'Awaiting HEVACRAZ or NOU review'
         },
         {
             label: 'Regions',
             value: String(adminMetrics.regions),
             icon: MapPin,
             color: 'purple',
-            trend: regionFilter === 'all' ? 'Coverage in current range' : 'Selected region'
+            trend: regionFilter === 'all' ? 'Provinces with registered technicians' : 'Selected region'
         },
         {
-            label: 'Safety Incidents',
-            value: String(adminMetrics.safetyIncidents),
+            label: 'Refrigerant Volume',
+            value: `${adminMetrics.totalRefrigerantKg.toLocaleString()} kg`,
             icon: ShieldAlert,
             color: 'red',
-            trend: 'Across logged incidents'
+            trend: dateRange === 'today' ? 'Reorders in last 24 hours' : dateRange === 'week' ? 'Reorders in last 7 days' : 'Reorders in last 30 days'
         },
     ];
 
@@ -282,9 +284,17 @@ export default function DashboardPage() {
         },
     ];
 
+    // Admin-only derived data: top performers ranked by valid certifications
+    const topPerformers = technicians
+        .map(tech => ({
+            ...tech,
+            validCertCount: tech.certifications.filter(cert => cert.status === 'valid').length,
+        }))
+        .sort((a, b) => b.validCertCount - a.validCertCount)
+        .slice(0, 5);
+
     // Technician-specific derived data
     const today = new Date();
-    const recentJobs = MOCK_JOBS.slice(0, 5);
     const scheduledJobs = plannerJobs
         .filter(job => job.status === 'scheduled' && new Date(job.scheduledDate) >= today)
         .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
@@ -304,12 +314,7 @@ export default function DashboardPage() {
         return expiry > now + thirtyDays;
     });
 
-    const MOCK_CERTS = [
-        { id: 'c1', certificateNumber: 'ZW-RAC-2024-0441', certificateType: 'RAC Handling Licence', issuingBody: 'NEC Engineering', issueDate: '2024-03-10', expiryDate: '2026-03-10', status: 'valid' as const, technicianId: 'demo', technicianName: 'Demo Tech', verificationToken: '', verificationUrl: '' },
-        { id: 'c2', certificateNumber: 'ZW-RAC-2024-0812', certificateType: 'F-Gas Certificate', issuingBody: 'VTC Harare', issueDate: '2023-11-01', expiryDate: '2026-04-30', status: 'valid' as const, technicianId: 'demo', technicianName: 'Demo Tech', verificationToken: '', verificationUrl: '' },
-        { id: 'c3', certificateNumber: 'ZW-RAC-2022-0190', certificateType: 'HFO Refrigerant Handling', issuingBody: 'ZIMCHE', issueDate: '2022-06-15', expiryDate: '2025-06-15', status: 'expired' as const, technicianId: 'demo', technicianName: 'Demo Tech', verificationToken: '', verificationUrl: '' },
-    ];
-    const displayCerts = certificateRecords.length > 0 ? certificateRecords.slice(0, 5) : MOCK_CERTS;
+    const displayCerts = certificateRecords.slice(0, 5);
 
     const exportAdminCsv = () => {
         if (!isAdmin) return;
@@ -585,36 +590,17 @@ export default function DashboardPage() {
                                 <h2 className="text-base font-semibold text-[#1C1917]">Recent Jobs</h2>
                                 <p className="text-xs text-[#78716C] mt-0.5">Your last recorded service jobs</p>
                             </div>
-                            <Link href="/jobs" className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97706] hover:text-[#b45309]">
-                                View all <ChevronRight className="h-3 w-3" />
-                            </Link>
                         </div>
-                        <div className="divide-y divide-[#E7E5E4]">
-                            {recentJobs.map((job) => {
-                                const statusStyles: Record<string, string> = {
-                                    completed: 'bg-emerald-50 text-emerald-700',
-                                    'in-progress': 'bg-blue-50 text-blue-700',
-                                    scheduled: 'bg-amber-50 text-amber-700',
-                                };
-                                const StatusIcon = job.status === 'completed' ? CheckCircle2 : job.status === 'in-progress' ? Wrench : CalendarDays;
-                                return (
-                                    <div key={job.id} className="flex items-center gap-4 px-6 py-4 hover:bg-[#FAFAF9]">
-                                        <div className="p-2 bg-[#F5F5F4] text-[#78716C]">
-                                            <StatusIcon className="h-4 w-4" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold text-[#1C1917] truncate">{job.clientName}</p>
-                                            <p className="text-xs text-[#78716C]">{job.location} · {job.equipmentType}</p>
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                            <span className={`inline-flex px-2 py-0.5 text-xs font-semibold ${statusStyles[job.status] ?? 'bg-gray-50 text-gray-600'}`}>
-                                                {job.status.replace('-', ' ')}
-                                            </span>
-                                            <p className="text-xs text-[#A8A29E] mt-1">{job.date}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                        <div className="px-6 py-10 text-center">
+                            <Wrench className="h-8 w-8 text-[#D1C5C0] mx-auto mb-3" />
+                            <p className="text-sm text-[#78716C]">No jobs recorded yet. Use the Field Toolkit or Job Planner to log work.</p>
+                            <Link
+                                href="/job-planner"
+                                className="mt-4 inline-flex items-center gap-2 bg-[#D97706] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b45309]"
+                            >
+                                Open Job Planner
+                                <ArrowRight className="h-4 w-4" />
+                            </Link>
                         </div>
                     </div>
 
@@ -676,29 +662,39 @@ export default function DashboardPage() {
                                 </Link>
                             </div>
                             <div className="divide-y divide-[#E7E5E4]">
-                                {displayCerts.map((cert) => {
-                                    const expiry = new Date(cert.expiryDate);
-                                    const daysLeft = Math.ceil((expiry.getTime() - now) / (1000 * 60 * 60 * 24));
-                                    const isExpired = daysLeft <= 0;
-                                    const isExpiringSoon = daysLeft > 0 && daysLeft <= 30;
-                                    return (
-                                        <div key={cert.id} className="flex items-center gap-4 px-6 py-4 hover:bg-[#FAFAF9]">
-                                            <div className={`p-2 ${isExpired ? 'bg-red-50 text-red-600' : isExpiringSoon ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                {isExpired || isExpiringSoon ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                                {displayCerts.length === 0 ? (
+                                    <div className="px-6 py-8 text-center">
+                                        <Award className="h-8 w-8 text-[#D1C5C0] mx-auto mb-2" />
+                                        <p className="text-sm text-[#78716C]">No certificates issued yet.</p>
+                                        <Link href="/certifications" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#D97706]">
+                                            Browse assessments <ArrowRight className="h-3 w-3" />
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    displayCerts.map((cert) => {
+                                        const expiry = new Date(cert.expiryDate);
+                                        const daysLeft = Math.ceil((expiry.getTime() - now) / (1000 * 60 * 60 * 24));
+                                        const isExpired = daysLeft <= 0;
+                                        const isExpiringSoon = daysLeft > 0 && daysLeft <= 30;
+                                        return (
+                                            <div key={cert.id} className="flex items-center gap-4 px-6 py-4 hover:bg-[#FAFAF9]">
+                                                <div className={`p-2 ${isExpired ? 'bg-red-50 text-red-600' : isExpiringSoon ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                    {isExpired || isExpiringSoon ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-[#1C1917] truncate">{cert.certificateType}</p>
+                                                    <p className="text-xs text-[#78716C]">{cert.issuingBody} · {cert.certificateNumber}</p>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <span className={`inline-flex px-2 py-0.5 text-xs font-semibold ${isExpired ? 'bg-red-50 text-red-700' : isExpiringSoon ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                                        {isExpired ? 'Expired' : isExpiringSoon ? `${daysLeft}d left` : 'Valid'}
+                                                    </span>
+                                                    <p className="text-xs text-[#A8A29E] mt-1">Exp. {cert.expiryDate}</p>
+                                                </div>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-[#1C1917] truncate">{cert.certificateType}</p>
-                                                <p className="text-xs text-[#78716C]">{cert.issuingBody} · {cert.certificateNumber}</p>
-                                            </div>
-                                            <div className="text-right shrink-0">
-                                                <span className={`inline-flex px-2 py-0.5 text-xs font-semibold ${isExpired ? 'bg-red-50 text-red-700' : isExpiringSoon ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                                                    {isExpired ? 'Expired' : isExpiringSoon ? `${daysLeft}d left` : 'Valid'}
-                                                </span>
-                                                <p className="text-xs text-[#A8A29E] mt-1">Exp. {cert.expiryDate}</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
                     </div>
@@ -776,33 +772,29 @@ export default function DashboardPage() {
                                 <tr className="border-b border-[#E7E5E4]">
                                     <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Technician</th>
                                     <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Region</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Jobs</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">COCs</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Rating</th>
+                                    <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Specialization</th>
+                                    <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Valid Certifications</th>
+                                    <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr className="border-b border-[#E7E5E4] hover:bg-[#FAFAF9]">
-                                    <td className="py-3 px-4 text-sm font-medium text-[#1C1917]">John Moyo</td>
-                                    <td className="py-3 px-4 text-sm text-[#78716C]">Harare</td>
-                                    <td className="py-3 px-4 text-sm text-[#1C1917]">12</td>
-                                    <td className="py-3 px-4 text-sm text-[#1C1917]">8</td>
-                                    <td className="py-3 px-4 text-sm text-emerald-600">4.9 ★</td>
-                                </tr>
-                                <tr className="border-b border-[#E7E5E4] hover:bg-[#FAFAF9]">
-                                    <td className="py-3 px-4 text-sm font-medium text-[#1C1917]">Sarah Ncube</td>
-                                    <td className="py-3 px-4 text-sm text-[#78716C]">Bulawayo</td>
-                                    <td className="py-3 px-4 text-sm text-[#1C1917]">10</td>
-                                    <td className="py-3 px-4 text-sm text-[#1C1917]">7</td>
-                                    <td className="py-3 px-4 text-sm text-emerald-600">4.8 ★</td>
-                                </tr>
-                                <tr className="border-b border-[#E7E5E4] hover:bg-[#FAFAF9]">
-                                    <td className="py-3 px-4 text-sm font-medium text-[#1C1917]">Peter Dube</td>
-                                    <td className="py-3 px-4 text-sm text-[#78716C]">Mutare</td>
-                                    <td className="py-3 px-4 text-sm text-[#1C1917]">8</td>
-                                    <td className="py-3 px-4 text-sm text-[#1C1917]">5</td>
-                                    <td className="py-3 px-4 text-sm text-emerald-600">4.7 ★</td>
-                                </tr>
+                                {topPerformers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="py-8 px-4 text-center text-sm text-[#78716C]">
+                                            No technicians registered yet
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    topPerformers.map((tech) => (
+                                        <tr key={tech.id} className="border-b border-[#E7E5E4] hover:bg-[#FAFAF9]">
+                                            <td className="py-3 px-4 text-sm font-medium text-[#1C1917]">{tech.name}</td>
+                                            <td className="py-3 px-4 text-sm text-[#78716C]">{tech.province}</td>
+                                            <td className="py-3 px-4 text-sm text-[#78716C]">{tech.specialization}</td>
+                                            <td className="py-3 px-4 text-sm text-[#1C1917]">{tech.validCertCount}</td>
+                                            <td className="py-3 px-4 text-sm text-emerald-600 capitalize">{tech.status}</td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>

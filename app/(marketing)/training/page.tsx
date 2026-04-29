@@ -187,9 +187,9 @@ export default function TrainingPage() {
     provinceFilter !== 'all' || topicFilter !== 'all' || selectedDate !== null;
 
   return (
-    <div style={{ backgroundColor: '#FAFAF9' }}>
+    <div style={{ backgroundColor: '#ffffff' }}>
       {/* Hero */}
-      <section className="pt-28 sm:pt-32 pb-10 sm:pb-12 relative overflow-hidden" style={{ backgroundColor: '#FAFAF9' }}>
+      <section className="pt-28 sm:pt-32 pb-10 sm:pb-12 relative overflow-hidden" style={{ backgroundColor: '#ffffff' }}>
         <div
           aria-hidden
           className="absolute top-0 right-0 w-[520px] h-[240px] opacity-[0.08] pointer-events-none blur-3xl"

@@ -2,10 +2,9 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Building2, Gift, ShieldCheck, Tag, Truck } from 'lucide-react';
-import { MOCK_APPROVED_SUPPLIERS } from '@/constants/suppliers';
-import { useSupplierApplications } from '@/lib/api';
-import type { ApprovedSupplier, RewardItem } from '@/types/index';
+import { ArrowRight, Building2, ShieldCheck, Tag, Truck } from 'lucide-react';
+import { useSupplierApplications, useSupplierLedger } from '@/lib/api';
+import type { RewardItem, SupplierQuotaStatus } from '@/types/index';
 
 const REWARDS: RewardItem[] = [
   {
@@ -38,36 +37,59 @@ const REWARDS: RewardItem[] = [
   },
 ];
 
-const supplierQuotaStyles: Record<ApprovedSupplier['quotaStatus'], string> = {
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium' }).format(new Date(value));
+}
+
+const supplierQuotaStyles: Record<SupplierQuotaStatus, string> = {
   'within-quota': 'bg-emerald-50 text-emerald-700',
   'near-limit': 'bg-amber-50 text-amber-700',
   exceeded: 'bg-rose-50 text-rose-700',
 };
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium' }).format(new Date(value));
-}
-
 export default function RewardsHub({ adminView = false }: { adminView?: boolean }) {
   const currentPoints = 850;
   const { data: supplierApplications = [] } = useSupplierApplications();
+  const { data: supplierLedger = [] } = useSupplierLedger();
+
+  const approvedSupplierRows = useMemo(() => {
+    const approved = supplierApplications.filter(app => app.status === 'approved');
+    return approved.map(app => {
+      const totalSalesKg = supplierLedger
+        .filter(e => e.supplierId === app.id && e.direction === 'sale')
+        .reduce((sum, e) => sum + e.quantityKg, 0);
+      const importQuotaKg = 3000;
+      const usagePercent = importQuotaKg > 0 ? (totalSalesKg / importQuotaKg) * 100 : 0;
+      const quotaStatus: SupplierQuotaStatus =
+        usagePercent >= 100 ? 'exceeded' : usagePercent >= 85 ? 'near-limit' : 'within-quota';
+      return {
+        id: app.id,
+        name: app.companyName,
+        province: app.province,
+        refrigerants: app.refrigerantsSupplied,
+        totalSalesKg,
+        importQuotaKg,
+        usagePercent,
+        quotaStatus,
+      };
+    });
+  }, [supplierApplications, supplierLedger]);
 
   const supplierStats = useMemo(() => {
     const pending = supplierApplications.filter(
       application => application.status === 'submitted' || application.status === 'under-review'
     );
+    const approved = supplierApplications.filter(application => application.status === 'approved');
 
     return {
-      approvedSuppliers: MOCK_APPROVED_SUPPLIERS.length,
+      approvedSuppliers: approved.length,
       pendingApplications: pending.length,
-      regionsCovered: new Set([
-        ...MOCK_APPROVED_SUPPLIERS.map(supplier => supplier.region),
-        ...supplierApplications.map(application => application.province),
-      ]).size,
+      regionsCovered: new Set(supplierApplications.map(application => application.province)).size,
       refrigerantCoverage: new Set(
-        MOCK_APPROVED_SUPPLIERS.flatMap(supplier => supplier.refrigerants)
+        approved.flatMap(application => application.refrigerantsSupplied)
       ).size,
       pending,
+      approved,
     };
   }, [supplierApplications]);
 
@@ -127,20 +149,26 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
               <OverviewCard label="Refrigerant lines" value={supplierStats.refrigerantCoverage} compact />
             </div>
             <div className="mt-5 space-y-3">
-              {MOCK_APPROVED_SUPPLIERS.map((supplier) => (
-                <div key={supplier.id} className="border border-gray-200 bg-gray-50 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-gray-900">{supplier.name}</p>
-                      <p className="text-sm text-gray-500">{supplier.region}</p>
-                    </div>
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${supplierQuotaStyles[supplier.quotaStatus]}`}>
-                      {supplier.quotaStatus.replace('-', ' ')}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm text-gray-600">{supplier.refrigerants.join(', ')}</p>
+              {supplierStats.approved.length === 0 ? (
+                <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                  No approved suppliers yet.
                 </div>
-              ))}
+              ) : (
+                supplierStats.approved.map((supplier) => (
+                  <div key={supplier.id} className="border border-gray-200 bg-gray-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-gray-900">{supplier.companyName}</p>
+                        <p className="text-sm text-gray-500">{supplier.province}</p>
+                      </div>
+                      <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                        approved
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm text-gray-600">{supplier.refrigerantsSupplied.join(', ')}</p>
+                  </div>
+                ))
+              )}
             </div>
           </article>
         </section>
@@ -296,35 +324,41 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
               <span>Status</span>
             </div>
             <div className="divide-y divide-gray-200">
-              {MOCK_APPROVED_SUPPLIERS.map((supplier) => {
-                const usage = Math.round((supplier.totalSalesKg / supplier.importQuotaKg) * 100);
+              {approvedSupplierRows.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-gray-500">
+                  No approved supplier partners yet.
+                </div>
+              ) : (
+                approvedSupplierRows.map((supplier) => {
+                  const usage = Math.round(supplier.usagePercent);
 
-                return (
-                  <div key={supplier.id} className="grid grid-cols-[1.4fr_1fr_1fr_0.9fr] gap-3 px-4 py-4 text-sm">
-                    <div>
-                      <p className="font-semibold text-gray-900">{supplier.name}</p>
-                      <p className="text-xs text-gray-500">{supplier.region}</p>
-                    </div>
-                    <div className="text-gray-600">{supplier.refrigerants.join(', ')}</div>
-                    <div className="space-y-1">
-                      <p className="font-semibold text-gray-900">{usage}%</p>
-                      <div className="h-2 rounded-full bg-gray-100">
-                        <div
-                          className="h-2 rounded-full bg-slate-900"
-                          style={{ width: `${Math.min(usage, 100)}%` }}
-                        />
+                  return (
+                    <div key={supplier.id} className="grid grid-cols-[1.4fr_1fr_1fr_0.9fr] gap-3 px-4 py-4 text-sm">
+                      <div>
+                        <p className="font-semibold text-gray-900">{supplier.name}</p>
+                        <p className="text-xs text-gray-500">{supplier.province}</p>
+                      </div>
+                      <div className="text-gray-600">{supplier.refrigerants.join(', ')}</div>
+                      <div className="space-y-1">
+                        <p className="font-semibold text-gray-900">{usage}%</p>
+                        <div className="h-2 rounded-full bg-gray-100">
+                          <div
+                            className="h-2 rounded-full bg-slate-900"
+                            style={{ width: `${Math.min(usage, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${supplierQuotaStyles[supplier.quotaStatus]}`}
+                        >
+                          {supplier.quotaStatus.replace('-', ' ')}
+                        </span>
                       </div>
                     </div>
-                    <div>
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${supplierQuotaStyles[supplier.quotaStatus]}`}
-                      >
-                        {supplier.quotaStatus.replace('-', ' ')}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         </article>

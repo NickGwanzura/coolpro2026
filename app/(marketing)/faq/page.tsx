@@ -184,7 +184,7 @@ export default function FaqPage() {
   return (
     <div style={{ backgroundColor: '#ffffff' }}>
       {/* Hero */}
-      <section className="pt-28 sm:pt-32 pb-14 sm:pb-16 relative overflow-hidden" style={{ backgroundColor: '#FAFAF9' }}>
+      <section className="pt-28 sm:pt-32 pb-14 sm:pb-16 relative overflow-hidden" style={{ backgroundColor: '#ffffff' }}>
         <div
           aria-hidden
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[640px] h-[200px] opacity-[0.08] pointer-events-none blur-3xl"

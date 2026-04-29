@@ -14,7 +14,7 @@ export default function ContactPage() {
 
   return (
     <div style={{ backgroundColor: '#ffffff' }}>
-      <section className="pt-28 sm:pt-32 pb-14 sm:pb-16 relative overflow-hidden" style={{ backgroundColor: '#FAFAF9' }}>
+      <section className="pt-28 sm:pt-32 pb-14 sm:pb-16 relative overflow-hidden" style={{ backgroundColor: '#ffffff' }}>
         <div
           aria-hidden
           className="absolute top-0 right-0 w-[420px] h-[280px] opacity-[0.08] pointer-events-none blur-3xl"

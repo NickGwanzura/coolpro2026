@@ -1,18 +1,14 @@
+'use client';
 
-import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area } from 'recharts';
+import React, { useMemo } from 'react';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { UserRole } from '../types';
-import { TrendingDown, TrendingUp, AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { TrendingDown, TrendingUp, ShieldCheck } from 'lucide-react';
 import OccupationalAccidentSection from './OccupationalAccidentSection';
+import { useReorders, useTechnicians } from '@/lib/api';
+import { MOCK_REFRIGERANTS } from '@/constants/refrigerants';
 
-const usageData = [
-  { month: 'Jan', consumption: 1200, leaks: 15 },
-  { month: 'Feb', consumption: 950, leaks: 8 },
-  { month: 'Mar', consumption: 1400, leaks: 12 },
-  { month: 'Apr', consumption: 400, leaks: 4 },
-  { month: 'May', consumption: 600, leaks: 2 },
-  { month: 'Jun', consumption: 350, leaks: 1 },
-];
+const NATURAL_REFRIGERANTS = new Set(['R-290', 'R-600a', 'R-744', 'R-717', 'R-1270']);
 
 interface KpiCardProps {
   label: string;
@@ -41,78 +37,107 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, unit, trend, positive, 
   </div>
 );
 
-interface AlertItemProps {
-  severity: 'critical' | 'warning' | 'info';
-  label: string;
-  info: string;
-}
-
-const AlertItem: React.FC<AlertItemProps> = ({ severity, label, info }) => {
-  const styles = {
-    critical: 'bg-red-50 border-red-400',
-    warning: 'bg-amber-50 border-amber-400',
-    info: 'bg-blue-50 border-blue-400',
-  };
-
-  const textStyles = {
-    critical: 'text-red-800',
-    warning: 'text-amber-800',
-    info: 'text-blue-800',
-  };
-
-  const dotStyles = {
-    critical: 'bg-red-500',
-    warning: 'bg-amber-500',
-    info: 'bg-blue-500',
-  };
-
-  return (
-    <div className={`p-4 rounded-xl border-l-4 ${styles[severity]}`}>
-      <div className="flex justify-between items-center">
-        <span className={`text-sm font-semibold ${textStyles[severity]}`}>{label}</span>
-        <span className={`w-2 h-2 rounded-full ${dotStyles[severity]}`}></span>
-      </div>
-      <p className={`text-xs mt-1 font-medium uppercase tracking-wide ${textStyles[severity]} opacity-70`}>{info}</p>
-    </div>
-  );
-};
-
 const ComplianceDashboard: React.FC<{ role: UserRole }> = ({ role }) => {
+  const { data: reorders = [] } = useReorders();
+  const { data: technicians = [] } = useTechnicians();
+
+  // Compute last 6 months of refrigerant volume from reorders
+  const usageData = useMemo(() => {
+    const now = new Date();
+    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const buckets: Array<{ key: string; month: string; consumption: number }> = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      buckets.push({ key, month: monthLabels[d.getMonth()], consumption: 0 });
+    }
+
+    for (const reorder of reorders) {
+      const created = new Date(reorder.createdAt);
+      const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`;
+      const bucket = buckets.find(b => b.key === key);
+      if (bucket) {
+        bucket.consumption += reorder.quantityKg;
+      }
+    }
+
+    return buckets.map(({ month, consumption }) => ({ month, consumption }));
+  }, [reorders]);
+
+  const topPerformers = useMemo(
+    () =>
+      technicians
+        .map(tech => ({
+          id: tech.id,
+          name: tech.name,
+          validCertCount: tech.certifications.filter(cert => cert.status === 'valid').length,
+        }))
+        .sort((a, b) => b.validCertCount - a.validCertCount)
+        .slice(0, 3),
+    [technicians]
+  );
+
+  const kpiValues = useMemo(() => {
+    const approvedReorders = reorders.filter(r => r.status === 'approved');
+    const totalKg = approvedReorders.reduce((sum, r) => sum + r.quantityKg, 0);
+
+    const gwpImpactTonnes = approvedReorders.reduce((sum, r) => {
+      const gwp = MOCK_REFRIGERANTS[r.gasType]?.gwp ?? 0;
+      return sum + (r.quantityKg * gwp) / 1000;
+    }, 0);
+
+    const naturalKg = approvedReorders
+      .filter(r => NATURAL_REFRIGERANTS.has(r.gasType))
+      .reduce((sum, r) => sum + r.quantityKg, 0);
+    const naturalSharePct = totalKg > 0 ? Math.round((naturalKg / totalKg) * 100) : 0;
+
+    const activeCerts = technicians.reduce(
+      (sum, tech) => sum + tech.certifications.filter(cert => cert.status === 'valid').length,
+      0
+    );
+
+    return {
+      gwpImpactTonnes: Math.round(gwpImpactTonnes),
+      naturalSharePct,
+      activeCerts,
+    };
+  }, [reorders, technicians]);
+
   return (
     <div className="space-y-6">
       {/* KPI Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label="Total GWP Impact"
-          value="4,250"
+          value={kpiValues.gwpImpactTonnes.toLocaleString()}
           unit="tCO2e"
-          trend="-18%"
+          trend="YTD"
           positive={false}
-          description="Cumulative emissions for Region A"
+          description="Approved reorders weighted by refrigerant GWP"
         />
         <KpiCard
           label="Leak Rate"
-          value="4.2"
+          value="—"
           unit="%"
-          trend="-2.1%"
+          trend="Awaiting data"
           positive={true}
-          description="Target: < 5% (Kigali Limit)"
+          description="Target: < 5% (Kigali Limit). Awaiting field leak logs"
         />
         <KpiCard
           label="Active Technicians"
-          value="156"
+          value={String(technicians.filter(t => t.status === 'active').length)}
           unit="Certified"
-          trend="+12"
+          trend={`${kpiValues.activeCerts} valid certs`}
           positive={true}
-          description="Q2 Training progress"
+          description="Technicians currently active in the registry"
         />
         <KpiCard
           label="Natural Gas Transition"
-          value="24"
+          value={String(kpiValues.naturalSharePct)}
           unit="%"
-          trend="+5%"
+          trend="Approved volumes"
           positive={true}
-          description="Sites using R-290/R-744"
+          description="Share of approved reorders using R-290/R-744/R-717"
         />
       </div>
 
@@ -154,55 +179,40 @@ const ComplianceDashboard: React.FC<{ role: UserRole }> = ({ role }) => {
           {/* Alerts */}
           <div className="bg-gray-900 text-white p-6 rounded-2xl shadow-lg">
             <h4 className="text-base font-semibold mb-4">Critical Leak Alerts</h4>
-            <div className="space-y-3">
-              <AlertItem severity="critical" label="SuperStore #22" info="12kg loss in 24h" />
-              <AlertItem severity="warning" label="Warehouse C-5" info="Detected low suction" />
-              <AlertItem severity="info" label="Logistics Hub" info="Maintenance due in 2d" />
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-400" />
+                <p>
+                  No active leak alerts. Leak reports will appear here when submitted via the Field Toolkit.
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Top Performers */}
           <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-2xl">
             <h4 className="text-base font-semibold text-emerald-900 mb-4">Top Tech Performers</h4>
-            <div className="space-y-2">
-              {[
-                { name: "Sarah Miller", points: 1450 },
-                { name: "Kwame Nkrumah", points: 1220 },
-                { name: "Elena Rossi", points: 1180 }
-              ].map((tech, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-emerald-200">
-                  <span className="text-sm font-semibold text-emerald-800">{tech.name}</span>
-                  <span className="text-xs font-bold bg-emerald-500 text-white px-2 py-1 rounded-full">{tech.points} pts</span>
-                </div>
-              ))}
-            </div>
+            {topPerformers.length === 0 ? (
+              <p className="rounded-xl border border-emerald-200 bg-white/60 p-3 text-sm text-emerald-800">
+                No technicians registered yet.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {topPerformers.map((tech) => (
+                  <div key={tech.id} className="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-emerald-200">
+                    <span className="text-sm font-semibold text-emerald-800">{tech.name}</span>
+                    <span className="text-xs font-bold bg-emerald-500 text-white px-2 py-1 rounded-full">
+                      {tech.validCertCount} {tech.validCertCount === 1 ? 'cert' : 'certs'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <OccupationalAccidentSection
-        isAdmin={true}
-        initialAccidents={[
-          {
-            id: 'acc1',
-            date: '2026-02-24',
-            jobSite: 'Harare Central Substation',
-            clientName: 'ZESA Holdings',
-            severity: 'High',
-            description: 'Electrical arc flash during maintenance. No injuries reported.',
-            technicianName: 'John Moyo'
-          },
-          {
-            id: 'acc2',
-            date: '2026-02-25',
-            jobSite: 'Bulawayo Cold Storage',
-            clientName: 'Cold Storage Commission',
-            severity: 'Critical',
-            description: 'Major refrigerant leak (R-717) detected. Site evacuated.',
-            technicianName: 'Sarah Miller'
-          }
-        ]}
-      />
+      <OccupationalAccidentSection isAdmin={true} />
     </div>
   );
 };

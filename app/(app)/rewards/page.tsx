@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Building2, ShieldCheck, Truck } from 'lucide-react';
 import RewardsHub from '@/components/RewardsHub';
 import VendorRewardsPanel from '@/components/VendorRewardsPanel';
-import { MOCK_APPROVED_SUPPLIERS } from '@/constants/suppliers';
 import { useAuth } from '@/lib/auth';
 import { useSupplierApplications } from '@/lib/api';
 
@@ -17,11 +16,16 @@ export default function RewardsPage() {
         const pendingApplications = supplierApplications.filter(
             application => application.status === 'submitted' || application.status === 'under-review'
         );
+        const approvedApplications = supplierApplications.filter(
+            application => application.status === 'approved'
+        );
 
         return {
-            approvedSuppliers: MOCK_APPROVED_SUPPLIERS.length,
+            approvedSuppliers: approvedApplications.length,
             pendingApplications: pendingApplications.length,
-            refrigerantCoverage: new Set(MOCK_APPROVED_SUPPLIERS.flatMap(supplier => supplier.refrigerants)).size,
+            refrigerantCoverage: new Set(
+                approvedApplications.flatMap(supplier => supplier.refrigerantsSupplied)
+            ).size,
         };
     }, [supplierApplications]);
 

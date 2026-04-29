@@ -83,9 +83,9 @@ export default function MembershipPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <div style={{ backgroundColor: '#FAFAF9' }}>
+    <div style={{ backgroundColor: '#ffffff' }}>
       {/* Page header */}
-      <section className="pt-28 sm:pt-32 pb-14 sm:pb-16 relative overflow-hidden" style={{ backgroundColor: '#FAFAF9' }}>
+      <section className="pt-28 sm:pt-32 pb-14 sm:pb-16 relative overflow-hidden" style={{ backgroundColor: '#ffffff' }}>
         <div
           aria-hidden
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[640px] h-[200px] opacity-[0.08] pointer-events-none blur-3xl"
@@ -103,7 +103,7 @@ export default function MembershipPage() {
       </section>
 
       {/* Pricing tiers */}
-      <section className="pb-16 sm:pb-20" style={{ backgroundColor: '#FAFAF9' }}>
+      <section className="pb-16 sm:pb-20" style={{ backgroundColor: '#ffffff' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-stretch pt-4">
             {PRICING_TIERS.map((tier, index) => (

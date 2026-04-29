@@ -13,9 +13,8 @@ import {
 } from 'lucide-react';
 import { getSession, type UserSession } from '@/lib/auth';
 import { STORAGE_KEYS, readCollection } from '@/lib/platformStore';
-import { MOCK_JOBS, Job } from '@/constants/jobs';
-import type { Installation, RefrigerantLog, Technician } from '@/types/index';
-import { useTechnicians } from '@/lib/api';
+import { JobTypeLabels } from '@/types/index';
+import type { Installation, PlannerJob, RefrigerantLog } from '@/types/index';
 
 type AdminRecord = {
     id: string;
@@ -29,53 +28,21 @@ type AdminRecord = {
     detail: string;
 };
 
-const DEFAULT_INSTALLATIONS: Installation[] = [
-    {
-        id: 'inst-001',
-        technicianId: 'tech-001',
-        technicianName: 'Demo Technician',
-        clientName: 'GreenMart Cold Room',
-        jobDetails: 'Commissioned cold room evaporator and condenser set',
-        floorSpace: '120 sqm',
-        jobType: 'COLD_ROOM',
-        installationDate: '2026-03-04',
-        status: 'approved',
-        images: [],
-        cocRequested: true,
-        cocApproved: true,
-        cocApprovalDate: '2026-03-06',
-    },
-];
-
-const DEFAULT_LOGS: RefrigerantLog[] = [
-    {
-        id: 'log-001',
-        technicianId: 'tech-001',
-        technicianName: 'Demo Technician',
-        clientName: 'GreenMart Cold Room',
-        location: 'Harare',
-        jobType: 'COLD_ROOM',
-        refrigerantType: 'R-290',
-        amount: 12,
-        actionType: 'Charge',
-        timestamp: '2026-03-04T09:30:00.000Z',
-        approvedSupplierId: 'sup-001',
-        approvedSupplierName: 'Zimbabwe Refrigeration Supplies',
-        supplierVerified: true,
-    },
-];
-
-function buildAdminRecords(installations: Installation[], logs: RefrigerantLog[], technicianList: Technician[]): AdminRecord[] {
-    const jobRecords: AdminRecord[] = MOCK_JOBS.map((job, index) => ({
+function buildAdminRecords(
+    plannerJobs: PlannerJob[],
+    installations: Installation[],
+    logs: RefrigerantLog[],
+): AdminRecord[] {
+    const jobRecords: AdminRecord[] = plannerJobs.map(job => ({
         id: job.id,
         recordType: 'job',
         clientName: job.clientName,
         location: job.location,
-        date: job.date,
+        date: job.scheduledDate,
         status: job.status,
-        technicianName: technicianList[index % (technicianList.length || 1)]?.name ?? 'Unassigned',
-        equipmentType: job.equipmentType,
-        detail: job.serialNumber ?? 'Serial pending',
+        technicianName: job.technicianName,
+        equipmentType: JobTypeLabels[job.jobType] ?? job.jobType,
+        detail: job.notes?.slice(0, 80) ?? `${job.province}${job.district ? ' · ' + job.district : ''}`,
     }));
 
     const installationRecords: AdminRecord[] = installations.map(installation => ({
@@ -114,20 +81,29 @@ export default function JobsPage() {
     const [selectedTechnician, setSelectedTechnician] = useState('');
     const [selectedRecordType, setSelectedRecordType] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
-    const [installations, setInstallations] = useState<Installation[]>(DEFAULT_INSTALLATIONS);
-    const [logs, setLogs] = useState<RefrigerantLog[]>(DEFAULT_LOGS);
-    const { data: techniciansData } = useTechnicians();
+    const [plannerJobs, setPlannerJobs] = useState<PlannerJob[]>([]);
+    const [installations, setInstallations] = useState<Installation[]>([]);
+    const [logs, setLogs] = useState<RefrigerantLog[]>([]);
 
     useEffect(() => {
-        setSession(getSession());
-        setInstallations(readCollection<Installation>(STORAGE_KEYS.fieldToolkitInstallations, DEFAULT_INSTALLATIONS));
-        setLogs(readCollection<RefrigerantLog>(STORAGE_KEYS.fieldToolkitLogs, DEFAULT_LOGS));
+        const userSession = getSession();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSession(userSession);
+    }, []);
+
+    // Hydrate localStorage-backed collections after mount (SSR-safe).
+    useEffect(() => {
+        /* eslint-disable react-hooks/set-state-in-effect */
+        setPlannerJobs(readCollection<PlannerJob>(STORAGE_KEYS.plannerJobs, []));
+        setInstallations(readCollection<Installation>(STORAGE_KEYS.fieldToolkitInstallations, []));
+        setLogs(readCollection<RefrigerantLog>(STORAGE_KEYS.fieldToolkitLogs, []));
+        /* eslint-enable react-hooks/set-state-in-effect */
     }, []);
 
     const isAdmin = session?.role === 'org_admin';
     const adminRecords = useMemo(
-        () => buildAdminRecords(installations, logs, techniciansData ?? []),
-        [installations, logs, techniciansData]
+        () => buildAdminRecords(plannerJobs, installations, logs),
+        [plannerJobs, installations, logs]
     );
 
     const filteredAdminRecords = useMemo(() => {
@@ -155,14 +131,14 @@ export default function JobsPage() {
         });
     }, [adminRecords, searchTerm, selectedTechnician, selectedRecordType, selectedStatus]);
 
-    if (techniciansData === undefined) {
-        return <div className="p-8 text-sm text-slate-500">Loading…</div>;
-    }
-
-    const filteredJobs = MOCK_JOBS.filter(job =>
-        job.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.equipmentType.toLowerCase().includes(searchTerm.toLowerCase())
+    const myPlannerJobs = session
+        ? plannerJobs.filter(job => job.technicianId === session.id)
+        : plannerJobs;
+    const term = searchTerm.toLowerCase();
+    const filteredJobs = myPlannerJobs.filter(job =>
+        job.clientName.toLowerCase().includes(term) ||
+        job.location.toLowerCase().includes(term) ||
+        (JobTypeLabels[job.jobType] ?? job.jobType).toLowerCase().includes(term)
     );
 
     const getStatusStyle = (status: string) => {
@@ -329,55 +305,74 @@ export default function JobsPage() {
             </div>
 
             <div className="grid gap-4">
-                {filteredJobs.map((job) => (
-                    <div key={job.id} className="bg-white border border-gray-200 p-6 shadow-sm hover:border-blue-300 transition-all group">
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                            <div className="space-y-3 flex-1">
-                                <div className="flex items-center gap-3">
-                                    <h3 className="text-lg font-bold text-gray-900">{job.clientName}</h3>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold uppercase tracking-wider ${getStatusStyle(job.status)}`}>
-                                        {job.status}
-                                    </span>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-6 text-sm">
-                                    <div className="flex items-center gap-2 text-gray-500">
-                                        <MapPin className="h-4 w-4 text-gray-400" />
-                                        {job.location}
+                {filteredJobs.length === 0 ? (
+                    <div className="bg-white border border-dashed border-gray-200 px-6 py-12 text-center">
+                        <ClipboardList className="mx-auto h-10 w-10 text-gray-300" />
+                        <p className="mt-3 text-sm text-gray-600">
+                            {myPlannerJobs.length === 0
+                                ? 'No jobs recorded yet. Use the Job Planner to schedule or log work.'
+                                : 'No jobs match the current search.'}
+                        </p>
+                        <button
+                            onClick={() => router.push('/job-planner')}
+                            className="mt-4 inline-flex items-center gap-2 bg-[#FF6B35] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e55a25]"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Open Job Planner
+                        </button>
+                    </div>
+                ) : (
+                    filteredJobs.map((job) => (
+                        <div key={job.id} className="bg-white border border-gray-200 p-6 shadow-sm hover:border-blue-300 transition-all group">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                                <div className="space-y-3 flex-1">
+                                    <div className="flex items-center gap-3">
+                                        <h3 className="text-lg font-bold text-gray-900">{job.clientName}</h3>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold uppercase tracking-wider ${getStatusStyle(job.status)}`}>
+                                            {job.status}
+                                        </span>
                                     </div>
-                                    <div className="flex items-center gap-2 text-gray-500 font-medium">
-                                        <ClipboardList className="h-4 w-4 text-gray-400" />
-                                        {job.equipmentType}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-gray-400 text-xs">
-                                        <FileText className="h-3.5 w-3.5" />
-                                        Installed: {job.date}
-                                    </div>
-                                    {job.serialNumber && (
-                                        <div className="flex items-center gap-2 text-gray-400 text-xs font-mono">
-                                            SN: {job.serialNumber}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-6 text-sm">
+                                        <div className="flex items-center gap-2 text-gray-500">
+                                            <MapPin className="h-4 w-4 text-gray-400" />
+                                            {job.location}
                                         </div>
-                                    )}
+                                        <div className="flex items-center gap-2 text-gray-500 font-medium">
+                                            <ClipboardList className="h-4 w-4 text-gray-400" />
+                                            {JobTypeLabels[job.jobType] ?? job.jobType}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-gray-400 text-xs">
+                                            <FileText className="h-3.5 w-3.5" />
+                                            Scheduled: {job.scheduledDate}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-gray-400 text-xs">
+                                            Refrigerant class: {job.refrigerantClass}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="flex flex-wrap items-center gap-3">
-                                {job.status === 'completed' && (
+                                <div className="flex flex-wrap items-center gap-3">
+                                    {job.status === 'completed' && (
+                                        <button
+                                            onClick={() => router.push(`/jobs/request-coc?jobId=${job.id}`)}
+                                            className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 font-bold text-sm hover:bg-blue-100 transition-all border border-blue-100"
+                                        >
+                                            <FileText className="h-4 w-4" />
+                                            Request CoC
+                                        </button>
+                                    )}
                                     <button
-                                        onClick={() => router.push(`/jobs/request-coc?jobId=${job.id}`)}
-                                        className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 font-bold text-sm hover:bg-blue-100 transition-all border border-blue-100"
+                                        onClick={() => router.push('/job-planner')}
+                                        className="flex items-center gap-2 text-gray-500 px-4 py-2 font-bold text-sm hover:bg-gray-100 transition-all"
                                     >
-                                        <FileText className="h-4 w-4" />
-                                        Request CoC
+                                        View in Planner
+                                        <ArrowRight className="h-4 w-4" />
                                     </button>
-                                )}
-                                <button className="flex items-center gap-2 text-gray-500 px-4 py-2 font-bold text-sm hover:bg-gray-100 transition-all">
-                                    View Details
-                                    <ArrowRight className="h-4 w-4" />
-                                </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))
+                )}
             </div>
         </div>
     );
