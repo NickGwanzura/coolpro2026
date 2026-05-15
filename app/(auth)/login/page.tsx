@@ -94,7 +94,7 @@ function LoginPageContent() {
     setFieldErrors({});
     setIsLoading(true);
     try {
-      await login(email);
+      await login(email, password);
       redirectAfterLogin();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed.';
@@ -136,9 +136,9 @@ function LoginPageContent() {
       refrigerantsSupplied: reg.refrigerantsSupplied,
       notes: reg.notes,
     }).catch(() => undefined);
-    if (demo) { demo('vendor', supplierForm.province); }
+    if (demo) { await demo('vendor', supplierForm.province); }
     setSupplierSubmitted(true);
-    router.push(nextPath);
+    redirectAfterLogin();
   };
 
   const tabs: { id: typeof activeMode; label: string }[] = [

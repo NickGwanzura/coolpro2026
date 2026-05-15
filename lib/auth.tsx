@@ -74,6 +74,7 @@ async function postLogin(body: Record<string, string>): Promise<UserSession> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        credentials: 'include',
     });
     if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string };
@@ -86,8 +87,10 @@ async function postLogin(body: Record<string, string>): Promise<UserSession> {
     return data.user;
 }
 
-export async function loginByEmail(email: string): Promise<UserSession> {
-    return postLogin({ email });
+export async function loginByEmail(email: string, password?: string): Promise<UserSession> {
+    const body: Record<string, string> = { email };
+    if (password) body.password = password;
+    return postLogin(body);
 }
 
 export async function login(role: string, region: string): Promise<UserSession> {
@@ -104,7 +107,7 @@ export async function logout() {
 
 interface AuthContextType {
     user: UserSession | null;
-    login: (email: string) => Promise<void>;
+    login: (email: string, password?: string) => Promise<void>;
     logout: () => void;
     isLoading: boolean;
     demo?: (role: string, region: string) => Promise<void>;
@@ -134,8 +137,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .finally(() => setIsLoading(false));
     }, []);
 
-    const handleLogin = async (email: string) => {
-        const session = await loginByEmail(email);
+    const handleLogin = async (email: string, password?: string) => {
+        const session = await loginByEmail(email, password);
         setUser(session);
     };
 
