@@ -54,7 +54,8 @@ export function requireRole(req: Request, allowedRoles: string[]): SessionPayloa
 }
 
 export function sessionCookie(token: string): string {
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`;
+  const secure = process.env.NODE_ENV === 'production' ? ' Secure;' : '';
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax;${secure} Max-Age=86400`;
 }
 
 export function clearSessionCookie(): string {
