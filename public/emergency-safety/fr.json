@@ -1,21 +1,30 @@
 {
   "scripts": [
     {
-      "title": "Reponse a une fuite de propane",
+      "title": "Fuite de propane",
       "refrigerantCode": "R-290",
       "steps": [
-        "Couper les sources d’allumage.",
+        "Couper les sources d'allumage.",
         "Ventiler immediatement la zone.",
-        "Ne pas redemarrer le systeme avant verification."
+        "Ne pas re-energiser avant verification."
       ]
     },
     {
-      "title": "Controles de charge A2L",
+      "title": "Controle A2L sur site",
       "refrigerantCode": "R-32",
       "steps": [
-        "Verifier la ventilation continue avant la charge.",
-        "Confirmer que le detecteur de fuite est etalonne.",
-        "Enregistrer la validation avant remise sous tension."
+        "Verifier la ventilation continue.",
+        "Confirmer le detecteur de fuite.",
+        "Consigner les controles avant recharge."
+      ]
+    },
+    {
+      "title": "Escalade ammoniac",
+      "refrigerantCode": "R-717",
+      "steps": [
+        "Evacuer et notifier le superviseur.",
+        "Porter la protection respiratoire.",
+        "Isoler la zone avant toute intervention."
       ]
     }
   ]

@@ -1,6 +1,7 @@
 const CACHE_NAME = 'coolpro-phase1-cache-v1';
 const OFFLINE_ASSETS = [
   '/',
+  '/emergency-mode',
   '/manifest.webmanifest',
   '/emergency-safety/en.json',
   '/emergency-safety/fr.json',

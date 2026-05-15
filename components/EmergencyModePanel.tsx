@@ -4,7 +4,7 @@ import { AlertTriangle, WifiOff } from 'lucide-react';
 import { useMemo } from 'react';
 import { useEmergencyMode } from '@/lib/emergencyMode';
 import { useI18n } from '@/lib/i18n';
-import { getEmergencySafetyScripts } from '@/lib/refrigerantIntelligence';
+import { getEmergencySafetyScripts } from '@/lib/emergencySafety';
 import { RefrigerantRiskBadge } from '@/components/RefrigerantRiskBadge';
 
 export function EmergencyModePanel() {

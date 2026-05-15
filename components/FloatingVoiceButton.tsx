@@ -6,7 +6,8 @@ import { useAuth } from '@/lib/auth';
 import { useEmergencyMode } from '@/lib/emergencyMode';
 import { useI18n } from '@/lib/i18n';
 import { prependCollectionItem, readCollection, STORAGE_KEYS } from '@/lib/platformStore';
-import { buildSafetyAssistantResponse, getEmergencySafetyScripts, getRiskSummary } from '@/lib/refrigerantIntelligence';
+import { buildSafetyAssistantResponse, getRiskSummary } from '@/lib/refrigerantIntelligence';
+import { getEmergencySafetyScripts } from '@/lib/emergencySafety';
 import type { SafetySession } from '@/types/index';
 import { RefrigerantRiskBadge } from './RefrigerantRiskBadge';
 

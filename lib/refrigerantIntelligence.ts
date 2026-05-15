@@ -1,12 +1,12 @@
 import type {
     AppLanguage,
-    EmergencySafetyScript,
     OcrScanRecord,
     RefrigerantRiskLevel,
     RefrigerantSafetyClass,
     SafetyAlertColor,
     WhatGasRefrigerantProfile,
 } from '@/types/index';
+export { getEmergencySafetyScripts } from '@/lib/emergencySafety';
 
 const WHATGAS_PROFILES: Record<string, WhatGasRefrigerantProfile> = {
     'R-290': {
@@ -163,44 +163,6 @@ export function extractNameplateData(rawText: string): OcrScanRecord {
         matchConfidence: whatGasMatch ? 0.86 : 0.42,
         whatGasMatch,
     };
-}
-
-export function getEmergencySafetyScripts(language: AppLanguage): EmergencySafetyScript[] {
-    return [
-        {
-            id: `${language}-r290`,
-            language,
-            title: language === 'fr' ? 'Fuite de propane' : 'Propane leak response',
-            refrigerantCode: 'R-290',
-            severity: 'red',
-            steps: language === 'fr'
-                ? ['Couper les sources d’allumage.', 'Ventiler immediatement la zone.', 'Ne pas re-energiser avant verification.']
-                : ['Stop ignition sources.', 'Ventilate the area immediately.', 'Do not re-energize until the leak is cleared.'],
-            offlineReady: true,
-        },
-        {
-            id: `${language}-r32`,
-            language,
-            title: language === 'fr' ? 'Controle A2L sur site' : 'A2L site control',
-            refrigerantCode: 'R-32',
-            severity: 'orange',
-            steps: language === 'fr'
-                ? ['Verifier la ventilation continue.', 'Confirmer le detecteur de fuite.', 'Consigner les controles avant recharge.']
-                : ['Verify continuous ventilation.', 'Confirm leak detector availability.', 'Record controls before charging.'],
-            offlineReady: true,
-        },
-        {
-            id: `${language}-r717`,
-            language,
-            title: language === 'fr' ? 'Escalade ammoniac' : 'Ammonia escalation',
-            refrigerantCode: 'R-717',
-            severity: 'blue',
-            steps: language === 'fr'
-                ? ['Evacuer et notifier le superviseur.', 'Porter la protection respiratoire.', 'Isoler la zone avant toute intervention.']
-                : ['Evacuate and notify the supervisor.', 'Use respiratory protection.', 'Isolate the area before intervention.'],
-            offlineReady: true,
-        },
-    ];
 }
 
 export function buildSafetyAssistantResponse(query: string, language: AppLanguage) {
