@@ -3,8 +3,8 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { users } from '@/db/schema/index';
 import { signSession, sessionCookie } from '@/lib/server/auth';
-import { MOCK_USERS } from '@/lib/auth';
-import type { UserSession } from '@/lib/auth';
+import { MOCK_USERS } from '@/lib/mock-users';
+import type { UserSession } from '@/lib/mock-users';
 
 const VALID_ROLES = ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'regulator'] as const;
 type ValidRole = (typeof VALID_ROLES)[number];
