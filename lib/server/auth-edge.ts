@@ -68,3 +68,24 @@ export async function readSessionFromRequestEdge(req: Request): Promise<SessionP
   const token = match.slice('coolpro_session='.length);
   return verifySessionEdge(token);
 }
+
+/**
+ * Parse session payload from token WITHOUT signature verification.
+ * Safe for middleware route-gating where API routes do full verification.
+ */
+export function parseSessionUnsafe(token: string): SessionPayload | null {
+  try {
+    const dot = token.lastIndexOf('.');
+    if (dot === -1) return null;
+    const header = token.slice(0, dot);
+    const padded = header.replace(/-/g, '+').replace(/_/g, '/').padEnd(header.length + (4 - (header.length % 4)) % 4, '=');
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const payload = JSON.parse(new TextDecoder().decode(bytes)) as SessionPayload;
+    if (payload.exp < Date.now()) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}

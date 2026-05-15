@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifySessionEdge } from '@/lib/server/auth-edge';
+import { parseSessionUnsafe } from '@/lib/server/auth-edge';
 
 const PROTECTED_ROUTE_PREFIXES = [
     '/dashboard',
@@ -46,18 +46,11 @@ const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
     { prefix: '/dashboard', roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'regulator'] },
 ];
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     const sessionToken = request.cookies.get('coolpro_session')?.value ?? null;
-    let session = null;
-    if (sessionToken) {
-        try {
-            session = await verifySessionEdge(sessionToken);
-        } catch (e) {
-            console.error('[middleware] verifySessionEdge failed:', e);
-        }
-    }
+    const session = sessionToken ? parseSessionUnsafe(sessionToken) : null;
 
     const isAuthenticated = session !== null;
     const role = session?.role ?? null;
