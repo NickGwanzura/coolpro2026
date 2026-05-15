@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowRight, FlaskConical } from 'lucide-react';
-import { EmergencyModePanel } from '@/components/EmergencyModePanel';
+
 import SizingTool from '@/components/SizingTool';
 
 export default function SizingToolPage() {
@@ -22,7 +22,6 @@ export default function SizingToolPage() {
                     <ArrowRight className="h-4 w-4" />
                 </Link>
             </div>
-            <EmergencyModePanel />
             <SizingTool />
         </div>
     );

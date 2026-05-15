@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowRight, FlaskConical } from 'lucide-react';
-import { EmergencyModePanel } from '@/components/EmergencyModePanel';
+
 import FieldToolkit from '@/components/FieldToolkit';
 import { ImageAnnotationWorkbench } from '@/components/ImageAnnotationWorkbench';
 import { OcrNameplateScanner } from '@/components/OcrNameplateScanner';
@@ -27,7 +27,6 @@ export default function FieldToolkitPage() {
             <div className="grid gap-6">
                 <OcrNameplateScanner />
                 <ImageAnnotationWorkbench />
-                <EmergencyModePanel />
             </div>
             <FieldToolkit />
         </div>
