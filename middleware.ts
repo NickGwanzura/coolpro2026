@@ -50,7 +50,14 @@ export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     const sessionToken = request.cookies.get('coolpro_session')?.value ?? null;
-    const session = sessionToken ? await verifySessionEdge(sessionToken) : null;
+    let session = null;
+    if (sessionToken) {
+        try {
+            session = await verifySessionEdge(sessionToken);
+        } catch (e) {
+            console.error('[middleware] verifySessionEdge failed:', e);
+        }
+    }
 
     const isAuthenticated = session !== null;
     const role = session?.role ?? null;
