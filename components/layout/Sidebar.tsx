@@ -25,6 +25,7 @@ import {
     ChevronDown,
     UserCircle,
     FlaskConical,
+    HeartPulse,
 } from 'lucide-react';
 import { useAuth, logout } from '@/lib/auth';
 import { useEmergencyMode } from '@/lib/emergencyMode';
@@ -57,6 +58,7 @@ const NAV_SECTIONS: NavSection[] = [
             { name: 'Job Planner', href: '/job-planner', icon: CalendarRange, roles: ['technician', 'org_admin'] },
             { name: 'Field Scheduling', href: '/field-scheduling', icon: BellRing, roles: ['technician', 'org_admin'] },
             { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician', 'org_admin'] },
+            { name: 'Health & Wellness', href: '/health-safety', icon: HeartPulse, roles: ['technician', 'org_admin'] },
         ],
     },
     {
