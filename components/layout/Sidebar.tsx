@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useAuth, logout } from '@/lib/auth';
 import { useEmergencyMode } from '@/lib/emergencyMode';
+import { UserProfileModal } from '@/components/UserProfileModal';
 
 interface NavItem {
     name: string;
@@ -68,7 +69,7 @@ const NAV_SECTIONS: NavSection[] = [
     {
         label: 'Compliance',
         items: [
-            { name: 'Certifications', href: '/certifications', icon: Award, roles: ['technician', 'trainer', 'lecturer', 'org_admin'] },
+            { name: 'Certification', href: '/certifications', icon: Award, roles: ['technician', 'trainer', 'lecturer', 'org_admin'] },
             { name: 'Rewards', href: '/rewards', icon: Award, roles: ['technician', 'vendor', 'org_admin'] },
             { name: 'Supplier Registration', href: '/supplier-register', icon: Building2, roles: ['vendor'] },
             { name: 'Supplier Compliance', href: '/supplier-compliance', icon: ShieldCheck, roles: ['vendor'] },
@@ -81,8 +82,8 @@ const NAV_SECTIONS: NavSection[] = [
     {
         label: 'Registry',
         items: [
-            { name: 'Technician Registry', href: '/technician-registry', icon: Users, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'regulator'] },
-            { name: 'Certificate Verification', href: '/verify-technician', icon: ShieldCheck, roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'regulator'] },
+            { name: 'Technician Registry', href: '/technician-registry', icon: Users, roles: ['trainer', 'lecturer', 'org_admin', 'regulator'] },
+            { name: 'Certificate Verification', href: '/verify-technician', icon: ShieldCheck, roles: ['trainer', 'lecturer', 'vendor', 'org_admin', 'regulator'] },
         ],
     },
     {
@@ -129,6 +130,7 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
     const { user } = useAuth();
     const role = user?.role ?? 'technician';
     const { emergencyMode, toggleEmergencyMode } = useEmergencyMode();
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
     const visibleSections = NAV_SECTIONS.map(section => ({
         ...section,
@@ -209,8 +211,11 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
 
             {/* User / Logout */}
             <div className="p-4 border-t border-white/10 flex-shrink-0">
-                <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 flex items-center justify-center bg-[#292524] flex-shrink-0">
+                <button
+                    onClick={() => setIsProfileModalOpen(true)}
+                    className="flex w-full items-center gap-3 mb-3 hover:bg-white/5 p-2 rounded-md transition-colors text-left"
+                >
+                    <div className="w-8 h-8 flex items-center justify-center bg-[#292524] flex-shrink-0 rounded-full">
                         <UserCircle className="w-5 h-5 text-[#78716C]" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -219,15 +224,16 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
                             {user?.role?.replace('_', ' ') ?? ''}
                         </p>
                     </div>
-                </div>
-                <button
-                    onClick={() => logout()}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium text-[#78716C] hover:text-white hover:bg-white/5 transition-colors"
-                >
-                    <LogOut className="w-4 h-4" />
-                    Sign out
                 </button>
             </div>
+
+            {isProfileModalOpen && (
+                <UserProfileModal
+                    user={user}
+                    onClose={() => setIsProfileModalOpen(false)}
+                    onLogout={logout}
+                />
+            )}
         </div>
     );
 }

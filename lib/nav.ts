@@ -82,7 +82,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Technician Registry',
     href: '/technician-registry',
     icon: Icons.User,
-    roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'regulator'],
+    roles: ['trainer', 'lecturer', 'org_admin', 'regulator'],
   },
   {
     label: 'NOU Dashboard',

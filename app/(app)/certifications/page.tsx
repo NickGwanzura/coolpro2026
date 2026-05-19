@@ -592,12 +592,27 @@ export default function CertificationsPage() {
     );
   }
 
+  // Derive issued certs for this technician from stored requests
+  const issuedCerts = useMemo(() => {
+    return requests.filter(r => r.status === 'issued');
+  }, [requests]);
+
+  const allCertRecords = useSyncExternalStore(
+    () => () => undefined,
+    () => {
+      if (typeof window === 'undefined') return [] as CertificateRecord[];
+      const raw = window.localStorage.getItem(STORAGE_KEYS.certificateRecords);
+      try { return raw ? JSON.parse(raw) as CertificateRecord[] : [] as CertificateRecord[]; } catch { return [] as CertificateRecord[]; }
+    },
+    () => [] as CertificateRecord[]
+  );
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">National Certification Center</h1>
-          <p className="text-gray-500 mt-1">Take professional assessments and move into trainer review</p>
+          <h1 className="text-2xl font-bold text-gray-900">Certification</h1>
+          <p className="text-gray-500 mt-1">Your issued certificates, training history &amp; available assessments</p>
         </div>
         <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 border border-blue-100">
           <ShieldCheck className="h-5 w-5 text-blue-600" />
@@ -605,96 +620,164 @@ export default function CertificationsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-blue-500" />
-            Available Assessments
-          </h2>
+      {/* Issued Certificates */}
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+          <Award className="h-5 w-5 text-amber-500" />
+          My Issued Certificates
+        </h2>
+        {allCertRecords.length === 0 && issuedCerts.length === 0 ? (
+          <div className="bg-white border border-dashed border-gray-200 p-8 text-center">
+            <Award className="h-10 w-10 text-gray-200 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-gray-500">No certificates issued yet</p>
+            <p className="text-xs text-gray-400 mt-1">Complete an assessment below to begin the certification process.</p>
+          </div>
+        ) : (
           <div className="grid gap-4">
-            {AVAILABLE_EXAMS.map((exam) => (
-              <div key={exam.id} className="bg-white border border-gray-200 p-6 shadow-sm hover:border-blue-300 transition-all group">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                        exam.level === 'Advanced'
-                          ? 'bg-purple-100 text-purple-700'
-                          : exam.level === 'Specialist'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {exam.level}
+            {allCertRecords.map(cert => {
+              const expiry = new Date(cert.expiryDate);
+              const now = Date.now();
+              const daysLeft = Math.ceil((expiry.getTime() - now) / (1000 * 60 * 60 * 24));
+              const isExpired = daysLeft <= 0;
+              const isExpiringSoon = daysLeft > 0 && daysLeft <= 30;
+              return (
+                <div key={cert.id} className="bg-white border border-gray-200 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className={`p-3 rounded-full flex-shrink-0 ${isExpired ? 'bg-red-100' : isExpiringSoon ? 'bg-amber-100' : 'bg-emerald-100'}`}>
+                    <ShieldCheck className={`h-6 w-6 ${isExpired ? 'text-red-600' : isExpiringSoon ? 'text-amber-600' : 'text-emerald-600'}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <p className="font-bold text-gray-900">{cert.certificateType}</p>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isExpired ? 'bg-red-50 text-red-700' : isExpiringSoon ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                        {isExpired ? 'Expired' : isExpiringSoon ? `${daysLeft} days left` : 'Valid'}
                       </span>
-                      <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{exam.title}</h3>
                     </div>
-                    <p className="text-sm text-gray-500 line-clamp-2">{exam.description}</p>
-                    <div className="flex items-center gap-4 pt-2 text-xs text-gray-400 font-medium">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        {exam.duration}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <FileText className="h-3.5 w-3.5" />
-                        {exam.questions} Questions
-                      </div>
+                    <p className="text-xs text-gray-500">{cert.issuingBody} · No. {cert.certificateNumber}</p>
+                    <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
+                      <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" /> Issued: {formatDate(cert.issueDate)}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Expires: {formatDate(cert.expiryDate)}</span>
                     </div>
                   </div>
-                  <div className="flex-shrink-0">
-                    {completedExams.includes(exam.id) ? (
-                      <div className="flex items-center gap-2 text-green-600 bg-green-50 px-4 py-2 font-bold text-sm">
-                        <CheckCircle className="h-4 w-4" />
-                        Awaiting Trainer Marking
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleStartExam(exam.id)}
-                        disabled={examTaking !== null}
-                        className="flex items-center gap-2 bg-gray-900 text-white px-6 py-2.5 font-bold text-sm hover:bg-blue-600 transition-all disabled:opacity-50"
-                      >
-                        Start Exam
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
-                    )}
+                  {cert.verificationUrl && (
+                    <a href={cert.verificationUrl} target="_blank" rel="noreferrer"
+                      className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+                      Verify <ArrowRight className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Training History */}
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+          <BookOpen className="h-5 w-5 text-blue-500" />
+          Training History
+        </h2>
+        {issuedCerts.length === 0 ? (
+          <div className="bg-white border border-dashed border-gray-200 p-6 text-center">
+            <p className="text-sm text-gray-400">No completed training records found.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto bg-white border border-gray-200 shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Course / Assessment</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Trainer</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Exam Date</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Score</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Certificate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {issuedCerts.map(r => (
+                  <tr key={r.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-3 font-medium text-gray-900">{r.courseTitle}</td>
+                    <td className="px-5 py-3 text-gray-500">{r.trainerName}</td>
+                    <td className="px-5 py-3 text-gray-500">{r.examDate}</td>
+                    <td className="px-5 py-3">
+                      <span className={`font-bold ${r.overallScore >= 70 ? 'text-emerald-600' : 'text-red-600'}`}>{r.overallScore}%</span>
+                    </td>
+                    <td className="px-5 py-3">
+                      {r.certificateNumber ? (
+                        <span className="font-mono text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 font-semibold">{r.certificateNumber}</span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Available Assessments */}
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+          <FileText className="h-5 w-5 text-gray-500" />
+          Available Assessments
+        </h2>
+        <div className="grid gap-4">
+          {AVAILABLE_EXAMS.map((exam) => (
+            <div key={exam.id} className="bg-white border border-gray-200 p-6 shadow-sm hover:border-blue-300 transition-all group">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                      exam.level === 'Advanced'
+                        ? 'bg-purple-100 text-purple-700'
+                        : exam.level === 'Specialist'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {exam.level}
+                    </span>
+                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{exam.title}</h3>
+                  </div>
+                  <p className="text-sm text-gray-500 line-clamp-2">{exam.description}</p>
+                  <div className="flex items-center gap-4 pt-2 text-xs text-gray-400 font-medium">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {exam.duration}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <FileText className="h-3.5 w-3.5" />
+                      {exam.questions} Questions
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <Award className="h-5 w-5 text-amber-500" />
-            My Achievements
-          </h2>
-          <div className="bg-white border border-gray-200 p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-100">
-              <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Digital Badges</p>
-                <p className="text-xl font-black text-gray-900">12</p>
-              </div>
-              <Award className="h-8 w-8 text-amber-400 opacity-50" />
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest px-1">Recently Issued</p>
-              <div className="p-3 border border-gray-100 flex items-center gap-3">
-                <div className="h-10 w-10 bg-blue-100 flex items-center justify-center">
-                  <ShieldCheck className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">F-Gas Core Card</p>
-                  <p className="text-[10px] text-gray-400 font-medium">Verified: 12 Jan 2026</p>
+                <div className="flex-shrink-0">
+                  {completedExams.includes(exam.id) ? (
+                    <div className="flex items-center gap-2 text-green-600 bg-green-50 px-4 py-2 font-bold text-sm">
+                      <CheckCircle className="h-4 w-4" />
+                      Awaiting Trainer Marking
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleStartExam(exam.id)}
+                      disabled={examTaking !== null}
+                      className="flex items-center gap-2 bg-gray-900 text-white px-6 py-2.5 font-bold text-sm hover:bg-blue-600 transition-all disabled:opacity-50"
+                    >
+                      Start Exam
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
-
-            <button className="w-full py-3 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-colors">
-              View All Credentials
-            </button>
-          </div>
+          ))}
         </div>
+        {notice && (
+          <div className="mt-4 border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+            {notice}
+          </div>
+        )}
       </div>
     </div>
   );
