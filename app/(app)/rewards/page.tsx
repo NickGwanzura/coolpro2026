@@ -9,8 +9,10 @@ import { useAuth } from '@/lib/auth';
 import { useSupplierApplications } from '@/lib/api';
 
 export default function RewardsPage() {
-    const { user: session, isLoading } = useAuth();
+    const { user: session } = useAuth();
     const { data: supplierApplications = [] } = useSupplierApplications();
+    const isAdmin = session?.role === 'org_admin';
+    const isVendor = session?.role === 'vendor';
 
     const supplierSummary = useMemo(() => {
         const pendingApplications = supplierApplications.filter(
@@ -19,7 +21,6 @@ export default function RewardsPage() {
         const approvedApplications = supplierApplications.filter(
             application => application.status === 'approved'
         );
-
         return {
             approvedSuppliers: approvedApplications.length,
             pendingApplications: pendingApplications.length,
@@ -29,42 +30,40 @@ export default function RewardsPage() {
         };
     }, [supplierApplications]);
 
-    const isAdmin = session?.role === 'org_admin';
-    const isVendor = session?.role === 'vendor';
-
     if (session && isVendor) {
         return <VendorRewardsPanel session={session} />;
     }
 
+    // Technician view — clean, no supplier content
+    if (!isAdmin) {
+        return (
+            <div className="space-y-6">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Rewards</h1>
+                    <p className="text-gray-500 mt-1">Earn points through training and job activity, then redeem for tools, vouchers and courses.</p>
+                </div>
+                <RewardsHub adminView={false} />
+            </div>
+        );
+    }
+
+    // Admin view — includes supplier summary stats
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">{isAdmin ? 'Rewards Overview' : 'Rewards'}</h1>
-                    <p className="text-gray-500 mt-1">
-                        {isAdmin
-                            ? 'Track all active rewards, vendor participation, and supplier-backed reward coverage.'
-                            : 'Redeem your points for exclusive rewards and discounts, supported by approved suppliers.'}
-                    </p>
+                    <h1 className="text-2xl font-bold text-gray-900">Rewards Overview</h1>
+                    <p className="text-gray-500 mt-1">Track all active rewards, vendor participation, and supplier-backed reward coverage.</p>
                 </div>
-                {!isAdmin ? (
-                    <Link
-                        href="/supplier-compliance"
-                        className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-                    >
-                        <Building2 className="h-4 w-4" />
-                        Compliance Module
-                    </Link>
-                ) : (
-                    <Link
-                        href="/suppliers"
-                        className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-                    >
-                        <Building2 className="h-4 w-4" />
-                        Open Supplier Management
-                    </Link>
-                )}
+                <Link
+                    href="/suppliers"
+                    className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                    <Building2 className="h-4 w-4" />
+                    Open Supplier Management
+                </Link>
             </div>
+
             <section className="grid gap-4 md:grid-cols-3">
                 <article className="border border-gray-200 bg-white p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
@@ -100,7 +99,8 @@ export default function RewardsPage() {
                     </div>
                 </article>
             </section>
-            <RewardsHub adminView={isAdmin} />
+
+            <RewardsHub adminView={true} />
         </div>
     );
 }
