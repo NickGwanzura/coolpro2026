@@ -50,12 +50,5 @@ export const MOCK_USERS: Record<string, UserSession> = {
         region: 'Harare',
         isDemo: true,
     },
-    regulator: {
-        id: 'reg-001',
-        name: 'Demo Regulator',
-        email: 'regulator@coolpro.demo',
-        role: 'regulator',
-        region: 'Harare',
-        isDemo: true,
-    },
+
 };

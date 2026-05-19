@@ -28,7 +28,7 @@ function toSupplierReorder(row: typeof supplierReorders.$inferSelect): SupplierR
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['vendor', 'org_admin', 'regulator']);
+    session = requireRole(req, ['vendor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -41,18 +41,10 @@ export async function GET(req: Request) {
     return NextResponse.json(rows.map(toSupplierReorder));
   }
 
-  if (session.role === 'org_admin') {
-    const rows = await db
-      .select()
-      .from(supplierReorders)
-      .where(inArray(supplierReorders.status, ['pending_hevacraz', 'pending_nou', 'approved', 'rejected']));
-    return NextResponse.json(rows.map(toSupplierReorder));
-  }
-
   const rows = await db
     .select()
     .from(supplierReorders)
-    .where(inArray(supplierReorders.status, ['pending_nou', 'approved', 'rejected']));
+    .where(inArray(supplierReorders.status, ['pending_hevacraz', 'pending_nou', 'approved', 'rejected']));
   return NextResponse.json(rows.map(toSupplierReorder));
 }
 

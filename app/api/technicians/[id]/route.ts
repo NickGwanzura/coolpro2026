@@ -33,7 +33,7 @@ function toTechnician(row: typeof technicians.$inferSelect): Technician {
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin', 'regulator']);
+    requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -46,7 +46,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireRole(req, ['org_admin', 'regulator']);
+    requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }

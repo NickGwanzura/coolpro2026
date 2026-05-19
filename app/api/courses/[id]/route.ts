@@ -23,7 +23,7 @@ function toManagedCourse(row: typeof courses.$inferSelect): ManagedCourse {
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['lecturer', 'trainer', 'regulator', 'org_admin']);
+    session = requireRole(req, ['lecturer', 'trainer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

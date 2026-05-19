@@ -39,7 +39,7 @@ function AccessDenied() {
         <div className="space-y-2">
           <h2 className="text-xl font-bold text-gray-900">Access restricted</h2>
           <p className="max-w-2xl text-sm leading-6 text-gray-600">
-            The NOU Compliance Dashboard is available to org_admin and regulator roles only.
+            The NOU Compliance Dashboard is available to admin roles only.
             Please use the dashboard or return once you have the correct permission set.
           </p>
           <div className="flex flex-wrap gap-3 pt-2">
@@ -77,7 +77,7 @@ export default function NouDashboard() {
   const { data: supplierLedger = [] } = useSupplierLedger();
   const { data: supplierComplianceApplications = [] } = useSupplierComplianceApplications();
 
-  const accessAllowed = session && ['org_admin', 'regulator'].includes(session.role);
+  const accessAllowed = session?.role === 'org_admin';
 
   const topTechnicians = useMemo(
     () =>

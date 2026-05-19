@@ -22,7 +22,7 @@ function toManagedCourse(row: typeof courses.$inferSelect): ManagedCourse {
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireRole(req, ['regulator']);
+    requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }

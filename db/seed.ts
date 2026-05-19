@@ -20,7 +20,7 @@ const U = {
   vendor:  '00000000-0000-4000-8000-000000000003',
   orgAdmin:'00000000-0000-4000-8000-000000000004',
   lecturer:'00000000-0000-4000-8000-000000000005',
-  regulator:'00000000-0000-4000-8000-000000000006',
+
   // second vendor
   vendor2: '00000000-0000-4000-8000-000000000007',
   // technicians
@@ -111,15 +111,7 @@ const seedUsers: (typeof schema.users.$inferInsert)[] = [
     isDemo: true,
     status: 'active',
   },
-  {
-    id: U.regulator,
-    name: 'Demo Regulator',
-    email: 'regulator@coolpro.demo',
-    role: 'regulator',
-    region: 'Harare',
-    isDemo: true,
-    status: 'active',
-  },
+
 ];
 
 // ---------------------------------------------------------------------------
@@ -434,7 +426,7 @@ const seedReorders: (typeof schema.supplierReorders.$inferInsert)[] = [
     status: 'approved',
     hevacrazReviewerId: U.orgAdmin,
     hevacrazReviewedAt: new Date('2026-04-01T11:00:00.000Z'),
-    nouReviewerId: U.regulator,
+    nouReviewerId: U.orgAdmin,
     nouReviewedAt: new Date('2026-04-03T14:00:00.000Z'),
     createdAt: new Date('2026-03-28T07:00:00.000Z'),
   },
@@ -489,7 +481,7 @@ const seedReorders: (typeof schema.supplierReorders.$inferInsert)[] = [
     status: 'rejected',
     hevacrazReviewerId: U.orgAdmin,
     hevacrazReviewedAt: new Date('2026-04-09T15:00:00.000Z'),
-    nouReviewerId: U.regulator,
+    nouReviewerId: U.orgAdmin,
     nouReviewedAt: new Date('2026-04-10T11:00:00.000Z'),
     rejectionReason: 'Quota exceeded for Q2. Resubmit in Q3.',
     rejectedBy: 'nou',

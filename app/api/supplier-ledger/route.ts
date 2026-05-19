@@ -46,7 +46,7 @@ export async function GET(req: Request) {
     return NextResponse.json(rows.map(toSupplierLedgerEntry));
   }
 
-  if (session.role === 'org_admin' || session.role === 'regulator') {
+  if (session.role === 'org_admin') {
     if (supplierId) {
       const rows = await db
         .select()

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronRight, Download, Eye, Mail, Phone, Search, ShieldCheck } from 'lucide-react';
+import { ChevronRight, Download, Mail, Phone, Search, ShieldCheck } from 'lucide-react';
 import autoTable from 'jspdf-autotable';
 import { jsPDF } from 'jspdf';
 import { Technician } from '@/types/index';
@@ -16,7 +16,7 @@ function TechnicianRegistryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user: session } = useAuth();
-  const isRegulator = session?.role === 'regulator';
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
@@ -184,12 +184,7 @@ function TechnicianRegistryContent() {
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900">Tech Registry</h1>
-            {isRegulator && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Viewing as NOU
-              </span>
-            )}
+
           </div>
           <p className="mt-1 text-gray-500">
             All registered technicians, searchable by province, town, specialization, and status.
@@ -318,15 +313,6 @@ function TechnicianRegistryContent() {
                   </div>
                 </div>
 
-                {isRegulator ? (
-                  <button
-                    onClick={() => router.push(`/technician-registry/${technician.id}`)}
-                    className="inline-flex items-center gap-2 border border-purple-200 bg-purple-50 px-5 py-2.5 text-sm font-bold text-purple-700 transition-all hover:bg-purple-100"
-                  >
-                    <Eye className="h-4 w-4" />
-                    View Record
-                  </button>
-                ) : (
                   <button
                     onClick={() => router.push(`/technician-registry/${technician.id}`)}
                     className="inline-flex items-center gap-2 bg-gray-900 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-blue-600"
@@ -334,7 +320,6 @@ function TechnicianRegistryContent() {
                     View Profile
                     <ChevronRight className="h-4 w-4" />
                   </button>
-                )}
               </div>
             </div>
           ))}

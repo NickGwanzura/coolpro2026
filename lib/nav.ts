@@ -40,7 +40,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'WhatGas + Risk Engine',
     href: '/whatgas',
     icon: Icons.Flask,
-    roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'regulator'],
+    roles: ['technician', 'trainer', 'lecturer', 'org_admin'],
   },
   {
     label: 'Emergency Mode',
@@ -88,25 +88,25 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Technician Registry',
     href: '/technician-registry',
     icon: Icons.User,
-    roles: ['trainer', 'lecturer', 'org_admin', 'regulator'],
+    roles: ['trainer', 'lecturer', 'org_admin'],
   },
   {
     label: 'NOU Dashboard',
     href: '/nou-dashboard',
     icon: Icons.Dashboard,
-    roles: ['org_admin', 'regulator'],
+    roles: ['org_admin'],
   },
   {
     label: 'Course Approvals',
     href: '/learn/approvals',
     icon: Icons.Shield,
-    roles: ['regulator', 'org_admin'],
+    roles: ['org_admin'],
   },
   {
     label: 'Supplier Approvals',
     href: '/suppliers/approvals',
     icon: Icons.Shield,
-    roles: ['org_admin', 'regulator'],
+    roles: ['org_admin'],
   },
   {
     label: 'Vendor Reorder',

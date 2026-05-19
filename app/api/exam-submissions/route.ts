@@ -25,7 +25,7 @@ function toExamSubmission(row: typeof examSubmissions.$inferSelect): ExamSubmiss
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician', 'trainer', 'lecturer', 'regulator', 'org_admin']);
+    session = requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

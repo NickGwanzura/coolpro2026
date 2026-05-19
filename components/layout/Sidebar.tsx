@@ -26,6 +26,8 @@ import {
     UserCircle,
     FlaskConical,
     HeartPulse,
+    GraduationCap,
+    BarChart3,
 } from 'lucide-react';
 import { useAuth, logout } from '@/lib/auth';
 import { useEmergencyMode } from '@/lib/emergencyMode';
@@ -47,25 +49,30 @@ interface NavSection {
 const NAV_SECTIONS: NavSection[] = [
     {
         items: [
-            { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'regulator'] },
+            { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin'] },
         ],
     },
     {
         label: 'Operations',
         items: [
             { name: 'Learning Hub', href: '/learn', icon: BookOpen, roles: ['technician', 'trainer', 'lecturer', 'org_admin'] },
-            { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician', 'org_admin'] },
-            { name: 'Job Planner', href: '/job-planner', icon: CalendarRange, roles: ['technician', 'org_admin'] },
             { name: 'Field Scheduling', href: '/field-scheduling', icon: BellRing, roles: ['technician', 'org_admin'] },
-            { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician', 'org_admin'] },
-            { name: 'Health & Wellness', href: '/health-safety', icon: HeartPulse, roles: ['technician', 'org_admin'] },
+        ],
+    },
+    {
+        label: 'Field Tools',
+        items: [
+            { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician'] },
+            { name: 'Job Planner', href: '/job-planner', icon: CalendarRange, roles: ['technician'] },
+            { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician'] },
+            { name: 'Health & Wellness', href: '/health-safety', icon: HeartPulse, roles: ['technician'] },
         ],
     },
     {
         label: 'Tools',
         items: [
-            { name: 'WhatGas + Risk Engine', href: '/whatgas', icon: FlaskConical, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'regulator'] },
-            { name: 'Sizing Tool', href: '/sizing-tool', icon: Calculator, roles: ['technician', 'org_admin'] },
+            { name: 'WhatGas + Risk Engine', href: '/whatgas', icon: FlaskConical, roles: ['technician', 'trainer', 'lecturer', 'org_admin'] },
+            { name: 'Sizing Tool', href: '/sizing-tool', icon: Calculator, roles: ['technician'] },
         ],
     },
     {
@@ -78,22 +85,28 @@ const NAV_SECTIONS: NavSection[] = [
             { name: 'Supply Reports', href: '/suppliers', icon: Factory, roles: ['vendor', 'org_admin'] },
             { name: 'Vendor Reorder', href: '/suppliers/reorder', icon: Factory, roles: ['vendor'] },
             { name: 'Verify Buyer', href: '/suppliers/verify-buyer', icon: ShieldCheck, roles: ['vendor'] },
-            { name: 'Supplier Approvals', href: '/suppliers/approvals', icon: ShieldCheck, roles: ['org_admin', 'regulator'] },
+            { name: 'Supplier Approvals', href: '/suppliers/approvals', icon: ShieldCheck, roles: ['org_admin'] },
         ],
     },
     {
         label: 'Registry',
         items: [
-            { name: 'Technician Registry', href: '/technician-registry', icon: Users, roles: ['trainer', 'lecturer', 'org_admin', 'regulator'] },
-            { name: 'Certificate Verification', href: '/verify-technician', icon: ShieldCheck, roles: ['trainer', 'lecturer', 'vendor', 'org_admin', 'regulator'] },
+            { name: 'Technician Registry', href: '/technician-registry', icon: Users, roles: ['trainer', 'lecturer', 'org_admin'] },
+            { name: 'Certificate Verification', href: '/verify-technician', icon: ShieldCheck, roles: ['trainer', 'lecturer', 'vendor', 'org_admin'] },
         ],
     },
     {
         label: 'Admin',
         items: [
-            { name: 'Admin Panel', href: '/admin', icon: ShieldCheck, roles: ['org_admin'] },
-            { name: 'NOU Dashboard', href: '/nou-dashboard', icon: AlertTriangle, roles: ['org_admin', 'regulator'] },
-            { name: 'Course Approvals', href: '/learn/approvals', icon: ShieldCheck, roles: ['regulator', 'org_admin'] },
+            { name: 'Applications', href: '/admin/applications', icon: ShieldCheck, roles: ['org_admin'] },
+            { name: 'NOU Dashboard', href: '/nou-dashboard', icon: AlertTriangle, roles: ['org_admin'] },
+            { name: 'Course Approvals', href: '/learn/approvals', icon: ShieldCheck, roles: ['org_admin'] },
+            { name: 'Lecturer Directory', href: '/admin/lecturers', icon: GraduationCap, roles: ['org_admin'] },
+            { name: 'Student Directory', href: '/admin/students', icon: Users, roles: ['org_admin'] },
+            { name: 'Technician Directory', href: '/admin/technicians', icon: Users, roles: ['org_admin'] },
+            { name: 'Certification Engine', href: '/admin/certification-engine', icon: Award, roles: ['org_admin'] },
+            { name: 'Accidents Module', href: '/admin/accidents', icon: AlertTriangle, roles: ['org_admin'] },
+            { name: 'Reporting', href: '/admin/reporting', icon: BarChart3, roles: ['org_admin'] },
         ],
     },
 ];

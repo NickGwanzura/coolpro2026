@@ -135,10 +135,10 @@ export default function ApplicationsAdminPage() {
     );
   }
 
-  if (!user || (user.role !== 'org_admin' && user.role !== 'regulator')) {
+  if (!user || user.role !== 'org_admin') {
     return (
       <div className="border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-        Access restricted. This page is for HEVACRAZ admins (org_admin) and NOU regulators only.
+        Access restricted. This page is for HEVACRAZ admins only.
       </div>
     );
   }
@@ -170,10 +170,9 @@ export default function ApplicationsAdminPage() {
 
   return (
     <div className="space-y-8">
-      <div className="border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
-          {user.role === 'org_admin' ? 'HEVACRAZ admin' : 'NOU regulator'}
-        </p>
+      <div className="border border-gray-200 bg-white p-6 shadow-sm">          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
+            HEVACRAZ admin
+          </p>
         <h1 className="mt-2 text-2xl font-bold text-gray-900">Registration Applications</h1>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-600">
           Review and approve incoming registration applications across students, technicians, and

@@ -7,7 +7,7 @@ import { requireRole } from '@/lib/server/auth';
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['org_admin', 'regulator']);
+    session = requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }

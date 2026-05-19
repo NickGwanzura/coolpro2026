@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../lib/auth';
 import { SupplierRegistration, UserRole } from '../../../types';
 import { createSupplierApplication } from '@/lib/api';
-import { Thermometer, Lock, Mail, ArrowRight, MapPin, ShieldCheck, Building2, PackageSearch, User, GraduationCap, Scale } from 'lucide-react';
+import { Thermometer, Lock, Mail, ArrowRight, MapPin, ShieldCheck, Building2, PackageSearch, User, GraduationCap } from 'lucide-react';
 
 const DEMO_ROLES: Array<{
   role: UserRole;
@@ -18,7 +18,6 @@ const DEMO_ROLES: Array<{
   { role: 'trainer',    label: 'Trainer',     description: 'Learning flows and assessor tools.', icon: GraduationCap },
   { role: 'lecturer',   label: 'Lecturer',    description: 'Course delivery and learner management.', icon: GraduationCap },
   { role: 'vendor',     label: 'Vendor',      description: 'Supplier-facing demo workspace.', icon: PackageSearch },
-  { role: 'regulator',  label: 'Regulator',   description: 'Read-only compliance and verification access.', icon: Scale },
 ];
 
 type SupplierFormState = {

@@ -48,7 +48,7 @@ function toTechnician(row: typeof technicians.$inferSelect): Technician {
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['vendor', 'regulator', 'org_admin']);
+    session = requireRole(req, ['vendor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

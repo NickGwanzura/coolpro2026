@@ -145,10 +145,10 @@ export default function ApprovalsPage() {
         );
     }
 
-    if (!session || (session.role !== 'org_admin' && session.role !== 'regulator')) {
+    if (!session || session.role !== 'org_admin') {
         return (
             <div className="border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-                Access restricted. This page is for HEVACRAZ (org_admin) and NOU (regulator) reviewers only.
+                Access restricted. This page is for admin reviewers only.
             </div>
         );
     }
@@ -161,8 +161,7 @@ export default function ApprovalsPage() {
         return <div className="p-8 text-sm text-slate-500">Loading...</div>;
     }
 
-    const isHevacraz = session.role === 'org_admin';
-    const isNou = session.role === 'regulator';
+    const isHevacraz = true;
 
     async function handleHevacrazApprove(id: string) {
         setActing(true);
@@ -206,126 +205,108 @@ export default function ApprovalsPage() {
             <div className="border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
-                        {isHevacraz ? 'HEVACRAZ admin' : 'NOU regulator'}
+                        Supplier Approvals
                     </p>
                     <h1 className="text-2xl font-bold text-gray-900">Gas Reorder Approvals</h1>
                     <p className="max-w-2xl text-sm leading-6 text-gray-600">
-                        {isHevacraz
-                            ? 'Review vendor reorder requests. Approved requests move to NOU for final sign-off.'
-                            : 'Review requests that have passed HEVACRAZ review. Your approval is the final step.'}
+                        Review and approve vendor reorder requests across all stages.
                     </p>
                 </div>
             </div>
 
-            {isHevacraz && (
-                <div className="border border-gray-200 bg-white p-6 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <h2 className="text-base font-semibold text-gray-900">Pending HEVACRAZ review</h2>
-                            <p className="mt-1 text-sm text-gray-500">{pendingHevacraz.length} request{pendingHevacraz.length !== 1 ? 's' : ''} awaiting your review</p>
-                        </div>
-                        <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${pendingHevacraz.length > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                            {pendingHevacraz.length}
-                        </span>
+            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                    <div>
+                        <h2 className="text-base font-semibold text-gray-900">Pending HEVACRAZ review</h2>
+                        <p className="mt-1 text-sm text-gray-500">{pendingHevacraz.length} request{pendingHevacraz.length !== 1 ? 's' : ''} awaiting your review</p>
                     </div>
-
-                    {pendingHevacraz.length === 0 ? (
-                        <div className="mt-6 border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
-                            No pending requests at this stage.
-                        </div>
-                    ) : (
-                        <div className="mt-6 space-y-4">
-                            {pendingHevacraz.map(reorder => (
-                                <ReorderRow
-                                    key={reorder.id}
-                                    reorder={reorder}
-                                    actions={
-                                        <>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleHevacrazApprove(reorder.id)}
-                                                disabled={acting}
-                                                className="inline-flex items-center gap-1.5 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
-                                            >
-                                                Approve send to NOU
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setRejectTarget({ id: reorder.id, gas: reorder.gasType, role: 'hevacraz' })}
-                                                disabled={acting}
-                                                className="inline-flex items-center gap-1.5 border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
-                                            >
-                                                Reject
-                                            </button>
-                                        </>
-                                    }
-                                />
-                            ))}
-                        </div>
-                    )}
+                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${pendingHevacraz.length > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {pendingHevacraz.length}
+                    </span>
                 </div>
-            )}
 
-            {isNou && (
-                <div className="border border-gray-200 bg-white p-6 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <h2 className="text-base font-semibold text-gray-900">Pending NOU review</h2>
-                            <p className="mt-1 text-sm text-gray-500">{pendingNou.length} request{pendingNou.length !== 1 ? 's' : ''} approved by HEVACRAZ and awaiting NOU sign-off</p>
-                        </div>
-                        <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${pendingNou.length > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                            {pendingNou.length}
-                        </span>
+                {pendingHevacraz.length === 0 ? (
+                    <div className="mt-6 border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+                        No pending requests at this stage.
                     </div>
-
-                    {pendingNou.length === 0 ? (
-                        <div className="mt-6 border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
-                            No requests awaiting NOU review at this time.
-                        </div>
-                    ) : (
-                        <div className="mt-6 space-y-4">
-                            {pendingNou.map(reorder => (
-                                <ReorderRow
-                                    key={reorder.id}
-                                    reorder={reorder}
-                                    actions={
-                                        <>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleNouApprove(reorder.id)}
-                                                disabled={acting}
-                                                className="inline-flex items-center gap-1.5 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
-                                            >
-                                                Approve
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setRejectTarget({ id: reorder.id, gas: reorder.gasType, role: 'nou' })}
-                                                disabled={acting}
-                                                className="inline-flex items-center gap-1.5 border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
-                                            >
-                                                Reject
-                                            </button>
-                                        </>
-                                    }
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {isHevacraz && pendingNou.length > 0 && (
-                <div className="border border-gray-200 bg-white p-6 shadow-sm">
-                    <h2 className="text-base font-semibold text-gray-900">Pending NOU review (read-only)</h2>
-                    <p className="mt-1 text-sm text-gray-500">These requests have been approved by HEVACRAZ and are waiting for NOU sign-off.</p>
+                ) : (
                     <div className="mt-6 space-y-4">
-                        {pendingNou.map(reorder => (
-                            <ReorderRow key={reorder.id} reorder={reorder} />
+                        {pendingHevacraz.map(reorder => (
+                            <ReorderRow
+                                key={reorder.id}
+                                reorder={reorder}
+                                actions={
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleHevacrazApprove(reorder.id)}
+                                            disabled={acting}
+                                            className="inline-flex items-center gap-1.5 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                                        >
+                                            Approve send to NOU
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRejectTarget({ id: reorder.id, gas: reorder.gasType, role: 'hevacraz' })}
+                                            disabled={acting}
+                                            className="inline-flex items-center gap-1.5 border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+                                        >
+                                            Reject
+                                        </button>
+                                    </>
+                                }
+                            />
                         ))}
                     </div>
+                )}
+            </div>
+
+            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                    <div>
+                        <h2 className="text-base font-semibold text-gray-900">Pending NOU review</h2>
+                        <p className="mt-1 text-sm text-gray-500">{pendingNou.length} request{pendingNou.length !== 1 ? 's' : ''} approved by HEVACRAZ and awaiting NOU sign-off</p>
+                    </div>
+                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${pendingNou.length > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {pendingNou.length}
+                    </span>
                 </div>
-            )}
+
+                {pendingNou.length === 0 ? (
+                    <div className="mt-6 border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+                        No requests awaiting NOU review at this time.
+                    </div>
+                ) : (
+                    <div className="mt-6 space-y-4">
+                        {pendingNou.map(reorder => (
+                            <ReorderRow
+                                key={reorder.id}
+                                reorder={reorder}
+                                actions={
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleNouApprove(reorder.id)}
+                                            disabled={acting}
+                                            className="inline-flex items-center gap-1.5 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                                        >
+                                            Approve
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRejectTarget({ id: reorder.id, gas: reorder.gasType, role: 'nou' })}
+                                            disabled={acting}
+                                            className="inline-flex items-center gap-1.5 border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+                                        >
+                                            Reject
+                                        </button>
+                                    </>
+                                }
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
 
             <div className="border border-gray-200 bg-white p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-gray-900">Completed reorders</h2>

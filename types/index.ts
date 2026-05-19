@@ -4,7 +4,7 @@ export type AppLanguage = 'en' | 'fr';
 export type SafetyAlertColor = 'green' | 'orange' | 'red' | 'blue';
 export type RefrigerantRiskLevel = 'low' | 'moderate' | 'high' | 'critical';
 
-export type UserRole = 'technician' | 'trainer' | 'vendor' | 'org_admin' | 'lecturer' | 'regulator';
+export type UserRole = 'technician' | 'trainer' | 'vendor' | 'org_admin' | 'lecturer';
 
 export const UserRole = {
   TECHNICIAN: 'technician' as const,
@@ -12,7 +12,6 @@ export const UserRole = {
   VENDOR: 'vendor' as const,
   ORG_ADMIN: 'org_admin' as const,
   LECTURER: 'lecturer' as const,
-  REGULATOR: 'regulator' as const,
 };
 
 export interface User {

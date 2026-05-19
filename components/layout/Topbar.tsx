@@ -44,7 +44,6 @@ export function Topbar({ onMenuClick, title }: { onMenuClick: () => void; title?
                             </div>
                             <span className="hidden md:block">{session.name.split(' ')[0]}</span>
                             <span className={`hidden md:inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                                session.role === 'regulator' ? 'bg-purple-100 text-purple-700' :
                                 session.role === 'org_admin' ? 'bg-amber-100 text-amber-700' :
                                 session.role === 'lecturer' ? 'bg-cyan-100 text-cyan-700' :
                                 session.role === 'trainer' ? 'bg-blue-100 text-blue-700' :

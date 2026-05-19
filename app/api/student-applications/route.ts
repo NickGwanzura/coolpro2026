@@ -30,7 +30,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['org_admin', 'regulator']);
+    session = requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }

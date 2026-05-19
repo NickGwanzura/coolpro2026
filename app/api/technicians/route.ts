@@ -33,7 +33,7 @@ function toTechnician(row: typeof technicians.$inferSelect): Technician {
 
 export async function GET(req: Request) {
   try {
-    requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin', 'regulator']);
+    requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    requireRole(req, ['trainer', 'lecturer', 'org_admin', 'regulator']);
+    requireRole(req, ['trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

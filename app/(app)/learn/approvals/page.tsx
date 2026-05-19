@@ -161,11 +161,7 @@ function ReviewPanel({
                     </div>
                 )}
 
-                {!canAct && (
-                    <div className="border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                        You have read-only access to course approvals. Only NOU regulators can approve or reject courses.
-                    </div>
-                )}
+
             </div>
         </div>
     );
@@ -190,7 +186,7 @@ export default function LearnApprovalsPage() {
         );
     }
 
-    if (!user || (user.role !== 'regulator' && user.role !== 'org_admin')) {
+    if (!user || user.role !== 'org_admin') {
         router.replace('/dashboard');
         return null;
     }
@@ -204,7 +200,7 @@ export default function LearnApprovalsPage() {
     }
 
     const courses = allCourses.filter(c => c.status === 'pending_nou');
-    const canAct = user.role === 'regulator';
+    const canAct = true;
 
     function handleApproved(updated: ManagedCourse) {
         void updated;
@@ -222,9 +218,7 @@ export default function LearnApprovalsPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">NOU Oversight</p>
                 <h1 className="mt-2 text-2xl font-bold text-gray-900">Course Approvals</h1>
                 <p className="mt-1 text-sm text-gray-500">
-                    {canAct
-                        ? 'Review trainer and lecturer course submissions. Approve or reject with a mandatory reason.'
-                        : 'View pending course submissions awaiting NOU review.'}
+                    Review trainer and lecturer course submissions. Approve or reject with a mandatory reason.
                 </p>
             </div>
 

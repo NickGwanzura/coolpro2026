@@ -5,8 +5,7 @@ import { getSession, UserSession } from '@/lib/auth';
 import { STORAGE_KEYS, readCollection } from '@/lib/platformStore';
 import { useSupplierApplications, useTechnicians, useReorders } from '@/lib/api';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
-import {
-    ClipboardCheck,
+import {            ClipboardCheck,
     Award,
     Gift,
     TrendingUp,
@@ -25,10 +24,12 @@ import {
     CalendarDays,
     Droplets,
     ChevronRight,
+    FileText,
+    ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import OccupationalAccidentSection from '@/components/OccupationalAccidentSection';
-import { CertificateRecord, PlannerJob, RefrigerantLog } from '@/types/index';
+import { CertificateRecord, JobTypeLabels, PlannerJob, RefrigerantLog } from '@/types/index';
 import { BRAND as colors } from '@/constants/colors';
 
 export default function DashboardPage() {
@@ -36,11 +37,11 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [dateRange, setDateRange] = useState('today');
     const [regionFilter, setRegionFilter] = useState('all');
-    const isAdminOrRegulator = session?.role === 'org_admin' || session?.role === 'regulator';
+    const isAdmin = session?.role === 'org_admin';
     
-    const { data: supplierApplications = [] } = useSupplierApplications(isAdminOrRegulator);
-    const { data: technicians = [] } = useTechnicians(undefined, isAdminOrRegulator);
-    const { data: reorders = [] } = useReorders(isAdminOrRegulator);
+    const { data: supplierApplications = [] } = useSupplierApplications(isAdmin);
+    const { data: technicians = [] } = useTechnicians(undefined, isAdmin);
+    const { data: reorders = [] } = useReorders(isAdmin);
     const [plannerJobs, setPlannerJobs] = useState<PlannerJob[]>([]);
     const [refrigerantLogs, setRefrigerantLogs] = useState<RefrigerantLog[]>([]);
     const [certificateRecords, setCertificateRecords] = useState<CertificateRecord[]>([]);
@@ -58,7 +59,6 @@ export default function DashboardPage() {
     }, []);
 
     // Role-based KPI cards
-    const isAdmin = session?.role === 'org_admin';
     const pendingSupplierApplications = supplierApplications.filter(
         application => application.status === 'submitted' || application.status === 'under-review'
     );
@@ -297,10 +297,14 @@ export default function DashboardPage() {
 
     // Technician-specific derived data
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const scheduledJobs = plannerJobs
         .filter(job => job.status === 'scheduled' && new Date(job.scheduledDate) >= today)
         .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
         .slice(0, 4);
+    const recentJobs = plannerJobs
+        .sort((a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime())
+        .slice(0, 5);
     const recentLogs = refrigerantLogs
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 5);
@@ -592,18 +596,77 @@ export default function DashboardPage() {
                                 <h2 className="text-base font-semibold text-[#1C1917]">Recent Jobs</h2>
                                 <p className="text-xs text-[#78716C] mt-0.5">Your last recorded service jobs</p>
                             </div>
-                        </div>
-                        <div className="px-6 py-10 text-center">
-                            <Wrench className="h-8 w-8 text-[#D1C5C0] mx-auto mb-3" />
-                            <p className="text-sm text-[#78716C]">No jobs recorded yet. Use the Field Toolkit or Job Planner to log work.</p>
-                            <Link
-                                href="/job-planner"
-                                className="mt-4 inline-flex items-center gap-2 bg-[#D97706] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b45309]"
-                            >
-                                Open Job Planner
-                                <ArrowRight className="h-4 w-4" />
+                            <Link href="/jobs" className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97706] hover:text-[#b45309]">
+                                View all <ChevronRight className="h-3 w-3" />
                             </Link>
                         </div>
+                        {recentJobs.length === 0 ? (
+                            <div className="px-6 py-10 text-center">
+                                <Wrench className="h-8 w-8 text-[#D1C5C0] mx-auto mb-3" />
+                                <p className="text-sm text-[#78716C]">No jobs recorded yet. Use the Field Toolkit or Job Planner to log work.</p>
+                                <Link
+                                    href="/job-planner"
+                                    className="mt-4 inline-flex items-center gap-2 bg-[#D97706] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b45309]"
+                                >
+                                    Open Job Planner
+                                    <ArrowRight className="h-4 w-4" />
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-[#E7E5E4]">
+                                {recentJobs.map((job) => {
+                                    const statusColors: Record<string, string> = {
+                                        scheduled: 'bg-blue-50 text-blue-700 border-blue-200',
+                                        'in-progress': 'bg-amber-50 text-amber-700 border-amber-200',
+                                        completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                        'follow-up': 'bg-rose-50 text-rose-700 border-rose-200',
+                                    };
+                                    return (
+                                        <div key={job.id} className="px-6 py-4 hover:bg-[#FAFAF9] transition-colors group">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <p className="text-sm font-semibold text-[#1C1917] truncate">{job.clientName}</p>
+                                                        <span className={`inline-flex border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColors[job.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                                                            {job.status.replace('-', ' ')}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 mt-1 text-xs text-[#78716C]">
+                                                        <span className="flex items-center gap-1">
+                                                            <MapPin className="h-3 w-3" />
+                                                            {job.location}
+                                                        </span>
+                                                        <span>{job.jobType ? JobTypeLabels[job.jobType] : ''}</span>
+                                                        <span>{job.scheduledDate}</span>
+                                                    </div>
+                                                    {job.notes && (
+                                                        <p className="mt-1 text-xs text-[#A8A29E] line-clamp-1">{job.notes}</p>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    {job.status === 'completed' && (
+                                                        <Link
+                                                            href={`/jobs/request-coc?jobId=${job.id}`}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors"
+                                                        >
+                                                            <FileText className="h-3.5 w-3.5" />
+                                                            CoC
+                                                        </Link>
+                                                    )}
+                                                    <Link
+                                                        href="/job-planner"
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#44403C] bg-white border border-[#E7E5E4] hover:bg-[#FAFAF9] transition-colors opacity-0 group-hover:opacity-100"
+                                                    >
+                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                        View
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
                     {/* Upcoming Schedule + Certifications */}
@@ -629,18 +692,48 @@ export default function DashboardPage() {
                                         </Link>
                                     </div>
                                 ) : (
-                                    scheduledJobs.map((job) => (
-                                        <div key={job.id} className="flex items-center gap-4 px-6 py-4 hover:bg-[#FAFAF9]">
-                                            <div className="p-2 bg-amber-50 text-amber-600">
-                                                <CalendarDays className="h-4 w-4" />
+                                    scheduledJobs.map((job) => {
+                                        const statusLabel = job.status.replace('-', ' ');
+                                        const statusColors: Record<string, string> = {
+                                            scheduled: 'bg-blue-50 text-blue-700 border-blue-200',
+                                            'in-progress': 'bg-amber-50 text-amber-700 border-amber-200',
+                                            completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                            'follow-up': 'bg-rose-50 text-rose-700 border-rose-200',
+                                        };
+                                        return (
+                                            <div key={job.id} className="px-6 py-4 hover:bg-[#FAFAF9] transition-colors group cursor-pointer">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`p-2 shrink-0 ${
+                                                        job.status === 'in-progress' ? 'bg-amber-50 text-amber-600' :
+                                                        job.status === 'follow-up' ? 'bg-rose-50 text-rose-600' :
+                                                        'bg-blue-50 text-blue-600'
+                                                    }`}>
+                                                        <CalendarDays className="h-4 w-4" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <p className="text-sm font-semibold text-[#1C1917] truncate">{job.clientName}</p>
+                                                            <span className={`inline-flex border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColors[job.status]}`}>
+                                                                {statusLabel}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-[#78716C] mt-0.5">
+                                                            {job.location} · {job.refrigerantClass} · {JobTypeLabels[job.jobType]}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <span className="text-xs font-semibold text-[#44403C] hidden sm:block">{job.scheduledDate}</span>
+                                                        <Link
+                                                            href="/job-planner"
+                                                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#D97706] bg-[#D97706]/5 border border-[#D97706]/20 hover:bg-[#D97706]/10 transition-colors opacity-0 group-hover:opacity-100"
+                                                                                >
+                                                            Open <ArrowRight className="h-3 w-3" />
+                                                        </Link>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-[#1C1917] truncate">{job.clientName}</p>
-                                                <p className="text-xs text-[#78716C]">{job.location} · {job.refrigerantClass}</p>
-                                            </div>
-                                            <p className="text-xs font-semibold text-[#44403C] shrink-0">{job.scheduledDate}</p>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         </div>

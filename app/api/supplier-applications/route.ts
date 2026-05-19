@@ -49,7 +49,7 @@ export async function GET(req: Request) {
     return NextResponse.json(rows.map(toSupplierRegistration));
   }
 
-  if (session.role === 'org_admin' || session.role === 'regulator') {
+  if (session.role === 'org_admin') {
     const rows = await db.select().from(supplierApplications);
     return NextResponse.json(rows.map(toSupplierRegistration));
   }
