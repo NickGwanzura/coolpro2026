@@ -49,8 +49,8 @@ const supplierQuotaStyles: Record<SupplierQuotaStatus, string> = {
 
 export default function RewardsHub({ adminView = false }: { adminView?: boolean }) {
   const currentPoints = 850;
-  const { data: supplierApplications = [] } = useSupplierApplications();
-  const { data: supplierLedger = [] } = useSupplierLedger();
+  const { data: supplierApplications = [] } = useSupplierApplications(adminView);
+  const { data: supplierLedger = [] } = useSupplierLedger(undefined, adminView);
 
   const approvedSupplierRows = useMemo(() => {
     const approved = supplierApplications.filter(app => app.status === 'approved');

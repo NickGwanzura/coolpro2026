@@ -36,9 +36,11 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [dateRange, setDateRange] = useState('today');
     const [regionFilter, setRegionFilter] = useState('all');
-    const { data: supplierApplications = [] } = useSupplierApplications();
-    const { data: technicians = [] } = useTechnicians();
-    const { data: reorders = [] } = useReorders();
+    const isAdminOrRegulator = session?.role === 'org_admin' || session?.role === 'regulator';
+    
+    const { data: supplierApplications = [] } = useSupplierApplications(isAdminOrRegulator);
+    const { data: technicians = [] } = useTechnicians(undefined, isAdminOrRegulator);
+    const { data: reorders = [] } = useReorders(isAdminOrRegulator);
     const [plannerJobs, setPlannerJobs] = useState<PlannerJob[]>([]);
     const [refrigerantLogs, setRefrigerantLogs] = useState<RefrigerantLog[]>([]);
     const [certificateRecords, setCertificateRecords] = useState<CertificateRecord[]>([]);

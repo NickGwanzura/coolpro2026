@@ -126,8 +126,8 @@ export async function gradeExamSubmission(
 // Supplier reorders
 // ---------------------------------------------------------------------------
 
-export function useReorders() {
-  return useSWR<SupplierReorder[]>('/api/supplier-reorders', fetcher);
+export function useReorders(enabled = true) {
+  return useSWR<SupplierReorder[]>(enabled ? '/api/supplier-reorders' : null, fetcher);
 }
 
 export async function createReorder(
@@ -189,9 +189,9 @@ export async function verifyTechnician(body: {
 // Technicians
 // ---------------------------------------------------------------------------
 
-export function useTechnicians(q?: string) {
+export function useTechnicians(q?: string, enabled = true) {
   const url = q ? `/api/technicians?q=${encodeURIComponent(q)}` : '/api/technicians';
-  return useSWR<Technician[]>(url, fetcher);
+  return useSWR<Technician[]>(enabled ? url : null, fetcher);
 }
 
 export function useTechnician(id: string | undefined) {
@@ -234,8 +234,8 @@ export type SupplierApplicationRecord = SupplierRegistration & {
   reviewNote?: string;
 };
 
-export function useSupplierApplications() {
-  return useSWR<SupplierApplicationRecord[]>('/api/supplier-applications', fetcher);
+export function useSupplierApplications(enabled = true) {
+  return useSWR<SupplierApplicationRecord[]>(enabled ? '/api/supplier-applications' : null, fetcher);
 }
 
 export async function createSupplierApplication(
@@ -290,11 +290,11 @@ export async function rejectSupplierComplianceApplication(id: string, notes?: st
 // Supplier ledger
 // ---------------------------------------------------------------------------
 
-export function useSupplierLedger(supplierId?: string) {
+export function useSupplierLedger(supplierId?: string, enabled = true) {
   const url = supplierId
     ? `/api/supplier-ledger?supplierId=${encodeURIComponent(supplierId)}`
     : '/api/supplier-ledger';
-  return useSWR<SupplierLedgerEntry[]>(url, fetcher);
+  return useSWR<SupplierLedgerEntry[]>(enabled ? url : null, fetcher);
 }
 
 export async function createLedgerEntry(body: Omit<SupplierLedgerEntry, 'id'>): Promise<SupplierLedgerEntry> {

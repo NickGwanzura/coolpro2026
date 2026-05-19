@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   Award,
@@ -104,24 +104,25 @@ function formatDate(value: string) {
 
 export default function CertificationsPage() {
   const { user: session } = useAuth();
-  const { data: techniciansData } = useTechnicians();
-  const storedRequests = useSyncExternalStore(
-    () => () => undefined,
-    () => {
-      if (typeof window === 'undefined') return MOCK_TRAINER_CERTIFICATE_REQUESTS;
-      const raw = window.localStorage.getItem(STORAGE_KEYS.trainerCertificateRequests);
-      if (!raw) return MOCK_TRAINER_CERTIFICATE_REQUESTS;
-
-      try {
-        return JSON.parse(raw) as TrainerCertificateRequest[];
-      } catch {
-        return MOCK_TRAINER_CERTIFICATE_REQUESTS;
-      }
-    },
-    () => MOCK_TRAINER_CERTIFICATE_REQUESTS
-  );
-
+  const isAdmin = session?.role === 'org_admin';
+  const isTrainer = session?.role === 'trainer' || session?.role === 'lecturer';
+  const isAdminOrTrainer = isAdmin || isTrainer;
+  const { data: techniciansData } = useTechnicians(undefined, isAdminOrTrainer);
+  const [storedRequests, setStoredRequests] = useState<TrainerCertificateRequest[]>(MOCK_TRAINER_CERTIFICATE_REQUESTS);
   const [localRequests, setLocalRequests] = useState<TrainerCertificateRequest[] | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const raw = window.localStorage.getItem(STORAGE_KEYS.trainerCertificateRequests);
+      if (raw) {
+        try {
+          setStoredRequests(JSON.parse(raw) as TrainerCertificateRequest[]);
+        } catch {
+          // fallback to mock
+        }
+      }
+    }
+  }, []);
   const [examTaking, setExamTaking] = useState<string | null>(null);
   const [completedExams, setCompletedExams] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -138,8 +139,6 @@ export default function CertificationsPage() {
   });
 
   const requests = localRequests ?? storedRequests;
-  const isAdmin = session?.role === 'org_admin';
-  const isTrainer = session?.role === 'trainer';
 
   const trainerRequests = useMemo(() => {
     if (!session) return [];
@@ -598,15 +597,20 @@ export default function CertificationsPage() {
     return requests.filter(r => r.status === 'issued');
   }, [requests]);
 
-  const allCertRecords = useSyncExternalStore(
-    () => () => undefined,
-    () => {
-      if (typeof window === 'undefined') return [] as CertificateRecord[];
+  const [allCertRecords, setAllCertRecords] = useState<CertificateRecord[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
       const raw = window.localStorage.getItem(STORAGE_KEYS.certificateRecords);
-      try { return raw ? JSON.parse(raw) as CertificateRecord[] : [] as CertificateRecord[]; } catch { return [] as CertificateRecord[]; }
-    },
-    () => [] as CertificateRecord[]
-  );
+      if (raw) {
+        try {
+          setAllCertRecords(JSON.parse(raw) as CertificateRecord[]);
+        } catch {
+          // pass
+        }
+      }
+    }
+  }, []);
 
   return (
     <div className="space-y-8">
