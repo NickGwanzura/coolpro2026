@@ -276,6 +276,20 @@ const SizingTool: React.FC = () => {
       doc.text('3. Manufacturer Equipment Data - Specific unit specifications', 20, 272);
       doc.text('4. SANS 10142-1 - Wiring of Premises (Electrical Requirements)', 20, 278);
       
+      // Equipment Sizing (Right Column)
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Equipment Sizing', 105, 172);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Compressor: ${equipmentSpecs.compressorSize}`, 110, 182);
+      doc.text(`Evaporator: ${equipmentSpecs.evaporatorSize}`, 110, 189);
+      doc.text(`Expansion: ${equipmentSpecs.valveType}`, 110, 196);
+      doc.text(`Size: ${equipmentSpecs.txvSize}`, 110, 203);
+      doc.text(`Liquid Line: ${equipmentSpecs.liquidLine}`, 110, 210);
+      doc.text(`Suction Line: ${equipmentSpecs.suctionLine}`, 110, 217);
+      doc.text(`Est. Pipe Length: ${equipmentSpecs.estimatedPipeLength}m`, 110, 224);
+      
       // Save
       doc.save(`HEVACRAZ_Sizing_Report_${Date.now()}.pdf`);
     });
@@ -313,6 +327,37 @@ const SizingTool: React.FC = () => {
     };
   }, [inputs]);
 
+  const equipmentSpecs = useMemo(() => {
+    const capacityKw = results.total;
+    const capacityHp = capacityKw / 0.746;
+    const capacityTons = capacityKw / 3.517;
+
+    const compressorSize = `${Math.ceil(capacityHp * 1.2)} HP (${(capacityKw * 1.2).toFixed(1)} kW Cooling Capacity)`;
+    const evaporatorSize = `${(capacityKw * 1.2).toFixed(1)} kW`;
+    
+    const isCapTube = capacityTons < 0.5;
+    const valveType = isCapTube ? 'Capillary Tube' : 'Thermostatic Expansion Valve (TXV)';
+    const txvSize = isCapTube 
+      ? '0.042" to 0.054" ID, Length: 1.5m - 3m' 
+      : capacityTons < 1.0 ? 'Orifice #0 or #1' 
+      : capacityTons < 2.0 ? 'Orifice #2' 
+      : capacityTons < 3.0 ? 'Orifice #3' 
+      : capacityTons < 5.0 ? 'Orifice #4' 
+      : 'Orifice #5 or #6';
+                   
+    let liquidLine = '1/4"';
+    let suctionLine = '3/8"';
+    if (capacityTons >= 0.5 && capacityTons < 1.5) { liquidLine = '3/8"'; suctionLine = '1/2"'; } 
+    else if (capacityTons >= 1.5 && capacityTons < 3.0) { liquidLine = '3/8"'; suctionLine = '5/8"'; } 
+    else if (capacityTons >= 3.0 && capacityTons < 5.0) { liquidLine = '1/2"'; suctionLine = '7/8"'; } 
+    else if (capacityTons >= 5.0 && capacityTons < 7.5) { liquidLine = '1/2"'; suctionLine = '1-1/8"'; } 
+    else if (capacityTons >= 7.5) { liquidLine = '5/8"'; suctionLine = '1-3/8"'; }
+
+    const estimatedPipeLength = Math.ceil((inputs.roomWidth + inputs.roomLength + inputs.roomHeight) * 1.5);
+
+    return { compressorSize, evaporatorSize, valveType, txvSize, liquidLine, suctionLine, estimatedPipeLength };
+  }, [results.total, inputs.roomWidth, inputs.roomLength, inputs.roomHeight]);
+
   const handleAiConsult = async () => {
     setIsLoadingAi(true);
     const prompt = `Review this commercial refrigeration sizing design for a ${JobTypeLabels[inputs.jobType as JobType] || 'Cold Room'}:
@@ -321,10 +366,15 @@ const SizingTool: React.FC = () => {
     Product: ${inputs.productMass}kg meat/produce
     Ambient: ${inputs.ambientTemp}C, Target: ${inputs.targetTemp}C
     Total Calc Load: ${results.total.toFixed(2)}kW.
+    Preliminary Component Sizing:
+    - Compressor: ${equipmentSpecs.compressorSize}
+    - Evaporator: ${equipmentSpecs.evaporatorSize}
+    - Expansion Device: ${equipmentSpecs.valveType} (${equipmentSpecs.txvSize})
+    - Pipe Sizes: Liquid ${equipmentSpecs.liquidLine}, Suction ${equipmentSpecs.suctionLine}
     Please provide:
-    1. Recommended compressor capacity (kW at suction temp).
-    2. Evaporator surface area recommendation.
-    3. Low-GWP natural refrigerant alternatives (CO2 or Propane) suitable for this load.`;
+    1. Verification of the preliminary component sizing.
+    2. Specific low-GWP natural refrigerant alternatives suitable for this load.
+    3. Any additional field recommendations for this specific setup.`;
     
     const advice = await getTechnicalAdvice(prompt);
     setAiAdvice(advice || '');
@@ -574,6 +624,40 @@ const SizingTool: React.FC = () => {
                       <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-semibold">R-32</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">SI 49 of 2023 Compliant</p>
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-emerald-50 border border-emerald-100">
+                  <p className="text-sm font-semibold text-emerald-900 mb-3">Equipment Selection</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-xs text-emerald-700 font-medium block">Compressor Size</span>
+                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.compressorSize}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-emerald-700 font-medium block">Evaporator Size</span>
+                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.evaporatorSize}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-emerald-700 font-medium block">Expansion Device</span>
+                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.valveType} - {equipmentSpecs.txvSize}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-xs text-emerald-700 font-medium block">Liquid Line Size</span>
+                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.liquidLine}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-emerald-700 font-medium block">Suction Line Size</span>
+                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.suctionLine}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-emerald-700 font-medium block">Estimated Total Pipe Length</span>
+                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.estimatedPipeLength} meters</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
