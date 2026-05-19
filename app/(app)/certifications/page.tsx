@@ -471,7 +471,7 @@ export default function CertificationsPage() {
                 onChange={(event) => setTrainerForm((current) => ({ ...current, technicianId: event.target.value }))}
                 className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {techniciansData.map((technician) => (
+                {(techniciansData ?? []).map((technician) => (
                   <option key={technician.id} value={technician.id}>
                     {technician.name} · {technician.registrationNumber} · {technician.employer ?? 'Independent'}
                   </option>

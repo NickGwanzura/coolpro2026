@@ -1,90 +1,65 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { CalendarDays, ChevronRight, Clock3, ClipboardList, Plus, ShieldAlert, ShieldCheck, Sparkles, X } from 'lucide-react';
 import {
-    JobType,
-    JobTypeLabels,
-    JobTypeDescriptions,
-    type PlannerJob,
-    type PlannerJobStatus,
-    type PlannerSafetyChecklistItem,
-    type RefrigerantSafetyClass,
+    CalendarDays, ChevronRight, Clock3, ClipboardList, MapPin,
+    Plus, Search, ShieldAlert, ShieldCheck, Sparkles, User, X,
+} from 'lucide-react';
+import {
+    JobType, JobTypeLabels, JobTypeDescriptions,
+    type PlannerJob, type PlannerJobStatus,
+    type PlannerSafetyChecklistItem, type RefrigerantSafetyClass,
 } from '@/types/index';
 import { MOCK_PLANNER_CLIENTS, MOCK_PLANNER_JOBS, MOCK_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
 import { useTechnicians } from '@/lib/api';
-import { useRouter } from 'next/navigation';
 import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
 
 interface PlannerFormState {
-    clientId: string;
-    clientName: string;
-    location: string;
-    jobType: JobType;
-    refrigerantClass: RefrigerantSafetyClass;
-    scheduledDate: string;
-    technicianId: string;
-    technicianName: string;
-    preJobChecklistComplete: boolean;
-    notes: string;
+    clientId: string; clientName: string; location: string;
+    jobType: JobType; refrigerantClass: RefrigerantSafetyClass;
+    scheduledDate: string; technicianId: string; technicianName: string;
+    preJobChecklistComplete: boolean; notes: string;
 }
 
 const REF_CLASSES: RefrigerantSafetyClass[] = ['A1', 'A2L', 'A3'];
 
-function addDays(baseDate: string, offset: number) {
-    const date = new Date(baseDate);
-    date.setDate(date.getDate() + offset);
-    return date.toISOString().slice(0, 10);
+function addDays(base: string, n: number) {
+    const d = new Date(base); d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
 }
 
-function formatDate(dateString: string) {
-    return new Intl.DateTimeFormat('en-ZW', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric'
-    }).format(new Date(dateString));
+function formatDate(s: string) {
+    return new Intl.DateTimeFormat('en-ZW', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(s));
 }
 
-function statusStyles(status: PlannerJobStatus) {
-    switch (status) {
-        case 'completed':
-            return 'bg-green-100 text-green-700 border-green-200';
-        case 'in-progress':
-            return 'bg-blue-100 text-blue-700 border-blue-200';
-        case 'follow-up':
-            return 'bg-amber-100 text-amber-700 border-amber-200';
-        default:
-            return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
+function formatDateShort(s: string) {
+    return new Intl.DateTimeFormat('en-ZW', { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(s));
 }
 
-function refrigerantClassStyles(value: RefrigerantSafetyClass) {
-    switch (value) {
-        case 'A2L':
-            return 'bg-orange-100 text-orange-700 border-orange-200';
-        case 'A3':
-            return 'bg-red-100 text-red-700 border-red-200';
-        default:
-            return 'bg-slate-100 text-slate-700 border-slate-200';
-    }
-}
-
-type LegacyPlannerJob = Partial<PlannerJob> & {
-    date?: string;
-    technician?: string;
-    checklistComplete?: boolean;
+const STATUS_STYLES: Record<PlannerJobStatus, string> = {
+    scheduled:    'bg-blue-50 text-blue-700 border-blue-200',
+    'in-progress':'bg-amber-50 text-amber-700 border-amber-200',
+    completed:    'bg-emerald-50 text-emerald-700 border-emerald-200',
+    'follow-up':  'bg-rose-50 text-rose-700 border-rose-200',
 };
 
-function normalizePlannerJob(job: LegacyPlannerJob): PlannerJob {
+const REF_STYLES: Partial<Record<RefrigerantSafetyClass, string>> = {
+    A1:  'bg-slate-100 text-slate-600',
+    A2L: 'bg-orange-100 text-orange-700',
+    A3:  'bg-red-100 text-red-700',
+};
+function refStyle(c: RefrigerantSafetyClass) { return REF_STYLES[c] ?? 'bg-gray-100 text-gray-600'; }
+
+type LegacyPlannerJob = Partial<PlannerJob> & { date?: string; technician?: string; checklistComplete?: boolean };
+
+function normalize(job: LegacyPlannerJob): PlannerJob {
     const scheduledDate = job.scheduledDate ?? job.date ?? '2026-04-01';
     const technicianName = job.technicianName ?? job.technician ?? 'Demo Technician';
-    const checklistItems = job.checklistItems ?? MOCK_PLANNER_SAFETY_CHECKLIST.map(item => ({
-        ...item,
-        completed: Boolean(job.preJobChecklistComplete ?? job.checklistComplete)
+    const checklistItems = job.checklistItems ?? MOCK_PLANNER_SAFETY_CHECKLIST.map(i => ({
+        ...i, completed: Boolean(job.preJobChecklistComplete ?? job.checklistComplete),
     }));
-
     return {
-        id: job.id ?? `job-plan-${Math.random().toString(36).slice(2, 9)}`,
+        id: job.id ?? `job-${Math.random().toString(36).slice(2, 9)}`,
         clientId: job.clientId ?? MOCK_PLANNER_CLIENTS[0].id,
         clientName: job.clientName ?? MOCK_PLANNER_CLIENTS[0].name,
         location: job.location ?? MOCK_PLANNER_CLIENTS[0].location,
@@ -105,7 +80,6 @@ function normalizePlannerJob(job: LegacyPlannerJob): PlannerJob {
 }
 
 export default function JobPlanner() {
-    const router = useRouter();
     const { data: techniciansData } = useTechnicians();
     const technicians = techniciansData ?? [];
     const [jobs, setJobs] = useState<PlannerJob[]>(MOCK_PLANNER_JOBS);
@@ -113,491 +87,297 @@ export default function JobPlanner() {
     const [selectedClient, setSelectedClient] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
     const [startDate, setStartDate] = useState('2026-03-29');
-    const [endDate, setEndDate] = useState('2026-04-03');
-    const [activeClientId, setActiveClientId] = useState(MOCK_PLANNER_CLIENTS[0].id);
+    const [endDate, setEndDate] = useState('2026-04-30');
     const [showModal, setShowModal] = useState(false);
     const [notice, setNotice] = useState('');
     const [formData, setFormData] = useState<PlannerFormState>({
         clientId: MOCK_PLANNER_CLIENTS[0].id,
         clientName: MOCK_PLANNER_CLIENTS[0].name,
         location: MOCK_PLANNER_CLIENTS[0].location,
-        jobType: 'COLD_ROOM',
-        refrigerantClass: 'A1',
-        scheduledDate: '2026-04-04',
-        technicianId: 'tech-001',
-        technicianName: 'Demo Technician',
-        preJobChecklistComplete: false,
-        notes: ''
+        jobType: 'COLD_ROOM', refrigerantClass: 'A1',
+        scheduledDate: '2026-04-04', technicianId: 'tech-001',
+        technicianName: 'Demo Technician', preJobChecklistComplete: false, notes: '',
     });
 
     useEffect(() => {
         const parsed = readCollection<LegacyPlannerJob>(STORAGE_KEYS.plannerJobs, MOCK_PLANNER_JOBS as LegacyPlannerJob[]);
-        setJobs(parsed.map(normalizePlannerJob));
+        setJobs(parsed.map(normalize));
     }, []);
 
-    useEffect(() => {
-        writeCollection(STORAGE_KEYS.plannerJobs, jobs);
-    }, [jobs]);
+    useEffect(() => { writeCollection(STORAGE_KEYS.plannerJobs, jobs); }, [jobs]);
 
-    const safetyChecklistRequired = formData.refrigerantClass === 'A2L' || formData.refrigerantClass === 'A3';
-    const safetyChecklistComplete = formData.preJobChecklistComplete;
+    const safetyRequired = formData.refrigerantClass === 'A2L' || formData.refrigerantClass === 'A3';
 
-    const filteredJobs = useMemo(() => {
-        return jobs.filter(job => {
-            const searchMatch =
-                !searchTerm ||
-                job.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                job.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                job.technicianName.toLowerCase().includes(searchTerm.toLowerCase());
+    const filteredJobs = useMemo(() => jobs.filter(job => {
+        const q = searchTerm.toLowerCase();
+        return (
+            (!searchTerm || job.clientName.toLowerCase().includes(q) || job.location.toLowerCase().includes(q) || job.technicianName.toLowerCase().includes(q)) &&
+            (!selectedClient || job.clientId === selectedClient) &&
+            (!selectedStatus || job.status === selectedStatus) &&
+            job.scheduledDate >= startDate && job.scheduledDate <= endDate
+        );
+    }), [jobs, searchTerm, selectedClient, selectedStatus, startDate, endDate]);
 
-            const clientMatch = !selectedClient || job.clientId === selectedClient;
-            const statusMatch = !selectedStatus || job.status === selectedStatus;
-            const dateMatch = job.scheduledDate >= startDate && job.scheduledDate <= endDate;
+    const jobsByDate = useMemo(() => filteredJobs.reduce<Record<string, PlannerJob[]>>((acc, job) => {
+        (acc[job.scheduledDate] = acc[job.scheduledDate] ?? []).push(job); return acc;
+    }, {}), [filteredJobs]);
 
-            return searchMatch && clientMatch && statusMatch && dateMatch;
-        });
-    }, [jobs, searchTerm, selectedClient, selectedStatus, startDate, endDate]);
-
-    const jobsByDate = useMemo(() => {
-        return filteredJobs.reduce<Record<string, PlannerJob[]>>((acc, job) => {
-            if (!acc[job.scheduledDate]) {
-                acc[job.scheduledDate] = [];
-            }
-            acc[job.scheduledDate].push(job);
-            return acc;
-        }, {});
-    }, [filteredJobs]);
-
-    const sortedDates = useMemo(() => {
-        return Object.keys(jobsByDate).sort((a, b) => a.localeCompare(b));
-    }, [jobsByDate]);
-
-    const selectedClientInfo = MOCK_PLANNER_CLIENTS.find(client => client.id === activeClientId) ?? MOCK_PLANNER_CLIENTS[0];
+    const sortedDates = useMemo(() => Object.keys(jobsByDate).sort(), [jobsByDate]);
 
     const stats = [
-        { label: 'Total Jobs', value: jobs.length, icon: ClipboardList },
-        { label: 'Scheduled', value: jobs.filter(job => job.status === 'scheduled').length, icon: CalendarDays },
-        { label: 'In Progress', value: jobs.filter(job => job.status === 'in-progress').length, icon: Clock3 },
-        { label: 'Follow-up', value: jobs.filter(job => job.status === 'follow-up').length, icon: ShieldAlert }
+        { label: 'Total Jobs',  value: jobs.length,                                        icon: ClipboardList, color: 'bg-blue-50 text-blue-600' },
+        { label: 'Scheduled',   value: jobs.filter(j => j.status === 'scheduled').length,  icon: CalendarDays,  color: 'bg-indigo-50 text-indigo-600' },
+        { label: 'In Progress', value: jobs.filter(j => j.status === 'in-progress').length,icon: Clock3,        color: 'bg-amber-50 text-amber-600' },
+        { label: 'Follow-up',   value: jobs.filter(j => j.status === 'follow-up').length,  icon: ShieldAlert,   color: 'bg-rose-50 text-rose-600' },
     ];
 
     const openClient = (clientId: string) => {
-        setActiveClientId(clientId);
-        const client = MOCK_PLANNER_CLIENTS.find(item => item.id === clientId);
-        if (client) {
-            setFormData(prev => ({
-                ...prev,
-                clientId: client.id,
-                clientName: client.name,
-                location: client.location
-            }));
-        }
+        setFormData(prev => {
+            const c = MOCK_PLANNER_CLIENTS.find(x => x.id === clientId);
+            return c ? { ...prev, clientId: c.id, clientName: c.name, location: c.location } : prev;
+        });
     };
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (safetyChecklistRequired && !safetyChecklistComplete) {
+    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (safetyRequired && !formData.preJobChecklistComplete) {
             setNotice('A2L and A3 jobs require the pre-job safety checklist before scheduling.');
             return;
         }
-
+        const client = MOCK_PLANNER_CLIENTS.find(c => c.id === formData.clientId) ?? MOCK_PLANNER_CLIENTS[0];
         const newJob: PlannerJob = {
             id: `job-plan-${Date.now()}`,
-            clientId: formData.clientId,
-            clientName: formData.clientName,
-            location: formData.location,
-            province: selectedClientInfo.province,
-            jobType: formData.jobType,
-            refrigerantClass: formData.refrigerantClass,
-            status: 'scheduled',
-            scheduledDate: formData.scheduledDate,
-            technicianId: formData.technicianId,
-            technicianName: formData.technicianName,
+            clientId: formData.clientId, clientName: formData.clientName,
+            location: formData.location, province: client.province,
+            jobType: formData.jobType, refrigerantClass: formData.refrigerantClass,
+            status: 'scheduled', scheduledDate: formData.scheduledDate,
+            technicianId: formData.technicianId, technicianName: formData.technicianName,
             preJobChecklistComplete: formData.preJobChecklistComplete,
-            checklistItems: MOCK_PLANNER_SAFETY_CHECKLIST.map((item): PlannerSafetyChecklistItem => ({
-                ...item,
-                completed: formData.preJobChecklistComplete
-            })),
-            notes: formData.notes,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            checklistItems: MOCK_PLANNER_SAFETY_CHECKLIST.map((i): PlannerSafetyChecklistItem => ({ ...i, completed: formData.preJobChecklistComplete })),
+            notes: formData.notes, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
         };
-
         setJobs(prev => [newJob, ...prev]);
         setShowModal(false);
-        setNotice(`Planner job created for ${newJob.clientName}.`);
-        setFormData({
-            clientId: formData.clientId,
-            clientName: formData.clientName,
-            location: formData.location,
-            jobType: 'COLD_ROOM',
-            refrigerantClass: 'A1',
-            scheduledDate: addDays(formData.scheduledDate, 1),
-            technicianId: formData.technicianId,
-            technicianName: formData.technicianName,
-            preJobChecklistComplete: false,
-            notes: ''
-        });
+        setNotice(`Job created for ${newJob.clientName} on ${formatDateShort(newJob.scheduledDate)}.`);
+        setFormData(prev => ({ ...prev, jobType: 'COLD_ROOM', refrigerantClass: 'A1', scheduledDate: addDays(prev.scheduledDate, 1), preJobChecklistComplete: false, notes: '' }));
+        setTimeout(() => setNotice(''), 4000);
     };
 
     return (
         <div className="space-y-6">
+            {/* Notice */}
             {notice && (
-                <div className="border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800">
-                    {notice}
+                <div className="flex items-center justify-between border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+                    <span>{notice}</span>
+                    <button onClick={() => setNotice('')}><X className="h-4 w-4" /></button>
                 </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {stats.map(stat => {
-                    const Icon = stat.icon;
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {stats.map(s => {
+                    const Icon = s.icon;
                     return (
-                        <div key={stat.label} className="border border-gray-200 bg-white p-5 shadow-sm">
+                        <div key={s.label} className="border border-gray-200 bg-white p-5 shadow-sm">
                             <div className="flex items-center justify-between">
-                                <p className="text-sm font-semibold text-gray-500">{stat.label}</p>
-                                <span className="bg-gray-100 p-2 text-gray-500">
-                                    <Icon className="h-4 w-4" />
-                                </span>
+                                <p className="text-sm font-semibold text-gray-500">{s.label}</p>
+                                <span className={`p-2 ${s.color}`}><Icon className="h-4 w-4" /></span>
                             </div>
-                            <p className="mt-3 text-3xl font-bold text-gray-900">{stat.value}</p>
+                            <p className="mt-3 text-3xl font-bold text-gray-900">{s.value}</p>
                         </div>
                     );
                 })}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-                <div className="space-y-6 xl:col-span-4">
-                    <div className="border border-gray-200 bg-white p-5 shadow-sm">
-                        <div className="flex items-center justify-between">
+            {/* Filter Bar */}
+            <div className="border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                    <div className="relative xl:col-span-2">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                            placeholder="Search client, location, or technician…"
+                            className="w-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-300 focus:bg-white"
+                        />
+                    </div>
+                    <select value={selectedClient} onChange={e => setSelectedClient(e.target.value)}
+                        className="border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                        <option value="">All clients</option>
+                        {MOCK_PLANNER_CLIENTS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <select value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)}
+                        className="border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                        <option value="">All statuses</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="follow-up">Follow-up</option>
+                    </select>
+                    <button onClick={() => setShowModal(true)}
+                        className="flex items-center justify-center gap-2 bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#b45309]">
+                        <Plus className="h-4 w-4" /> New Job
+                    </button>
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-400">From</label>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                            className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                    </div>
+                    <div>
+                        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-400">To</label>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                            className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                    </div>
+                </div>
+                <p className="mt-3 text-xs text-gray-400">{filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} across {sortedDates.length} date{sortedDates.length !== 1 ? 's' : ''}</p>
+            </div>
+
+            {/* Timeline */}
+            <div className="space-y-6">
+                {sortedDates.length === 0 && (
+                    <div className="border border-dashed border-gray-200 bg-white p-10 text-center">
+                        <CalendarDays className="mx-auto mb-3 h-8 w-8 text-gray-200" />
+                        <p className="text-sm font-semibold text-gray-400">No jobs match the current filters</p>
+                    </div>
+                )}
+                {sortedDates.map(date => (
+                    <div key={date}>
+                        {/* Date header */}
+                        <div className="mb-3 flex items-center gap-3">
+                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center border border-gray-200 bg-white shadow-sm">
+                                <CalendarDays className="h-4 w-4 text-[#D97706]" />
+                            </div>
                             <div>
-                                <h2 className="text-lg font-bold text-gray-900">Clients</h2>
-                                <p className="text-sm text-gray-500">Expandable service history</p>
+                                <p className="text-sm font-bold text-gray-900">{formatDate(date)}</p>
+                                <p className="text-xs text-gray-400">{jobsByDate[date].length} job{jobsByDate[date].length !== 1 ? 's' : ''} scheduled</p>
                             </div>
+                            <div className="flex-1 border-t border-gray-100" />
                         </div>
-                        <div className="mt-4 border border-gray-200 bg-gray-50 p-4">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Focused Client</p>
-                            <h3 className="mt-1 text-sm font-bold text-gray-900">{selectedClientInfo.name}</h3>
-                            <p className="text-xs text-gray-500">{selectedClientInfo.location}</p>
-                            <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                                <div>
-                                    <p className="font-semibold uppercase tracking-wide text-gray-400">Owner</p>
-                                    <p className="mt-1 font-medium text-gray-900">{selectedClientInfo.contactPerson}</p>
-                                </div>
-                                <div>
-                                    <p className="font-semibold uppercase tracking-wide text-gray-400">Province</p>
-                                    <p className="mt-1 font-medium text-gray-900">{selectedClientInfo.province}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="mt-4 space-y-3">
-                            {MOCK_PLANNER_CLIENTS.map(client => (
-                                <details
-                                    key={client.id}
-                                    open={client.id === activeClientId}
-                                    className="group border border-gray-200 bg-gray-50/70 p-4"
-                                    onClick={() => openClient(client.id)}
-                                >
-                                    <summary className="cursor-pointer list-none">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                                <h3 className="text-sm font-semibold text-gray-900">{client.name}</h3>
-                                                <p className="text-xs text-gray-500">{client.location}</p>
-                                            </div>
-                                            <ChevronRight className="mt-0.5 h-4 w-4 text-gray-400 transition-transform group-open:rotate-90" />
+
+                        {/* Job cards */}
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            {jobsByDate[date].map(job => (
+                                <div key={job.id} className="border border-gray-200 bg-white p-5 shadow-sm hover:border-gray-300 hover:shadow-md transition-all">
+                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                        <div className="min-w-0">
+                                            <p className="font-bold text-gray-900 truncate">{job.clientName}</p>
+                                            <p className="flex items-center gap-1 mt-0.5 text-xs text-gray-500">
+                                                <MapPin className="h-3 w-3 flex-shrink-0" />{job.location}
+                                            </p>
                                         </div>
-                                    </summary>
-                                    <div className="mt-4 space-y-3 border-t border-gray-200 pt-4">
-                                        <div className="grid grid-cols-2 gap-3 text-xs">
-                                            <div>
-                                                <p className="font-semibold text-gray-500 uppercase tracking-wide">Province</p>
-                                                <p className="mt-1 font-medium text-gray-900">{client.province}</p>
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold text-gray-500 uppercase tracking-wide">Contact</p>
-                                                <p className="mt-1 font-medium text-gray-900">{client.contactNumber}</p>
-                                            </div>
+                                        <span className={`flex-shrink-0 border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${STATUS_STYLES[job.status]}`}>
+                                            {job.status.replace('-', ' ')}
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3 text-xs">
+                                        <div>
+                                            <p className="font-semibold uppercase tracking-wide text-gray-400">Job Type</p>
+                                            <p className="mt-1 font-medium text-gray-900">{JobTypeLabels[job.jobType]}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Service History</p>
-                                            <div className="mt-2 space-y-2">
-                                                {client.serviceHistory.map(item => (
-                                                    <div key={`${client.id}-${item.date}`} className="border border-gray-200 bg-white p-3">
-                                                        <div className="flex items-center justify-between gap-3">
-                                                            <p className="text-xs font-semibold text-gray-900">{item.notes}</p>
-                                                            <span className="text-[11px] text-gray-400">{formatDate(item.date)}</span>
-                                                        </div>
-                                                        <p className="mt-1 text-xs text-gray-500">
-                                                            {item.status} by {item.technicianName}
-                                                        </p>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                            <p className="font-semibold uppercase tracking-wide text-gray-400">Ref. Class</p>
+                                            <span className={`mt-1 inline-block px-2 py-0.5 font-semibold ${refStyle(job.refrigerantClass)}`}>
+                                                {job.refrigerantClass}
+                                            </span>
                                         </div>
                                     </div>
-                                </details>
+
+                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500 border-t border-gray-100 pt-3">
+                                        <User className="h-3.5 w-3.5 flex-shrink-0" />
+                                        <span className="truncate">{job.technicianName}</span>
+                                    </div>
+
+                                    {job.notes && (
+                                        <p className="mt-2 text-xs text-gray-500 line-clamp-2">{job.notes}</p>
+                                    )}
+
+                                    {(job.refrigerantClass === 'A2L' || job.refrigerantClass === 'A3') && (
+                                        <div className="mt-3 flex items-center gap-2 border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                            <ShieldAlert className="h-3.5 w-3.5 flex-shrink-0" />
+                                            Safety checklist required
+                                        </div>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     </div>
-                </div>
-
-                <div className="space-y-6 xl:col-span-8">
-                    <div className="border border-gray-200 bg-white p-5 shadow-sm">
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                            <div className="md:col-span-2">
-                                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</label>
-                                <input
-                                    type="text"
-                                    value={searchTerm}
-                                    onChange={event => setSearchTerm(event.target.value)}
-                                    placeholder="Search client, location, or technician..."
-                                    className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
-                                />
-                            </div>
-                            <div>
-                                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">Client</label>
-                                <select
-                                    value={selectedClient}
-                                    onChange={event => setSelectedClient(event.target.value)}
-                                    className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
-                                >
-                                    <option value="">All clients</option>
-                                    {MOCK_PLANNER_CLIENTS.map(client => (
-                                        <option key={client.id} value={client.id}>
-                                            {client.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</label>
-                                <select
-                                    value={selectedStatus}
-                                    onChange={event => setSelectedStatus(event.target.value)}
-                                    className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
-                                >
-                                    <option value="">All statuses</option>
-                                    <option value="scheduled">Scheduled</option>
-                                    <option value="in-progress">In Progress</option>
-                                    <option value="completed">Completed</option>
-                                    <option value="follow-up">Follow-up</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div>
-                                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">Start Date</label>
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={event => setStartDate(event.target.value)}
-                                    className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
-                                />
-                            </div>
-                            <div>
-                                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">End Date</label>
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={event => setEndDate(event.target.value)}
-                                    className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                            <p className="text-sm text-gray-500">
-                                Showing {filteredJobs.length} jobs across {sortedDates.length || 0} active dates.
-                            </p>
-                            <button
-                                type="button"
-                                onClick={() => setShowModal(true)}
-                                className="inline-flex items-center gap-2 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-                            >
-                                <Plus className="h-4 w-4" />
-                                New Job
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {sortedDates.map(date => (
-                            <div key={date} className="border border-gray-200 bg-white p-5 shadow-sm">
-                                <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Schedule</p>
-                                        <h3 className="mt-1 text-lg font-bold text-gray-900">{formatDate(date)}</h3>
-                                    </div>
-                                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-                                        {jobsByDate[date].length} jobs
-                                    </span>
-                                </div>
-                                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                                    {jobsByDate[date].map(job => (
-                                        <div key={job.id} className="border border-gray-200 bg-gray-50/80 p-4">
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <div>
-                                                    <h4 className="text-sm font-bold text-gray-900">{job.clientName}</h4>
-                                    <p className="text-xs text-gray-500">{job.location}</p>
-                                            </div>
-                                                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${statusStyles(job.status)}`}>
-                                                    {job.status}
-                                                </span>
-                                            </div>
-                                            <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                                                <div>
-                                                    <p className="font-semibold uppercase tracking-wide text-gray-400">Job Type</p>
-                                                    <p className="mt-1 font-medium text-gray-900">{JobTypeLabels[job.jobType]}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold uppercase tracking-wide text-gray-400">Refrigerant</p>
-                                                    <p className="mt-1 font-medium text-gray-900">{job.refrigerantClass}</p>
-                                                </div>
-                                            </div>
-                                            <div className="mt-3 flex items-center justify-between gap-3">
-                                                <div className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${refrigerantClassStyles(job.refrigerantClass)}`}>
-                                                    {job.refrigerantClass}
-                                                </div>
-                                                <span className="text-xs text-gray-500">{job.technicianName}</span>
-                                            </div>
-                                            <p className="mt-3 text-sm text-gray-600">{job.notes}</p>
-                                            {job.refrigerantClass === 'A2L' || job.refrigerantClass === 'A3' ? (
-                                                <div className="mt-3 flex items-center gap-2 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                                                    <ShieldAlert className="h-4 w-4" />
-                                                    Safety checklist required for this refrigerant class.
-                                                </div>
-                                            ) : null}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-
-                        {!sortedDates.length && (
-                            <div className="border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
-                                No jobs match the current filters.
-                            </div>
-                        )}
-                    </div>
-                </div>
+                ))}
             </div>
 
+            {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
-                    <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-gray-200 bg-white shadow-2xl">
-                        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm">
+                    <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-gray-200 bg-white shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900">Create Planner Job</h2>
-                                <p className="text-sm text-gray-500">Add a mock schedule item to the shared planner store.</p>
+                                <h2 className="text-lg font-bold text-gray-900">Schedule New Job</h2>
+                                <p className="text-sm text-gray-500">Add a job to the shared planner</p>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setShowModal(false)}
-                                className="p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-                            >
+                            <button onClick={() => setShowModal(false)} className="p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-6 px-6 py-5">
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+                            <div className="grid gap-4 md:grid-cols-2">
                                 <div>
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">Client</label>
-                                    <select
-                                        value={formData.clientId}
-                                        onChange={event => openClient(event.target.value)}
-                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                                    >
-                                        {MOCK_PLANNER_CLIENTS.map(client => (
-                                            <option key={client.id} value={client.id}>
-                                                {client.name}
-                                            </option>
-                                        ))}
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Client</label>
+                                    <select value={formData.clientId} onChange={e => openClient(e.target.value)}
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                                        {MOCK_PLANNER_CLIENTS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">Location</label>
-                                    <input
-                                        value={formData.location}
-                                        onChange={event => setFormData(prev => ({ ...prev, location: event.target.value }))}
-                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                                    />
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Location</label>
+                                    <input value={formData.location} onChange={e => setFormData(p => ({ ...p, location: e.target.value }))}
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                                 </div>
                                 <div>
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">Job Type</label>
-                                    <select
-                                        value={formData.jobType}
-                                        onChange={event => setFormData(prev => ({ ...prev, jobType: event.target.value as JobType }))}
-                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                                    >
-                                        {Object.keys(JobTypeLabels).map(type => (
-                                            <option key={type} value={type}>
-                                                {JobTypeLabels[type as JobType]}
-                                            </option>
-                                        ))}
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Job Type</label>
+                                    <select value={formData.jobType} onChange={e => setFormData(p => ({ ...p, jobType: e.target.value as JobType }))}
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                                        {Object.keys(JobTypeLabels).map(t => <option key={t} value={t}>{JobTypeLabels[t as JobType]}</option>)}
                                     </select>
-                                    <p className="mt-1 text-xs text-gray-500">
-                                        {JobTypeDescriptions[formData.jobType]}
-                                    </p>
+                                    <p className="mt-1 text-xs text-gray-400">{JobTypeDescriptions[formData.jobType]}</p>
                                 </div>
                                 <div>
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">Refrigerant Class</label>
-                                    <select
-                                        value={formData.refrigerantClass}
-                                        onChange={event => setFormData(prev => ({ ...prev, refrigerantClass: event.target.value as RefrigerantSafetyClass, preJobChecklistComplete: event.target.value === 'A1' ? prev.preJobChecklistComplete : false }))}
-                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                                    >
-                                        {REF_CLASSES.map(item => (
-                                            <option key={item} value={item}>
-                                                {item}
-                                            </option>
-                                        ))}
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Refrigerant Class</label>
+                                    <select value={formData.refrigerantClass}
+                                        onChange={e => setFormData(p => ({ ...p, refrigerantClass: e.target.value as RefrigerantSafetyClass, preJobChecklistComplete: e.target.value === 'A1' ? p.preJobChecklistComplete : false }))}
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                                        {REF_CLASSES.map(r => <option key={r} value={r}>{r}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">Date</label>
-                                    <input
-                                        type="date"
-                                        value={formData.scheduledDate}
-                                        onChange={event => setFormData(prev => ({ ...prev, scheduledDate: event.target.value }))}
-                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                                    />
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Scheduled Date</label>
+                                    <input type="date" value={formData.scheduledDate} onChange={e => setFormData(p => ({ ...p, scheduledDate: e.target.value }))}
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                                 </div>
                                 <div>
-                                    <label className="mb-2 block text-sm font-semibold text-gray-700">Technician</label>
-                                    <select
-                                        value={formData.technicianName}
-                                        onChange={event => setFormData(prev => ({ ...prev, technicianName: event.target.value }))}
-                                        className="w-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                                    >
-                                        {technicians.map(tech => (
-                                            <option key={tech.id} value={tech.name}>
-                                                {tech.name}
-                                            </option>
-                                        ))}
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Technician</label>
+                                    <select value={formData.technicianName} onChange={e => setFormData(p => ({ ...p, technicianName: e.target.value }))}
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                                        {technicians.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                                     </select>
                                 </div>
                             </div>
 
-                            {safetyChecklistRequired && (
+                            {safetyRequired && (
                                 <div className="border border-amber-200 bg-amber-50 p-4">
                                     <div className="flex items-start gap-3">
-                                        <ShieldCheck className="mt-0.5 h-5 w-5 text-amber-700" />
+                                        <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-700" />
                                         <div className="space-y-3">
                                             <div>
-                                                <h3 className="text-sm font-bold text-amber-900">Mandatory Safety Checklist</h3>
-                                                <p className="text-xs text-amber-800">
-                                                    A2L and A3 jobs must confirm PPE, ventilation, and leak-response readiness before scheduling.
-                                                </p>
+                                                <p className="text-sm font-bold text-amber-900">Mandatory Safety Checklist</p>
+                                                <p className="text-xs text-amber-800">A2L and A3 jobs require PPE, ventilation, and leak-response sign-off before scheduling.</p>
                                             </div>
                                             <label className="flex items-center gap-3 text-sm font-medium text-amber-900">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.preJobChecklistComplete}
-                                                    onChange={event => setFormData(prev => ({ ...prev, preJobChecklistComplete: event.target.checked }))}
-                                                    className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                                                />
-                                                PPE, ventilation, and gas detection checklist confirmed
+                                                <input type="checkbox" checked={formData.preJobChecklistComplete}
+                                                    onChange={e => setFormData(p => ({ ...p, preJobChecklistComplete: e.target.checked }))}
+                                                    className="h-4 w-4 border-amber-300 text-amber-600" />
+                                                PPE, ventilation, and gas detection confirmed
                                             </label>
                                         </div>
                                     </div>
@@ -605,36 +385,26 @@ export default function JobPlanner() {
                             )}
 
                             <div>
-                                <label className="mb-2 block text-sm font-semibold text-gray-700">Notes</label>
-                                <textarea
-                                    value={formData.notes}
-                                    onChange={event => setFormData(prev => ({ ...prev, notes: event.target.value }))}
-                                    className="min-h-[110px] w-full border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
-                                    placeholder="Scope, parts required, or follow-up notes..."
-                                />
+                                <label className="mb-1.5 block text-sm font-semibold text-gray-700">Notes</label>
+                                <textarea value={formData.notes} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))}
+                                    rows={3} placeholder="Scope, parts required, or follow-up notes…"
+                                    className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                             </div>
 
-                            {safetyChecklistRequired && !safetyChecklistComplete && (
-                                <div className="border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-                                    The safety checklist must be completed before this job can be saved.
-                                </div>
+                            {safetyRequired && !formData.preJobChecklistComplete && (
+                                <p className="border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                    Safety checklist must be completed before saving this job.
+                                </p>
                             )}
 
-                            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-                                >
+                            <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+                                <button type="button" onClick={() => setShowModal(false)}
+                                    className="border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                                     Cancel
                                 </button>
-                                <button
-                                    type="submit"
-                                    disabled={safetyChecklistRequired && !safetyChecklistComplete}
-                                    className="inline-flex items-center justify-center gap-2 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    <Sparkles className="h-4 w-4" />
-                                    Save Planner Job
+                                <button type="submit" disabled={safetyRequired && !formData.preJobChecklistComplete}
+                                    className="inline-flex items-center justify-center gap-2 bg-[#D97706] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#b45309] disabled:cursor-not-allowed disabled:opacity-50 transition-colors">
+                                    <Sparkles className="h-4 w-4" /> Save Job
                                 </button>
                             </div>
                         </form>
