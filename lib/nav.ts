@@ -61,6 +61,12 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['technician', 'org_admin'],
   },
   {
+    label: 'Health & Wellness',
+    href: '/health-safety',
+    icon: Icons.HeartPulse,
+    roles: ['technician', 'org_admin'],
+  },
+  {
     label: 'Job Postings',
     href: '/jobs',
     icon: Icons.Gauge,
