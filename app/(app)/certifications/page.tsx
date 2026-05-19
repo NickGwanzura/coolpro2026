@@ -179,7 +179,8 @@ export default function CertificationsPage() {
     issued: trainerRequests.filter(item => item.status === 'issued').length,
   }), [trainerRequests]);
 
-  if (techniciansData === undefined) {
+  // Only admin and trainer views need the technicians list — don't block technicians on this
+  if ((isAdmin || isTrainer) && techniciansData === undefined) {
     return <div className="p-8 text-sm text-slate-500">Loading…</div>;
   }
 
