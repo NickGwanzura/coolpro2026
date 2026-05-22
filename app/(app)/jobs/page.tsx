@@ -42,7 +42,10 @@ function buildAdminRecords(
         status: job.status,
         technicianName: job.technicianName,
         equipmentType: JobTypeLabels[job.jobType] ?? job.jobType,
-        detail: job.notes?.slice(0, 80) ?? `${job.province}${job.district ? ' · ' + job.district : ''}`,
+        detail: [
+            job.notes?.slice(0, 80),
+            job.refrigerantType ? `${job.refrigerantType}${job.amount ? ` · ${job.amount} kg` : ''}` : '',
+        ].filter(Boolean).join(' · '),
     }));
 
     const installationRecords: AdminRecord[] = installations.map(installation => ({

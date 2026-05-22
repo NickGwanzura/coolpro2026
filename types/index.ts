@@ -140,6 +140,8 @@ export interface PlannerJob {
   technicianName: string;
   jobType: JobType;
   refrigerantClass: RefrigerantSafetyClass;
+  refrigerantType?: string;
+  amount?: number;
   scheduledDate: string;
   status: PlannerJobStatus;
   preJobChecklistComplete: boolean;

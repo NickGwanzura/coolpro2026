@@ -11,12 +11,14 @@ import {
     type PlannerSafetyChecklistItem, type RefrigerantSafetyClass,
 } from '@/types/index';
 import { MOCK_PLANNER_CLIENTS, MOCK_PLANNER_JOBS, MOCK_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
+import { MOCK_REFRIGERANT_LIST } from '@/constants/refrigerants';
 import { useTechnicians } from '@/lib/api';
 import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
 
 interface PlannerFormState {
     clientId: string; clientName: string; location: string;
     jobType: JobType; refrigerantClass: RefrigerantSafetyClass;
+    refrigerantType: string; amount: number;
     scheduledDate: string; technicianId: string; technicianName: string;
     preJobChecklistComplete: boolean; notes: string;
 }
@@ -69,6 +71,8 @@ function normalize(job: LegacyPlannerJob): PlannerJob {
         technicianName,
         jobType: job.jobType ?? 'COLD_ROOM',
         refrigerantClass: job.refrigerantClass ?? 'A1',
+        refrigerantType: job.refrigerantType ?? '',
+        amount: job.amount ?? 0,
         scheduledDate,
         status: job.status ?? 'scheduled',
         preJobChecklistComplete: job.preJobChecklistComplete ?? job.checklistComplete ?? false,
@@ -95,6 +99,7 @@ export default function JobPlanner() {
         clientName: MOCK_PLANNER_CLIENTS[0].name,
         location: MOCK_PLANNER_CLIENTS[0].location,
         jobType: 'COLD_ROOM', refrigerantClass: 'A1',
+        refrigerantType: '', amount: 0,
         scheduledDate: '2026-04-04', technicianId: 'tech-001',
         technicianName: 'Demo Technician', preJobChecklistComplete: false, notes: '',
     });
@@ -150,6 +155,8 @@ export default function JobPlanner() {
             clientId: formData.clientId, clientName: formData.clientName,
             location: formData.location, province: client.province,
             jobType: formData.jobType, refrigerantClass: formData.refrigerantClass,
+            refrigerantType: formData.refrigerantType || undefined,
+            amount: formData.amount > 0 ? formData.amount : undefined,
             status: 'scheduled', scheduledDate: formData.scheduledDate,
             technicianId: formData.technicianId, technicianName: formData.technicianName,
             preJobChecklistComplete: formData.preJobChecklistComplete,
@@ -271,7 +278,7 @@ export default function JobPlanner() {
                                         </span>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3 text-xs">
+                                    <div className="grid grid-cols-3 gap-3 border-t border-gray-100 pt-3 text-xs">
                                         <div>
                                             <p className="font-semibold uppercase tracking-wide text-gray-400">Job Type</p>
                                             <p className="mt-1 font-medium text-gray-900">{JobTypeLabels[job.jobType]}</p>
@@ -281,6 +288,10 @@ export default function JobPlanner() {
                                             <span className={`mt-1 inline-block px-2 py-0.5 font-semibold ${refStyle(job.refrigerantClass)}`}>
                                                 {job.refrigerantClass}
                                             </span>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold uppercase tracking-wide text-gray-400">Gas Used</p>
+                                            <p className="mt-1 font-medium text-gray-900">{job.refrigerantType || '—'}{job.amount ? ` · ${job.amount} kg` : ''}</p>
                                         </div>
                                     </div>
 
@@ -349,6 +360,24 @@ export default function JobPlanner() {
                                         className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
                                         {REF_CLASSES.map(r => <option key={r} value={r}>{r}</option>)}
                                     </select>
+                                </div>
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Refrigerant Type (Gas)</label>
+                                    <select value={formData.refrigerantType}
+                                        onChange={e => setFormData(p => ({ ...p, refrigerantType: e.target.value }))}
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                                        <option value="">— Select gas —</option>
+                                        {MOCK_REFRIGERANT_LIST.map(r => (
+                                            <option key={r.code} value={r.code}>{r.code} — {r.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Estimated Amount (kg)</label>
+                                    <input type="number" min="0" step="0.1" value={formData.amount || ''}
+                                        onChange={e => setFormData(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))}
+                                        placeholder="e.g. 12.5"
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">Scheduled Date</label>

@@ -673,15 +673,27 @@ export default function DashboardPage() {
                                                     </div>
                                                     {(() => {
                                                         const jobGas = gasUsageByPlannerJobId.get(job.id);
-                                                        if (!jobGas) return null;
+                                                        const plannedGas = job.refrigerantType;
                                                         return (
-                                                            <div className="mt-1.5 flex items-center gap-2 text-xs">
-                                                                <Fuel className="h-3 w-3 text-[#A8A29E]" />
-                                                                <span className="font-semibold text-gray-600">{jobGas.totalKg.toFixed(1)} kg</span>
-                                                                {jobGas.refrigerants.map(r => (
-                                                                    <span key={r} className="inline-flex px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 rounded">{r}</span>
-                                                                ))}
-                                                            </div>
+                                                            <>
+                                                                {plannedGas && (
+                                                                    <div className="mt-1.5 flex items-center gap-2 text-xs">
+                                                                        <Fuel className="h-3 w-3 text-[#A8A29E]" />
+                                                                        <span className="font-semibold text-gray-600">
+                                                                            Planned: {plannedGas}{job.amount ? ` · ${job.amount} kg` : ''}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                                {jobGas && (
+                                                                    <div className="mt-1.5 flex items-center gap-2 text-xs">
+                                                                        <Fuel className="h-3 w-3 text-[#A8A29E]" />
+                                                                        <span className="font-semibold text-gray-600">{jobGas.totalKg.toFixed(1)} kg logged</span>
+                                                                        {jobGas.refrigerants.map(r => (
+                                                                            <span key={r} className="inline-flex px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 rounded">{r}</span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </>
                                                         );
                                                     })()}
                                                     {job.notes && (
@@ -764,6 +776,7 @@ export default function DashboardPage() {
                                                         </div>
                                                         <p className="text-xs text-[#78716C] mt-0.5">
                                                             {job.location} · {job.refrigerantClass} · {JobTypeLabels[job.jobType]}
+                                                            {job.refrigerantType && <span> · {job.refrigerantType}{job.amount ? ` (${job.amount} kg)` : ''}</span>}
                                                         </p>
                                                     </div>
                                                     <div className="flex items-center gap-2 shrink-0">
