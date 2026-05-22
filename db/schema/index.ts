@@ -4,3 +4,4 @@ export * from './suppliers';
 export * from './technicians';
 export * from './supplier-ops';
 export * from './registrations';
+export * from './gas-logs';

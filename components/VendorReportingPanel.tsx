@@ -196,6 +196,7 @@ export default function VendorReportingPanel({
             clientName: technician.employer ?? technician.name,
             location: technician.province,
             jobType: 'COLD_ROOM',
+            plannerJobId: undefined,
             refrigerantType: saleForm.refrigerant,
             amount: quantityKg,
             actionType: 'Charge',

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { SizingInputs, JobType, JobTypeLabels, JobTypeDefaults, JobTypeImages, JobTypeDescriptions } from '../types';
+import { SizingInputs, JobType, JobTypeLabels, JobTypeDefaults, JobTypeImages, JobTypeDescriptions, ProcessingMode, ProcessingModeLabels, ProcessingModeDescriptions } from '../types';
 import { INSULATION_U_VALUES, Icons, REFRIGERANTS } from '../constants';
 import { getTechnicalAdvice } from '../services/groq';
 import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download, Snowflake, ExternalLink, Gauge, ArrowUpDown, Droplets } from 'lucide-react';
@@ -128,6 +128,7 @@ const SizingTool: React.FC = () => {
     step: 1,
     facilityType: 'SUPERMARKET',
     jobType: 'COLD_ROOM',
+    processingMode: 'FREEZING',
     roomWidth: 6,
     roomLength: 8,
     roomHeight: 3.5,
@@ -138,7 +139,25 @@ const SizingTool: React.FC = () => {
     productTemp: 20,
     productMass: 5000,
     productCp: 3.2,
-    loadingTimeHours: 24
+    loadingTimeHours: 24,
+    blastAirTemp: -35,
+    blastAirVelocity: 4.5,
+    blastCycleDurationMinutes: 240,
+    blastPharmaMode: false,
+    holdTargetTemp: 2,
+    holdRHPreset: 'general',
+    holdRH: 65,
+    holdDefrostCyclesPerDay: 4,
+    holdDefrostDurationMin: 15,
+    holdAirVelocity: 0.2,
+    holdRecoveryTimeSec: 75,
+    holdFloorClearanceCm: 15,
+    holdAirflowClearanceCm: 7,
+    freezeStorageTemp: -20,
+    freezeRateCHour: 15,
+    freezeAirVelocity: 3.0,
+    freezeProductThicknessMm: 100,
+    freezeBioStorage: false,
   });
 
   const [aiAdvice, setAiAdvice] = useState<string>('');
@@ -189,65 +208,135 @@ const SizingTool: React.FC = () => {
       doc.setFont('helvetica', 'normal');
       doc.text(`Name: ${user?.name || 'Demo Technician'}`, 25, 52);
       
-      // Job Type
+      // Job Type & Processing Mode
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Job Type', 20, 68);
+      doc.text('Job Configuration', 20, 62);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(JobTypeLabels[inputs.jobType as JobType] || 'Cold Room', 25, 60);
-      
+      doc.text(`Type: ${JobTypeLabels[inputs.jobType as JobType] || 'Cold Room'}`, 25, 72);
+      doc.text(`Mode: ${ProcessingModeLabels[inputs.processingMode]}`, 25, 81);
+
+      // Processing mode details
+      let modeLines = 0;
+      if (inputs.processingMode === 'BLASTING') {
+        doc.text(`Air Temp: ${inputs.blastAirTemp}°C`, 25, 91);
+        doc.text(`Air Velocity: ${inputs.blastAirVelocity.toFixed(1)} m/s`, 25, 100);
+        doc.text(`Core Target: -18°C`, 25, 109);
+        doc.text(`Cycle Duration: ${inputs.blastCycleDurationMinutes} min`, 25, 118);
+        modeLines = 4;
+        if (inputs.blastPharmaMode) {
+          doc.text(`Pharmaceutical Mode: Active`, 25, 127);
+          modeLines = 5;
+        }
+      } else if (inputs.processingMode === 'HOLDING') {
+        doc.text(`Target Temp: ${inputs.holdTargetTemp}°C`, 25, 91);
+        doc.text(`Relative Humidity: ${inputs.holdRH}%`, 25, 100);
+        doc.text(`Defrost: ${inputs.holdDefrostCyclesPerDay}x/day, ${inputs.holdDefrostDurationMin} min`, 25, 109);
+        doc.text(`Air Velocity: ${inputs.holdAirVelocity.toFixed(2)} m/s`, 25, 118);
+        doc.text(`Recovery Time: ${inputs.holdRecoveryTimeSec}s`, 25, 127);
+        doc.text(`Floor Clearance: ${inputs.holdFloorClearanceCm}cm · Wall Clearance: ${inputs.holdAirflowClearanceCm}cm`, 25, 136);
+        modeLines = 6;
+      } else if (inputs.processingMode === 'FREEZING') {
+        doc.text(`Storage Temp: ${inputs.freezeStorageTemp}°C`, 25, 91);
+        doc.text(`Freezing Rate: ${inputs.freezeRateCHour}°C/hr`, 25, 100);
+        doc.text(`Air Velocity: ${inputs.freezeAirVelocity.toFixed(1)} m/s`, 25, 109);
+        doc.text(`Product Thickness: ${inputs.freezeProductThicknessMm} mm`, 25, 118);
+        doc.text(`Target Core Temp: -18°C`, 25, 127);
+        modeLines = 5;
+        if (inputs.freezeBioStorage) {
+          doc.text(`Biological Storage: Active (down to -80°C)`, 25, 136);
+          modeLines = 6;
+        }
+      }
+
+      // Calculate where Room Dimensions starts based on mode lines
+      const roomDimHeader = inputs.processingMode !== 'FREEZING' && inputs.processingMode !== 'HOLDING' && inputs.processingMode !== 'BLASTING'
+        ? 92
+        : 91 + modeLines * 9 + 10;
+
       // Room Dimensions
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Room Dimensions', 20, 76);
+      doc.text('Room Dimensions', 20, roomDimHeader);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Width: ${inputs.roomWidth}m`, 25, 55);
-      doc.text(`Length: ${inputs.roomLength}m`, 25, 69);
-      doc.text(`Height: ${inputs.roomHeight}m`, 25, 76);
+      doc.text(`Width: ${inputs.roomWidth}m`, 25, roomDimHeader + 10);
+      doc.text(`Length: ${inputs.roomLength}m`, 25, roomDimHeader + 19);
+      doc.text(`Height: ${inputs.roomHeight}m`, 25, roomDimHeader + 28);
+
+      const roomDimEnd = roomDimHeader + 28;
+      
+      // Calculate dynamic y-offset for sections after room dimensions
+      const blastOffset = roomDimEnd;
+      const insY = blastOffset + 15;
+      const opsY = insY + 25;
+      const calcY = opsY + 45;
+      // Holding mode has more calculated result lines (7 vs 5)
+      // Freezing mode adds 2 extra lines (freezing time, critical zone)
+      const calcLines = results.isHolding ? 7 : results.isFreezing ? 7 : 5;
+      const refrigY = calcY + 20 + calcLines * 9;
       
       // Insulation
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Insulation', 20, 92);
+      doc.text('Insulation', 20, insY);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Type: ${inputs.insulationType}`, 25, 102);
-      doc.text(`Thickness: ${inputs.insulationThickness}mm`, 25, 109);
+      doc.text(`Type: ${inputs.insulationType}`, 25, insY + 10);
+      doc.text(`Thickness: ${inputs.insulationThickness}mm`, 25, insY + 19);
       
       // Operating Conditions
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Operating Conditions', 20, 125);
+      doc.text('Operating Conditions', 20, opsY);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Ambient Temperature: ${inputs.ambientTemp}°C`, 25, 135);
-      doc.text(`Target Temperature: ${inputs.targetTemp}°C`, 25, 142);
-      doc.text(`Product Temperature: ${inputs.productTemp}°C`, 25, 149);
-      doc.text(`Product Mass: ${inputs.productMass}kg`, 25, 156);
-      doc.text(`Pull-down Time: ${inputs.loadingTimeHours} hours`, 25, 163);
+      doc.text(`Ambient Temperature: ${inputs.ambientTemp}°C`, 25, opsY + 10);
+      doc.text(`Target Temperature: ${inputs.targetTemp}°C`, 25, opsY + 19);
+      doc.text(`Product Temperature: ${inputs.productTemp}°C`, 25, opsY + 28);
+      doc.text(`Product Mass: ${inputs.productMass}kg`, 25, opsY + 37);
+      doc.text(`Pull-down Time: ${inputs.loadingTimeHours} hours`, 25, opsY + 46);
       
       // Calculated Results
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Calculated Results', 20, 172);
+      doc.text('Calculated Results', 20, calcY);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Total Load: ${results.total.toFixed(2)} kW`, 25, 182);
-      doc.text(`Transmission Load: ${results.transmission.toFixed(2)} kW`, 25, 189);
-      doc.text(`Product Load: ${results.product.toFixed(2)} kW`, 25, 196);
-      doc.text(`Infiltration Load: ${results.infiltration.toFixed(2)} kW`, 25, 203);
-      doc.text(`Safety Margin (${inputs.jobType === 'C90_FREEZER' ? '25' : inputs.jobType === 'C60_FREEZER' ? '20' : '15'}%): ${(results.total * (inputs.jobType === 'C90_FREEZER' ? 0.25 : inputs.jobType === 'C60_FREEZER' ? 0.20 : 0.15)).toFixed(2)} kW`, 25, 210);
+      const safetyPct = inputs.jobType === 'C90_FREEZER' ? 25 : inputs.jobType === 'C60_FREEZER' ? 20 : 15;
+      if (results.isHolding) {
+        doc.text(`Total Load: ${results.total.toFixed(2)} kW`, 25, calcY + 10);
+        doc.text(`Transmission: ${results.transmission.toFixed(2)} kW`, 25, calcY + 19);
+        doc.text(`Product: ${results.product.toFixed(2)} kW`, 25, calcY + 28);
+        doc.text(`Infiltration: ${results.infiltration.toFixed(2)} kW (RH×Recovery adj.)`, 25, calcY + 37);
+        doc.text(`Defrost (${inputs.holdDefrostCyclesPerDay}x${inputs.holdDefrostDurationMin}min): ${results.defrost.toFixed(2)} kW`, 25, calcY + 46);
+        doc.text(`Internal Load: ${results.internal.toFixed(2)} kW`, 25, calcY + 55);
+        doc.text(`Safety Margin (${safetyPct}%): ${(results.total * safetyPct / 100).toFixed(2)} kW`, 25, calcY + 64);
+      } else if (results.isFreezing) {
+        doc.text(`Total Load: ${results.total.toFixed(2)} kW`, 25, calcY + 10);
+        doc.text(`Transmission Load: ${results.transmission.toFixed(2)} kW`, 25, calcY + 19);
+        doc.text(`Product Load: ${results.product.toFixed(2)} kW`, 25, calcY + 28);
+        doc.text(`Infiltration Load: ${results.infiltration.toFixed(2)} kW`, 25, calcY + 37);
+        doc.text(`Core Freezing Time: ${results.freezingTimeHours.toFixed(1)} hrs`, 25, calcY + 46);
+        doc.text(`Critical Zone Transit: ${results.criticalZoneHours.toFixed(2)} hrs`, 25, calcY + 55);
+        doc.text(`Safety Margin (${safetyPct}%): ${(results.total * safetyPct / 100).toFixed(2)} kW`, 25, calcY + 64);
+      } else {
+        doc.text(`Total Load: ${results.total.toFixed(2)} kW`, 25, calcY + 10);
+        doc.text(`Transmission Load: ${results.transmission.toFixed(2)} kW`, 25, calcY + 19);
+        doc.text(`Product Load: ${results.product.toFixed(2)} kW`, 25, calcY + 28);
+        doc.text(`Infiltration Load: ${results.infiltration.toFixed(2)} kW`, 25, calcY + 37);
+        doc.text(`Safety Margin (${safetyPct}%): ${(results.total * safetyPct / 100).toFixed(2)} kW`, 25, calcY + 46);
+      }
       
       // Refrigerants
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Recommended Refrigerants', 20, 220);
+      doc.text('Recommended Refrigerants', 20, refrigY);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text('• R-744 (CO2) - Low GWP', 25, 230);
-      doc.text('• R-290 (Propane) - Low GWP', 25, 237);
+      doc.text('• R-744 (CO2) - Low GWP', 25, refrigY + 10);
+      doc.text('• R-290 (Propane) - Low GWP', 25, refrigY + 19);
       
       // AI Advice if available
       if (aiAdvice) {
@@ -296,7 +385,9 @@ const SizingTool: React.FC = () => {
   };
 
   const results = useMemo(() => {
+    const isHolding = inputs.processingMode === 'HOLDING';
     const area = 2 * (inputs.roomWidth * inputs.roomHeight + inputs.roomLength * inputs.roomHeight) + (inputs.roomWidth * inputs.roomLength);
+    const floorArea = inputs.roomWidth * inputs.roomLength;
     const uValue = (INSULATION_U_VALUES[inputs.insulationType as keyof typeof INSULATION_U_VALUES] || 0.022) / (inputs.insulationThickness / 1000);
     const tempDiff = inputs.ambientTemp - inputs.targetTemp;
     const productTempDiff = inputs.productTemp - inputs.targetTemp;
@@ -315,14 +406,71 @@ const SizingTool: React.FC = () => {
     const transmissionLoad = area * uValue * tempDiff;
     const productLoad = (inputs.productMass * inputs.productCp * productTempDiff) / (inputs.loadingTimeHours * 3600);
     const volume = inputs.roomWidth * inputs.roomLength * inputs.roomHeight;
-    const infiltrationLoad = (volume * 10 * multipliers.infiltration * tempDiff) / 3600;
-    const totalLoad = (transmissionLoad + (productLoad * multipliers.product * 1000) + infiltrationLoad) * multipliers.safety;
+    
+    // Base infiltration (W)
+    const baseInfiltration = (volume * 10 * multipliers.infiltration * tempDiff) / 3600;
+    
+    // Holding-mode adjustments
+    let infiltrationLoad = baseInfiltration;
+    let defrostLoad = 0;
+    let internalLoad = 0;
+    let rhInfiltrationMultiplier = 1;
+    let recoveryInfiltrationMultiplier = 1;
+    
+    if (isHolding) {
+      // RH latent load adjustment: higher RH = more moisture infiltration = more latent heat
+      // Baseline at 65% RH = no adjustment
+      rhInfiltrationMultiplier = 1 + (Math.min(inputs.holdRH, 95) - 65) * 0.005;
+      
+      // Recovery time: faster recovery = better door seal = less infiltration
+      // Baseline at 75s = 1.0, 30s = 0.85, 180s = 1.3
+      recoveryInfiltrationMultiplier = 0.85 + (Math.max(inputs.holdRecoveryTimeSec, 30) - 30) * (1.3 - 0.85) / (180 - 30);
+      
+      // Apply infiltration modifiers
+      infiltrationLoad = baseInfiltration * rhInfiltrationMultiplier * recoveryInfiltrationMultiplier;
+      
+      // Defrost heat load: electric defrost heaters at ~40 W/m² floor area
+      // Q = (P_defrost × duration_min × 60 × cycles_per_day) / (24h × 3600s/h)
+      const defrostPowerW = floorArea * 40; // 40 W/m² electric heater density
+      defrostLoad = (defrostPowerW * inputs.holdDefrostDurationMin * 60 * inputs.holdDefrostCyclesPerDay) / (24 * 3600);
+      
+      // Internal load: lights (~10 W/m² LED), fans (~5 W/m²), occupancy (~100 W for 1hr/day)
+      const lightingW = floorArea * 10;
+      const fanW = floorArea * 5;
+      const occupancyW = 100 / 24; // 1 person 100W averaged over 24h
+      internalLoad = lightingW + fanW + occupancyW;
+    }
+    
+    // Freezing time estimate (FREEZING mode)
+    // Core freezing time = (Product Temp - Target Core) / Freezing Rate × Thickness Factor
+    // Thickness factor: baseline at 50mm = 1.0, each additional 100mm adds 20% more time
+    const isFreezing = inputs.processingMode === 'FREEZING';
+    const freezeTargetCore = -18; // Universal standard for safe long-term preservation
+    const freezeThicknessFactor = 1 + 0.2 * Math.max(0, (inputs.freezeProductThicknessMm - 50) / 100);
+    const freezingTimeHours = isFreezing
+      ? Math.max(0, (inputs.productTemp - freezeTargetCore) / inputs.freezeRateCHour) * freezeThicknessFactor
+      : 0;
+    const criticalZoneHours = isFreezing
+      ? (4 / inputs.freezeRateCHour) * freezeThicknessFactor
+      : 0;
+
+    const totalLoad = (transmissionLoad + (productLoad * multipliers.product * 1000) + infiltrationLoad + defrostLoad + internalLoad) * multipliers.safety;
     
     return {
       transmission: transmissionLoad / 1000,
       product: productLoad,
-      infiltration: infiltrationLoad,
+      infiltration: infiltrationLoad / 1000,
+      defrost: defrostLoad / 1000,
+      internal: internalLoad / 1000,
       total: totalLoad / 1000,
+      rhInfiltrationMultiplier,
+      recoveryInfiltrationMultiplier,
+      isHolding,
+      isFreezing,
+      freezingTimeHours,
+      criticalZoneHours,
+      freezeTargetCore,
+      freezeThicknessFactor,
       jobType: inputs.jobType
     };
   }, [inputs]);
@@ -529,7 +677,445 @@ const SizingTool: React.FC = () => {
                     ))}
                   </div>
                 </div>
-                
+
+                {/* Processing Mode Selection */}
+                <div className="space-y-3 pt-4 border-t border-gray-100">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Processing Mode
+                    <span className="ml-2 text-xs font-normal text-gray-400">Freezing · Blast Freezing · Holding</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {(Object.keys(ProcessingModeLabels) as ProcessingMode[]).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => {
+                          setInputs({
+                            ...inputs,
+                            processingMode: mode,
+                            // Auto-set target temp and loading time per mode
+                            targetTemp: mode === 'BLASTING' ? -18 : mode === 'FREEZING' ? -18 : mode === 'HOLDING' ? 2 : inputs.targetTemp,
+                            loadingTimeHours: mode === 'BLASTING' ? 4 : mode === 'FREEZING' ? 12 : mode === 'HOLDING' ? 24 : inputs.loadingTimeHours,
+                          });
+                        }}
+                        className={`p-4 border-2 text-sm font-semibold transition-all ${
+                          inputs.processingMode === mode
+                            ? mode === 'BLASTING'
+                              ? 'border-blue-600 bg-blue-50 text-blue-700'
+                              : mode === 'FREEZING'
+                                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
+                                : 'border-emerald-600 bg-emerald-50 text-emerald-700'
+                            : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-lg">
+                            {mode === 'BLASTING' ? '❄️' : mode === 'FREEZING' ? '🧊' : '📦'}
+                          </span>
+                          <span className="font-semibold">{ProcessingModeLabels[mode]}</span>
+                          <span className="text-[10px] opacity-70 leading-tight mt-0.5">{ProcessingModeDescriptions[mode]}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Blasting Parameter Panel */}
+                {inputs.processingMode === 'BLASTING' && (
+                  <div className="p-5 border-2 border-blue-200 bg-blue-50/50 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">❄️</span>
+                      <h4 className="text-sm font-bold text-blue-900">Blast Freezing Parameters</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-blue-800 uppercase tracking-wide">
+                          Air Temperature
+                          <span className="ml-1 font-normal normal-case text-blue-600">(industrial: -30°C to -40°C)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min={inputs.blastPharmaMode ? -120 : -65}
+                            max="-25"
+                            step="1"
+                            value={inputs.blastAirTemp}
+                            onChange={(e) => setInputs({ ...inputs, blastAirTemp: Number(e.target.value) })}
+                            className="flex-1 accent-blue-600"
+                          />
+                          <span className="text-sm font-bold text-blue-800 w-16 text-right">{inputs.blastAirTemp}°C</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-blue-500">
+                          <span>{inputs.blastPharmaMode ? '-120°C' : '-65°C'}</span>
+                          <span>{inputs.blastPharmaMode ? '(pharma range)' : '(industrial)'}</span>
+                          <span>-25°C</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-blue-800 uppercase tracking-wide">
+                          Air Velocity
+                          <span className="ml-1 font-normal normal-case text-blue-600">(3.0 - 6.0 m/s)</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="10"
+                          step="0.5"
+                          value={inputs.blastAirVelocity}
+                          onChange={(e) => setInputs({ ...inputs, blastAirVelocity: Number(e.target.value) })}
+                          className="w-full border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-900 outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-blue-800 uppercase tracking-wide">
+                          Cycle Duration
+                          <span className="ml-1 font-normal normal-case text-blue-600">(max 240 min)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min="30"
+                            max="240"
+                            step="5"
+                            value={inputs.blastCycleDurationMinutes}
+                            onChange={(e) => {
+                              const minutes = Number(e.target.value);
+                              setInputs({ ...inputs, blastCycleDurationMinutes: minutes, loadingTimeHours: minutes / 60 });
+                            }}
+                            className="flex-1 accent-blue-600" />
+                          <span className="text-sm font-bold text-blue-800 w-16 text-right">{inputs.blastCycleDurationMinutes} min</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-blue-500">
+                          <span>30 min</span>
+                          <span>240 min</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-blue-800 uppercase tracking-wide">
+                          Target Core Temperature
+                        </label>
+                        <div className="h-[42px] flex items-center px-3 border border-blue-200 bg-white">
+                          <span className="text-sm font-bold text-blue-900">-18°C</span>
+                          <span className="ml-2 text-xs text-blue-500">(mandatory food safety standard)</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 pt-1">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={inputs.blastPharmaMode}
+                          onChange={(e) => {
+                            setInputs({
+                              ...inputs,
+                              blastPharmaMode: e.target.checked,
+                              blastAirTemp: e.target.checked ? -80 : -35,
+                            });
+                          }}
+                          className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-xs font-semibold text-blue-800">
+                          Pharmaceutical mode
+                          <span className="ml-1 font-normal text-blue-500">(-65°C to -120°C)</span>
+                        </span>
+                      </label>
+                      <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 px-2 py-1">
+                        <span>⚠️</span>
+                        <span>From +70°C → -18°C in under 4 hrs mandatory</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Holding Parameter Panel */}
+                {inputs.processingMode === 'HOLDING' && (
+                  <div className="p-5 border-2 border-emerald-200 bg-emerald-50/50 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">📦</span>
+                      <h4 className="text-sm font-bold text-emerald-900">Holding / Storage Parameters</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
+                          Target Air Temperature
+                          <span className="ml-1 font-normal normal-case text-emerald-600">(1°C to 3.3°C)</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="8"
+                          step="0.1"
+                          value={inputs.holdTargetTemp}
+                          onChange={(e) => setInputs({ ...inputs, holdTargetTemp: Number(e.target.value) })}
+                          className="w-full border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        <div className="text-[10px] text-amber-700 bg-amber-50 px-2 py-1">
+                          ⚠️ Max allowable: 4°C — above this enters the Danger Zone
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
+                          Relative Humidity
+                          <span className="ml-1 font-normal normal-case text-emerald-600">(60-75% general / 85-90% meat-produce)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min="40"
+                            max="95"
+                            step="1"
+                            value={inputs.holdRH}
+                            onChange={(e) => setInputs({ ...inputs, holdRH: Number(e.target.value) })}
+                            className="flex-1 accent-emerald-600"
+                          />
+                          <span className="text-sm font-bold text-emerald-800 w-12 text-right">{inputs.holdRH}%</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setInputs({ ...inputs, holdRH: 65, holdRHPreset: 'general' })}
+                            className={`px-2 py-1 text-[10px] font-semibold border transition-all ${
+                              inputs.holdRHPreset === 'general'
+                                ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
+                                : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
+                            }`}
+                          >
+                            General (65%)
+                          </button>
+                          <button
+                            onClick={() => setInputs({ ...inputs, holdRH: 88, holdRHPreset: 'meat-produce' })}
+                            className={`px-2 py-1 text-[10px] font-semibold border transition-all ${
+                              inputs.holdRHPreset === 'meat-produce'
+                                ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
+                                : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
+                            }`}
+                          >
+                            Meat/Produce (88%)
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
+                          Defrost Cycles
+                          <span className="ml-1 font-normal normal-case text-emerald-600">(4-6x/day, 15-20 min)</span>
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-[10px] text-emerald-600 block">Cycles per day</span>
+                            <input
+                              type="number"
+                              min="1"
+                              max="12"
+                              step="1"
+                              value={inputs.holdDefrostCyclesPerDay}
+                              onChange={(e) => setInputs({ ...inputs, holdDefrostCyclesPerDay: Number(e.target.value) })}
+                              className="w-full border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-emerald-600 block">Duration (min)</span>
+                            <input
+                              type="number"
+                              min="5"
+                              max="45"
+                              step="5"
+                              value={inputs.holdDefrostDurationMin}
+                              onChange={(e) => setInputs({ ...inputs, holdDefrostDurationMin: Number(e.target.value) })}
+                              className="w-full border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
+                          Air Velocity
+                          <span className="ml-1 font-normal normal-case text-emerald-600">(0.1 - 0.3 m/s)</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="0.05"
+                          max="1.0"
+                          step="0.05"
+                          value={inputs.holdAirVelocity}
+                          onChange={(e) => setInputs({ ...inputs, holdAirVelocity: Number(e.target.value) })}
+                          className="w-full border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        <div className="text-[10px] text-emerald-600">High airflow dries out uncovered products</div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
+                          Recovery Time
+                          <span className="ml-1 font-normal normal-case text-emerald-600">(60-90 sec after door opening)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min="30"
+                            max="180"
+                            step="5"
+                            value={inputs.holdRecoveryTimeSec}
+                            onChange={(e) => setInputs({ ...inputs, holdRecoveryTimeSec: Number(e.target.value) })}
+                            className="flex-1 accent-emerald-600"
+                          />
+                          <span className="text-sm font-bold text-emerald-800 w-16 text-right">{inputs.holdRecoveryTimeSec}s</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-emerald-500">
+                          <span>30s</span>
+                          <span>90s (standard)</span>
+                          <span>180s</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
+                          Airflow Clearance Rules
+                        </label>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between px-3 py-2 bg-white border border-emerald-200">
+                            <span className="text-xs text-emerald-700">Floor clearance</span>
+                            <span className="text-sm font-bold text-emerald-900">{inputs.holdFloorClearanceCm} cm</span>
+                          </div>
+                          <div className="flex items-center justify-between px-3 py-2 bg-white border border-emerald-200">
+                            <span className="text-xs text-emerald-700">Wall/fan clearance</span>
+                            <span className="text-sm font-bold text-emerald-900">{inputs.holdAirflowClearanceCm} cm</span>
+                          </div>
+                          <div className="text-[10px] text-emerald-600 px-1">
+                            15 cm min from floor · 5-10 cm from back wall
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-100/50 px-3 py-2">
+                      <span>ℹ️</span>
+                      <span>Holding fridges maintain already-cold inventory — not designed to cool hot food down</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Freezing Parameter Panel */}
+                {inputs.processingMode === 'FREEZING' && (
+                  <div className="p-5 border-2 border-cyan-200 bg-cyan-50/50 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🧊</span>
+                      <h4 className="text-sm font-bold text-cyan-900">Freezing Parameters</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-cyan-800 uppercase tracking-wide">
+                          Storage Temperature
+                          <span className="ml-1 font-normal normal-case text-cyan-600">(-18°C to -25°C)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min={inputs.freezeBioStorage ? -80 : -30}
+                            max="-15"
+                            step="1"
+                            value={inputs.freezeStorageTemp}
+                            onChange={(e) => setInputs({ ...inputs, freezeStorageTemp: Number(e.target.value) })}
+                            className="flex-1 accent-cyan-600"
+                          />
+                          <span className="text-sm font-bold text-cyan-800 w-16 text-right">{inputs.freezeStorageTemp}°C</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-cyan-500">
+                          <span>{inputs.freezeBioStorage ? '-80°C' : '-30°C'}</span>
+                          <span>{inputs.freezeBioStorage ? '(biological storage)' : '(standard)'}</span>
+                          <span>-15°C</span>
+                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer mt-1">
+                          <input
+                            type="checkbox"
+                            checked={inputs.freezeBioStorage}
+                            onChange={(e) => {
+                              setInputs({
+                                ...inputs,
+                                freezeBioStorage: e.target.checked,
+                                freezeStorageTemp: e.target.checked ? -60 : -20,
+                              });
+                            }}
+                            className="w-4 h-4 rounded border-cyan-300 text-cyan-600 focus:ring-cyan-500"
+                          />
+                          <span className="text-[10px] font-semibold text-cyan-800">
+                            Biological / medical storage
+                            <span className="ml-1 font-normal text-cyan-500">(down to -80°C)</span>
+                          </span>
+                        </label>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-cyan-800 uppercase tracking-wide">
+                          Freezing Rate
+                          <span className="ml-1 font-normal normal-case text-cyan-600">(blast: 5-30°C/hr)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min="1"
+                            max="30"
+                            step="1"
+                            value={inputs.freezeRateCHour}
+                            onChange={(e) => setInputs({ ...inputs, freezeRateCHour: Number(e.target.value) })}
+                            className="flex-1 accent-cyan-600"
+                          />
+                          <span className="text-sm font-bold text-cyan-800 w-16 text-right">{inputs.freezeRateCHour}°C/hr</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-cyan-500">
+                          <span>1°C/hr (slow)</span>
+                          <span>5-30°C/hr (blast)</span>
+                          <span>30°C/hr</span>
+                        </div>
+                        <div className="text-[10px] text-amber-700 bg-amber-50 px-2 py-1 mt-1">
+                          ⚠️ Critical zone (-1°C to -5°C): pass through as fast as possible to prevent large ice crystals
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-cyan-800 uppercase tracking-wide">
+                          Air Velocity
+                          <span className="ml-1 font-normal normal-case text-cyan-600">(1.5 - 6.0 m/s)</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="0.5"
+                          max="10"
+                          step="0.5"
+                          value={inputs.freezeAirVelocity}
+                          onChange={(e) => setInputs({ ...inputs, freezeAirVelocity: Number(e.target.value) })}
+                          className="w-full border border-cyan-200 bg-white px-3 py-2 text-sm font-semibold text-cyan-900 outline-none focus:ring-2 focus:ring-cyan-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-cyan-800 uppercase tracking-wide">
+                          Product Thickness
+                          <span className="ml-1 font-normal normal-case text-cyan-600">(max 150 mm)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min="10"
+                            max="250"
+                            step="5"
+                            value={inputs.freezeProductThicknessMm}
+                            onChange={(e) => setInputs({ ...inputs, freezeProductThicknessMm: Number(e.target.value) })}
+                            className="flex-1 accent-cyan-600"
+                          />
+                          <span className="text-sm font-bold text-cyan-800 w-16 text-right">{inputs.freezeProductThicknessMm} mm</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-cyan-500">
+                          <span>10 mm</span>
+                          <span>150 mm (max block)</span>
+                          <span>250 mm</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="flex items-center gap-2 text-xs text-cyan-700 bg-cyan-100/50 px-3 py-2">
+                        <span>ℹ️</span>
+                        <span>Thicker items need lower freezing rate to avoid core freeze delay</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-cyan-700 bg-cyan-100/50 px-3 py-2">
+                        <span>ℹ️</span>
+                        <span>Target core temp: -18°C (universal standard for safe long-term preservation)</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-3 gap-4">
                   <InputGroup label="Width (m)" value={inputs.roomWidth} onChange={(v: number) => setInputs({...inputs, roomWidth: v})} />
                   <InputGroup label="Length (m)" value={inputs.roomLength} onChange={(v: number) => setInputs({...inputs, roomLength: v})} />
@@ -613,18 +1199,56 @@ const SizingTool: React.FC = () => {
                       <BreakdownLine label="Transmission" value={results.transmission} />
                       <BreakdownLine label="Product Load" value={results.product} />
                       <BreakdownLine label="Infiltration" value={results.infiltration} />
+                      {results.isHolding && (
+                        <>
+                          <BreakdownLine label={`Defrost (${inputs.holdDefrostCyclesPerDay}x${inputs.holdDefrostDurationMin}min)`} value={results.defrost} />
+                          <BreakdownLine label="Internal (lights/fans/occ.)" value={results.internal} />
+                        </>
+                      )}
                       <BreakdownLine label={`Safety Margin (${inputs.jobType === 'C90_FREEZER' ? '25' : inputs.jobType === 'C60_FREEZER' ? '20' : '15'}%)`} value={results.total * (inputs.jobType === 'C90_FREEZER' ? 0.25 : inputs.jobType === 'C60_FREEZER' ? 0.20 : 0.15)} />
                     </div>
                   </div>
-                  <div className="p-4 bg-gray-50 border border-gray-100 flex flex-col justify-center">
-                    <p className="text-sm font-semibold text-gray-700 mb-3">Recommended Refrigerants</p>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-semibold">R-744 (CO₂)</span>
-                      <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-semibold">R-290 (Propane)</span>
-                      <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-semibold">R-32</span>
+                  {results.isFreezing ? (
+                    <div className="p-4 bg-cyan-50 border border-cyan-100 flex flex-col justify-center">
+                      <p className="text-sm font-semibold text-cyan-900 mb-3">Core Freezing Time Estimate</p>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-xs text-cyan-700 font-medium block">Time to reach -18°C at core</span>
+                          <span className="text-2xl font-bold text-cyan-800">{results.freezingTimeHours.toFixed(1)} hrs</span>
+                          <span className="ml-1 text-sm text-cyan-600">({Math.floor(results.freezingTimeHours)}h {Math.round((results.freezingTimeHours % 1) * 60)}min)</span>
+                        </div>
+                        <div className="border-t border-cyan-200 pt-2">
+                          <span className="text-xs text-cyan-700 font-medium block">Critical Zone (-1°C to -5°C) transit</span>
+                          <span className="text-base font-bold text-amber-600">{results.criticalZoneHours.toFixed(2)} hrs</span>
+                          <span className="ml-1 text-xs text-cyan-600">({Math.round(results.criticalZoneHours * 60)} min)</span>
+                          <p className="text-[10px] text-cyan-600 mt-1">Pass through this zone as fast as possible to prevent large ice crystals</p>
+                        </div>
+                        <div className="border-t border-cyan-200 pt-2 text-xs text-cyan-700">
+                          <span>Freezing rate: {inputs.freezeRateCHour}°C/hr · </span>
+                          <span>Thickness factor: {results.freezeThicknessFactor.toFixed(2)}×</span>
+                        </div>
+                        <div className="border-t border-cyan-200 pt-2">
+                          <span className="text-xs text-cyan-700 font-medium block mb-1">Recommended Refrigerants</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-semibold">R-744 (CO₂)</span>
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-semibold">R-290 (Propane)</span>
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold">R-32</span>
+                          </div>
+                          <p className="text-[10px] text-cyan-500 mt-1">SI 49 of 2023 Compliant</p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">SI 49 of 2023 Compliant</p>
-                  </div>
+                  ) : (
+                    <div className="p-4 bg-gray-50 border border-gray-100 flex flex-col justify-center">
+                      <p className="text-sm font-semibold text-gray-700 mb-3">Recommended Refrigerants</p>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-semibold">R-744 (CO₂)</span>
+                        <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-semibold">R-290 (Propane)</span>
+                        <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-semibold">R-32</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">SI 49 of 2023 Compliant</p>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="p-4 bg-emerald-50 border border-emerald-100">
@@ -680,9 +1304,49 @@ const SizingTool: React.FC = () => {
                     <p className="mt-3"><strong>3. Infiltration Load:</strong> Q = V × ACH × ΔT / 3600</p>
                     <p className="pl-4">Where: V = Volume (m³), ACH = Air changes/hr, ΔT = Temp difference</p>
                     <p className="pl-4">V = {inputs.roomWidth}m × {inputs.roomLength}m × {inputs.roomHeight}m = {(inputs.roomWidth * inputs.roomLength * inputs.roomHeight).toFixed(1)} m³</p>
-                    <p className="pl-4"><strong>Result:</strong> {results.infiltration.toFixed(2)} kW</p>
+                    {results.isHolding ? (
+                      <>
+                        <p className="pl-4">Base: {((inputs.roomWidth * inputs.roomLength * inputs.roomHeight) * 10 * (() => { const m = { C40_FREEZER: 1.2, C60_FREEZER: 1.3, C90_FREEZER: 1.5, COLD_ROOM: 1.0, FREEZER_ROOM: 1.1 }[inputs.jobType as JobType] || 1.0; return m; })() * (inputs.ambientTemp - inputs.targetTemp) / 3600).toFixed(2)} kW</p>
+                        <p className="pl-4">RH multiplier: {results.rhInfiltrationMultiplier.toFixed(2)} × Recovery multiplier: {results.recoveryInfiltrationMultiplier.toFixed(2)}</p>
+                        <p className="pl-4"><strong>Adjusted Result:</strong> {results.infiltration.toFixed(2)} kW</p>
+                      </>
+                    ) : (
+                      <p className="pl-4"><strong>Result:</strong> {results.infiltration.toFixed(2)} kW</p>
+                    )}
+
+                    {results.isHolding && (
+                      <>
+                        <p className="mt-3"><strong>3b. Defrost Load:</strong> Q = (P_d × t × N) / (24 × 3600)</p>
+                        <p className="pl-4">P_d = Floor Area × 40 W/m² = {((inputs.roomWidth * inputs.roomLength).toFixed(1))}m² × 40 = {((inputs.roomWidth * inputs.roomLength) * 40).toFixed(0)} W</p>
+                        <p className="pl-4">Q = ({((inputs.roomWidth * inputs.roomLength) * 40).toFixed(0)}W × {inputs.holdDefrostDurationMin}min × 60 × {inputs.holdDefrostCyclesPerDay}) / (24 × 3600)</p>
+                        <p className="pl-4"><strong>Result:</strong> {results.defrost.toFixed(2)} kW</p>
+                        
+                        <p className="mt-3"><strong>3c. Internal Load:</strong> Q = Q_light + Q_fan + Q_occ</p>
+                        <p className="pl-4">Lighting: {((inputs.roomWidth * inputs.roomLength) * 10 / 1000).toFixed(3)} kW + Fans: {((inputs.roomWidth * inputs.roomLength) * 5 / 1000).toFixed(3)} kW + Occupancy: {(100 / 24 / 1000).toFixed(3)} kW</p>
+                        <p className="pl-4"><strong>Result:</strong> {results.internal.toFixed(2)} kW</p>
+                      </>
+                    )}
                     
-                    <p className="mt-3"><strong>4. Total Load:</strong> Q_total = (Q_trans + Q_prod + Q_inf) × Safety Factor</p>
+                    {results.isFreezing && (
+                      <>
+                        <p className="mt-3"><strong>3c. Core Freezing Time:</strong> t = (T_start − T_core) / R × F_thickness</p>
+                        <p className="pl-4">Where: T_start = Product temp ({inputs.productTemp}°C), T_core = Target ({results.freezeTargetCore}°C), R = Freezing rate, F = Thickness factor</p>
+                        <p className="pl-4">Thickness factor = 1 + 0.2 × ((T − 50) / 100)</p>
+                        <p className="pl-4">T = {inputs.freezeProductThicknessMm}mm → Factor = 1 + 0.2 × ({Math.max(0, inputs.freezeProductThicknessMm - 50)} / 100) = {results.freezeThicknessFactor.toFixed(2)}×</p>
+                        <p className="pl-4">t = ({inputs.productTemp}°C − ({results.freezeTargetCore}°C)) / {inputs.freezeRateCHour}°C/hr × {results.freezeThicknessFactor.toFixed(2)}</p>
+                        <p className="pl-4"><strong>Core Freezing Time:</strong> {results.freezingTimeHours.toFixed(1)} hours ({Math.floor(results.freezingTimeHours)}h {Math.round((results.freezingTimeHours % 1) * 60)}min)</p>
+                        
+                        <p className="mt-2"><strong>Critical Zone Transit:</strong> t_cz = 4°C / R × F_thickness</p>
+                        <p className="pl-4">Critical zone = -1°C to -5°C (4°C wide) — must pass through as fast as possible</p>
+                        <p className="pl-4">t_cz = 4°C / {inputs.freezeRateCHour}°C/hr × {results.freezeThicknessFactor.toFixed(2)}</p>
+                        <p className="pl-4"><strong>Result:</strong> {results.criticalZoneHours.toFixed(2)} hours ({Math.round(results.criticalZoneHours * 60)} min) in the critical zone</p>
+                        {results.criticalZoneHours > 0.5 && (
+                          <p className="pl-4 text-amber-700">⚠️ Warning: &gt;30 min in critical zone risks large ice crystal formation</p>
+                        )}
+                      </>
+                    )}
+
+                    <p className="mt-3"><strong>{results.isHolding ? '4' : results.isFreezing ? '4' : '3b'}. Total with Safety:</strong> Q_total = ΣQ × Safety Factor</p>
                     <p className="pl-4">Safety Factor: {inputs.jobType === 'C90_FREEZER' ? '25%' : inputs.jobType === 'C60_FREEZER' ? '20%' : '15%'}</p>
                     <p className="pl-4 font-bold">Final Total: {results.total.toFixed(2)} kW</p>
                   </div>

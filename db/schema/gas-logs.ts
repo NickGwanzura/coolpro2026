@@ -1,0 +1,27 @@
+import { uuid, text, numeric, timestamp, pgTable, jsonb, boolean } from 'drizzle-orm/pg-core';
+
+export const gasUsageLogs = pgTable('gas_usage_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  technicianId: uuid('technician_id').notNull(),
+  technicianName: text('technician_name').notNull(),
+  clientName: text('client_name').notNull(),
+  location: text('location').notNull().default(''),
+  plannerJobId: uuid('planner_job_id'),
+  jobType: text('job_type').notNull(),
+  refrigerantType: text('refrigerant_type').notNull(),
+  refrigerantClass: text('refrigerant_class'),
+  amount: numeric('amount', { precision: 10, scale: 3 }).notNull(),
+  actionType: text('action_type').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true }).notNull(),
+  approvedSupplierId: text('approved_supplier_id'),
+  approvedSupplierName: text('approved_supplier_name'),
+  supplierVerified: boolean('supplier_verified').default(false),
+  pesepayTransactionId: text('pesepay_transaction_id'),
+  odp: numeric('odp', { precision: 5, scale: 2 }),
+  gwp: numeric('gwp', { precision: 8, scale: 2 }),
+  co2EqEmissions: numeric('co2_eq_emissions', { precision: 12, scale: 3 }),
+  ashraeSafetyClass: text('ashrae_safety_class'),
+  supplierId: text('supplier_id'),
+  purchaseTransactionId: text('purchase_transaction_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});

@@ -29,6 +29,13 @@
       "when": 1779187200000,
       "tag": "0003_drop_regulator_role",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779357000000,
+      "tag": "0004_create_gas_usage_logs",
+      "breakpoints": true
     }
   ]
 }

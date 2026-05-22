@@ -20,6 +20,7 @@ import { RefrigerantLog, Installation, JobType, JobTypeLabels } from '../types';
 import { jsPDF } from 'jspdf';
 import { MOCK_APPROVED_SUPPLIERS } from '@/constants/suppliers';
 import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
+import { createGasLogs } from '@/lib/api';
 
 const FieldToolkit: React.FC = () => {
   const { user } = useAuth();
@@ -80,6 +81,7 @@ const FieldToolkit: React.FC = () => {
     actionType: 'Charge' as 'Charge' | 'Recovery' | 'Leak Repair',
     approvedSupplierId: '',
     pesepayTransactionId: '',
+    plannerJobId: '',
   });
 
   useEffect(() => {
@@ -336,6 +338,7 @@ const FieldToolkit: React.FC = () => {
       technicianName: user?.name || 'Anonymous',
       clientName: formData.clientName,
       location: formData.location,
+      plannerJobId: formData.plannerJobId || undefined,
       jobType: formData.jobType,
       refrigerantType: formData.refrigerantType,
       amount: parseFloat(formData.amount),
@@ -348,6 +351,12 @@ const FieldToolkit: React.FC = () => {
     };
 
     setLogs([newLog, ...logs]);
+
+    // Persist to database
+    createGasLogs([newLog]).catch((err) =>
+      console.error('Failed to sync gas log to DB:', err)
+    );
+
     setFormData({
       clientName: '',
       location: '',
@@ -357,6 +366,7 @@ const FieldToolkit: React.FC = () => {
       actionType: 'Charge',
       approvedSupplierId: '',
       pesepayTransactionId: '',
+      plannerJobId: '',
     });
   };
 
@@ -778,12 +788,23 @@ const FieldToolkit: React.FC = () => {
                   <label className="text-sm font-semibold text-gray-700">
                     Pesepay Transaction ID
                     <span className="ml-2 text-xs font-medium text-amber-700">Required for rewards</span>
-                  </label>
-                  <input
+                  </label>                    <input
                     value={formData.pesepayTransactionId}
                     onChange={(e) => setFormData({ ...formData, pesepayTransactionId: e.target.value })}
                     className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. MOCK-20260331-001"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Linked Planner Job ID
+                    <span className="ml-2 text-xs font-medium text-gray-400">Optional</span>
+                  </label>
+                  <input
+                    value={formData.plannerJobId}
+                    onChange={(e) => setFormData({ ...formData, plannerJobId: e.target.value })}
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    placeholder="e.g. job-abc123"
                   />
                 </div>
                 <div className="space-y-2 col-span-full">

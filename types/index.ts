@@ -33,6 +33,21 @@ export interface NavItem {
   children?: NavItem[];
 }
 
+// Processing mode for Sizing Tool (Freezing / Blasting / Holding)
+export type ProcessingMode = 'FREEZING' | 'BLASTING' | 'HOLDING';
+
+export const ProcessingModeLabels: Record<ProcessingMode, string> = {
+  FREEZING: 'Freezing',
+  BLASTING: 'Blast Freezing',
+  HOLDING: 'Holding / Storage',
+};
+
+export const ProcessingModeDescriptions: Record<ProcessingMode, string> = {
+  FREEZING: 'Standard product freezing within a cold room or freezer',
+  BLASTING: 'High-velocity forced-air freezing for rapid thermal extraction',
+  HOLDING: 'Maintaining already-frozen product at storage temperature',
+};
+
 // Job Types for Sizing Tool
 export type JobType = 'C40_FREEZER' | 'C60_FREEZER' | 'C90_FREEZER' | 'COLD_ROOM' | 'FREEZER_ROOM';
 
@@ -361,6 +376,7 @@ export interface SizingInputs {
   step: number;
   facilityType: string;
   jobType: JobType;
+  processingMode: ProcessingMode;
   roomWidth: number;
   roomLength: number;
   roomHeight: number;
@@ -372,6 +388,27 @@ export interface SizingInputs {
   productMass: number;
   productCp: number;
   loadingTimeHours: number;
+  // Blasting-specific parameters
+  blastAirTemp: number;
+  blastAirVelocity: number;
+  blastCycleDurationMinutes: number;
+  blastPharmaMode: boolean;
+  // Holding-specific parameters
+  holdTargetTemp: number;
+  holdRHPreset: 'general' | 'meat-produce';
+  holdRH: number;
+  holdDefrostCyclesPerDay: number;
+  holdDefrostDurationMin: number;
+  holdAirVelocity: number;
+  holdRecoveryTimeSec: number;
+  holdFloorClearanceCm: number;
+  holdAirflowClearanceCm: number;
+  // Freezing-specific parameters
+  freezeStorageTemp: number;
+  freezeRateCHour: number;
+  freezeAirVelocity: number;
+  freezeProductThicknessMm: number;
+  freezeBioStorage: boolean;
 }
 
 // Course from old types.ts
@@ -506,6 +543,7 @@ export interface RefrigerantLog {
   technicianName: string;
   clientName: string;
   location: string;
+  plannerJobId?: string;
   jobType: JobType;
   refrigerantType: string;
   refrigerantClass?: RefrigerantSafetyClass;
@@ -791,4 +829,21 @@ export interface CertificateRecord {
   verificationToken: string;
   verificationUrl: string;
   status: 'valid' | 'expired' | 'revoked' | 'pending';
+}
+
+export interface GasUsageByJobTypeEntry {
+  jobType: JobType;
+  label: string;
+  totalKg: number;
+  chargeKg: number;
+  recoveryKg: number;
+  leakRepairKg: number;
+  count: number;
+  refrigerants: string[];
+}
+
+export interface GasUsageByJobTypeResponse {
+  entries: GasUsageByJobTypeEntry[];
+  totalKg: number;
+  totalEntries: number;
 }

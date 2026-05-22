@@ -3,7 +3,8 @@
 import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import { getSession, UserSession } from '@/lib/auth';
 import { STORAGE_KEYS, readCollection } from '@/lib/platformStore';
-import { useSupplierApplications, useTechnicians, useReorders } from '@/lib/api';
+import { mutate } from 'swr';
+import { useSupplierApplications, useTechnicians, useReorders, useGasUsage } from '@/lib/api';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import {            ClipboardCheck,
     Award,
@@ -26,14 +27,15 @@ import {            ClipboardCheck,
     ChevronRight,
     FileText,
     ExternalLink,
+    Fuel,
 } from 'lucide-react';
 import Link from 'next/link';
 import OccupationalAccidentSection from '@/components/OccupationalAccidentSection';
-import { CertificateRecord, JobTypeLabels, PlannerJob, RefrigerantLog } from '@/types/index';
+import { CertificateRecord, JobType, JobTypeLabels, PlannerJob, RefrigerantLog } from '@/types/index';
 import { BRAND as colors } from '@/constants/colors';
 
 export default function DashboardPage() {
-    const [session, setSession] = useState<UserSession | null>(null);
+    const [session, setSession] = useState<UserSession | null>(() => getSession());
     const [isLoading, setIsLoading] = useState(true);
     const [dateRange, setDateRange] = useState('today');
     const [regionFilter, setRegionFilter] = useState('all');
@@ -47,8 +49,6 @@ export default function DashboardPage() {
     const [certificateRecords, setCertificateRecords] = useState<CertificateRecord[]>([]);
 
     useEffect(() => {
-        const userSession = getSession();
-        setSession(userSession);
         setIsLoading(false);
     }, []);
 
@@ -176,6 +176,37 @@ export default function DashboardPage() {
             trend: dateRange === 'today' ? 'Reorders in last 24 hours' : dateRange === 'week' ? 'Reorders in last 7 days' : 'Reorders in last 30 days'
         },
     ];
+
+    // ── Hooks must be before any early return to obey Rules of Hooks ──
+
+    // Gas usage aggregated by job type via API
+    const gasUsageFrom = useMemo(() => {
+        const now = Date.now();
+        const rangeMs = dateRange === 'today'
+            ? 24 * 60 * 60 * 1000
+            : dateRange === 'week'
+                ? 7 * 24 * 60 * 60 * 1000
+                : 30 * 24 * 60 * 60 * 1000;
+        return new Date(now - rangeMs).toISOString();
+    }, [dateRange]);
+    const { data: gasUsageData, error: gasUsageError, isLoading: gasUsageLoading } = useGasUsage(gasUsageFrom);
+
+    // Map plannerJobId -> total gas used for direct linking to planner jobs
+    const gasUsageByPlannerJobId = useMemo(() => {
+        const byJobId = new Map<string, { totalKg: number; refrigerants: string[] }>();
+        refrigerantLogs.forEach(log => {
+            if (!log.plannerJobId) return;
+            if (!byJobId.has(log.plannerJobId)) {
+                byJobId.set(log.plannerJobId, { totalKg: 0, refrigerants: [] });
+            }
+            const entry = byJobId.get(log.plannerJobId)!;
+            entry.totalKg += log.amount;
+            if (!entry.refrigerants.includes(log.refrigerantType)) {
+                entry.refrigerants.push(log.refrigerantType);
+            }
+        });
+        return byJobId;
+    }, [refrigerantLogs]);
 
     if (isLoading) {
         return (
@@ -308,6 +339,7 @@ export default function DashboardPage() {
     const recentLogs = refrigerantLogs
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 5);
+
     const now = today.getTime();
     const thirtyDays = 30 * 24 * 60 * 60 * 1000;
     const expiringSoonCerts = certificateRecords.filter(cert => {
@@ -639,6 +671,19 @@ export default function DashboardPage() {
                                                         <span>{job.jobType ? JobTypeLabels[job.jobType] : ''}</span>
                                                         <span>{job.scheduledDate}</span>
                                                     </div>
+                                                    {(() => {
+                                                        const jobGas = gasUsageByPlannerJobId.get(job.id);
+                                                        if (!jobGas) return null;
+                                                        return (
+                                                            <div className="mt-1.5 flex items-center gap-2 text-xs">
+                                                                <Fuel className="h-3 w-3 text-[#A8A29E]" />
+                                                                <span className="font-semibold text-gray-600">{jobGas.totalKg.toFixed(1)} kg</span>
+                                                                {jobGas.refrigerants.map(r => (
+                                                                    <span key={r} className="inline-flex px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 rounded">{r}</span>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                     {job.notes && (
                                                         <p className="mt-1 text-xs text-[#A8A29E] line-clamp-1">{job.notes}</p>
                                                     )}
@@ -848,6 +893,129 @@ export default function DashboardPage() {
                                         })}
                                     </tbody>
                                 </table>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Gas Usage by Job Type */}
+                    <div className="bg-white border border-[#E7E5E4]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
+                            <div>
+                                <h2 className="text-base font-semibold text-[#1C1917]">Gas Usage by Job Type</h2>
+                                {gasUsageData && !gasUsageLoading && (
+                                    <p className="text-xs text-[#78716C] mt-0.5">{gasUsageData.totalKg.toFixed(1)} kg total across {gasUsageData.totalEntries} log entries</p>
+                                )}
+                                {gasUsageLoading && (
+                                    <div className="h-3 w-32 bg-gray-100 rounded animate-pulse mt-1.5" />
+                                )}
+                            </div>
+                            <Link href="/jobs" className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97706] hover:text-[#b45309]">
+                                View All Logs <ChevronRight className="h-3 w-3" />
+                            </Link>
+                        </div>
+
+                        {/* Error state */}
+                        {gasUsageError && (
+                            <div className="px-6 py-4 border-b border-red-100 bg-red-50">
+                                <div className="flex items-center gap-2 text-sm text-red-700">
+                                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                                    <span>Failed to load gas usage data. <button onClick={() => mutate(key => typeof key === 'string' && key.startsWith('/api/jobs/gas-usage'))} className="underline font-semibold hover:text-red-800">Retry</button></span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Loading state (initial load) */}
+                        {gasUsageLoading && !gasUsageData && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="border border-[#E7E5E4] bg-[#FAFAF9] p-4 animate-pulse">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="h-4 w-24 bg-gray-100 rounded" />
+                                            <div className="h-3 w-16 bg-gray-100 rounded" />
+                                        </div>
+                                        <div className="h-2 w-full bg-gray-100 rounded-full mb-4" />
+                                        <div className="space-y-2">
+                                            <div className="h-3 w-full bg-gray-100 rounded" />
+                                            <div className="h-3 w-3/4 bg-gray-100 rounded" />
+                                            <div className="h-3 w-1/2 bg-gray-100 rounded" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Empty state */}
+                        {!gasUsageLoading && !gasUsageError && (!gasUsageData || gasUsageData.entries.length === 0) && (
+                            <div className="px-6 py-10 text-center">
+                                <Fuel className="h-8 w-8 text-[#D1C5C0] mx-auto mb-2" />
+                                <p className="text-sm text-[#78716C]">No gas usage data found for this period.</p>
+                                <Link href="/field-toolkit" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#D97706]">
+                                    Log refrigerant usage <ArrowRight className="h-3 w-3" />
+                                </Link>
+                            </div>
+                        )}
+
+                        {/* Data state */}
+                        {gasUsageData && gasUsageData.entries.length > 0 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+                                {gasUsageData.entries.map((entry) => {
+                                    const maxKg = Math.max(...gasUsageData.entries.map(e => e.totalKg), 1);
+                                    const pct = Math.round((entry.totalKg / maxKg) * 100);
+                                    const colorMap: Record<string, string> = {
+                                        'C40_FREEZER': 'from-blue-500 to-blue-400',
+                                        'C60_FREEZER': 'from-indigo-500 to-indigo-400',
+                                        'C90_FREEZER': 'from-purple-500 to-purple-400',
+                                        'COLD_ROOM': 'from-teal-500 to-teal-400',
+                                        'FREEZER_ROOM': 'from-cyan-500 to-cyan-400',
+                                    };
+                                    const barColor = colorMap[entry.jobType] ?? 'from-gray-500 to-gray-400';
+                                    return (
+                                        <div key={entry.jobType} className="border border-[#E7E5E4] bg-[#FAFAF9] p-4 hover:bg-white transition-colors">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h3 className="text-sm font-bold text-[#1C1917]">{entry.label}</h3>
+                                                <span className="text-xs text-[#A8A29E] font-semibold">{entry.count} entries</span>
+                                            </div>
+
+                                            {/* Bar chart */}
+                                            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mb-4">
+                                                <div
+                                                    className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all`}
+                                                    style={{ width: `${Math.max(pct, 8)}%` }}
+                                                />
+                                            </div>
+
+                                            <div className="space-y-1.5 text-xs">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[#78716C]">Total</span>
+                                                    <span className="font-semibold text-[#1C1917]">{entry.totalKg.toFixed(1)} kg</span>
+                                                </div>
+                                                {entry.chargeKg > 0 && (
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[#78716C]">Charge</span>
+                                                        <span className="font-semibold text-blue-700">{entry.chargeKg.toFixed(1)} kg</span>
+                                                    </div>
+                                                )}
+                                                {entry.recoveryKg > 0 && (
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[#78716C]">Recovery</span>
+                                                        <span className="font-semibold text-emerald-700">{entry.recoveryKg.toFixed(1)} kg</span>
+                                                    </div>
+                                                )}
+                                                {entry.leakRepairKg > 0 && (
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[#78716C]">Leak Repair</span>
+                                                        <span className="font-semibold text-amber-700">{entry.leakRepairKg.toFixed(1)} kg</span>
+                                                    </div>
+                                                )}
+                                                <div className="pt-1.5 border-t border-[#E7E5E4] flex flex-wrap gap-1">
+                                                    {entry.refrigerants.map(r => (
+                                                        <span key={r} className="inline-flex px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600 rounded">{r}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

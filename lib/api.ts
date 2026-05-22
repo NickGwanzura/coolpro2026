@@ -15,6 +15,8 @@ import type {
   SupplierLedgerEntry,
   StudentApplication,
   TechnicianApplication,
+  RefrigerantLog,
+  GasUsageByJobTypeResponse,
 } from '@/types/index';
 
 async function fetcher<T>(url: string): Promise<T> {
@@ -381,4 +383,36 @@ export interface AppUser {
 
 export function useUsers() {
   return useSWR<AppUser[]>('/api/users', fetcher);
+}
+
+// ---------------------------------------------------------------------------
+// Gas usage logs (DB-backed)
+// ---------------------------------------------------------------------------
+
+/** Fetch aggregated gas usage by job type from the DB */
+export function useGasUsage(from?: string, to?: string) {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  const qs = params.toString();
+  const key = `/api/jobs/gas-usage${qs ? `?${qs}` : ''}`;
+  return useSWR<GasUsageByJobTypeResponse>(key, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 5000,
+  });
+}
+
+/** Save gas usage logs to the DB */
+export async function createGasLogs(logs: RefrigerantLog[]): Promise<RefrigerantLog[]> {
+  return post<RefrigerantLog[]>('/api/gas-logs', { logs });
+}
+
+/** Fetch raw refrigerant logs from the DB (for admin views) */
+export function useGasLogs(from?: string, to?: string, limit?: number) {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  if (limit) params.set('limit', String(limit));
+  const qs = params.toString();
+  return useSWR<RefrigerantLog[]>(`/api/gas-logs${qs ? `?${qs}` : ''}`, fetcher);
 }
