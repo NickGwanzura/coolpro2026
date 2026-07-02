@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { refrigerants, whatgasSyncLogs } from '@/db/schema/index';
 
@@ -93,6 +93,15 @@ export async function upsertRefrigerantDetail(row: RefrigerantInsert): Promise<v
 export async function getRefrigerantById(id: number): Promise<RefrigerantRow | null> {
   const [row] = await db.select().from(refrigerants).where(eq(refrigerants.id, id)).limit(1);
   return row ?? null;
+}
+
+/** Ids that have never had detail-endpoint fields (ASHRAE safety group, flammability, etc.) hydrated. */
+export async function getIdsMissingDetail(): Promise<number[]> {
+  const rows = await db
+    .select({ id: refrigerants.id })
+    .from(refrigerants)
+    .where(isNull(refrigerants.detailFetchedAt));
+  return rows.map((r) => r.id);
 }
 
 export type RefrigerantFilters = {
