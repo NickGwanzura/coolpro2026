@@ -28,6 +28,8 @@ type FormState = {
   nationalId: string;
   registrationNumber: string;
   email: string;
+  password: string;
+  confirmPassword: string;
   contactNumber: string;
   province: string;
   district: string;
@@ -45,6 +47,8 @@ const INITIAL: FormState = {
   nationalId: '',
   registrationNumber: '',
   email: '',
+  password: '',
+  confirmPassword: '',
   contactNumber: '',
   province: '',
   district: '',
@@ -104,6 +108,14 @@ export default function JoinTechnicianPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.agree || submitting) return;
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -113,6 +125,7 @@ export default function JoinTechnicianPage() {
         nationalId: form.nationalId.trim(),
         registrationNumber: form.registrationNumber.trim(),
         email: form.email.trim().toLowerCase(),
+        password: form.password,
         contactNumber: form.contactNumber.trim(),
         province: form.province,
         district: form.district,
@@ -279,7 +292,26 @@ export default function JoinTechnicianPage() {
                         placeholder="+263..."
                       />
                     </Field>
+                    <Field label="Password" required>
+                      <Input
+                        type="password"
+                        value={form.password}
+                        onChange={(v) => update('password', v)}
+                        required
+                      />
+                    </Field>
+                    <Field label="Confirm password" required>
+                      <Input
+                        type="password"
+                        value={form.confirmPassword}
+                        onChange={(v) => update('confirmPassword', v)}
+                        required
+                      />
+                    </Field>
                   </div>
+                  <p className="text-xs text-gray-500">
+                    This will be your sign-in password once your registration is approved. Minimum 8 characters.
+                  </p>
                 </fieldset>
 
                 <fieldset

@@ -3,6 +3,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { studentApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
 import type { StudentApplication } from '@/types/index';
 
 function toStudentApplication(row: typeof studentApplications.$inferSelect): StudentApplication {
@@ -44,7 +45,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json().catch(() => ({}))) as Partial<StudentApplication>;
+  const body = (await req.json().catch(() => ({}))) as Partial<StudentApplication> & { password?: string };
 
   const required: Array<keyof StudentApplication> = [
     'firstName', 'lastName', 'email', 'phone', 'polytech',
@@ -54,6 +55,13 @@ export async function POST(req: Request) {
     if (!body[key]) {
       return NextResponse.json({ error: `${key} is required` }, { status: 400 });
     }
+  }
+
+  if (!isPasswordStrongEnough(body.password ?? '')) {
+    return NextResponse.json(
+      { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` },
+      { status: 400 },
+    );
   }
 
   const email = String(body.email).trim().toLowerCase();
@@ -79,12 +87,15 @@ export async function POST(req: Request) {
     );
   }
 
+  const passwordHash = await hashPassword(body.password!);
+
   const [inserted] = await db
     .insert(studentApplications)
     .values({
       firstName: String(body.firstName).trim(),
       lastName: String(body.lastName).trim(),
       email,
+      passwordHash,
       phone: String(body.phone).trim(),
       polytech: String(body.polytech).trim(),
       fieldOfStudy: String(body.fieldOfStudy).trim(),

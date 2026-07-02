@@ -8,7 +8,7 @@ import { FinalCTA } from '@/components/marketing/FinalCTA';
 const PRICING_TIERS = [
   {
     name: 'Student',
-    price: '$7/year',
+    price: 'Free',
     description: 'For Polytechnic students',
     features: [
       'Polytechnic ID verification required',
@@ -24,7 +24,7 @@ const PRICING_TIERS = [
   },
   {
     name: 'Professional',
-    price: '$50/year',
+    price: 'Free',
     description: 'All tools and certifications',
     features: [
       'Full registry listing',
@@ -37,22 +37,6 @@ const PRICING_TIERS = [
     cta: 'Get Started',
     highlighted: true,
     badge: 'Best Value',
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    description: 'For businesses and teams',
-    features: [
-      'Bulk certifications',
-      'Team management',
-      'Training discounts',
-      'Priority support',
-      'Custom reporting',
-      'API access',
-    ],
-    cta: 'Contact Sales',
-    highlighted: false,
-    badge: null,
   },
 ];
 
@@ -97,7 +81,7 @@ export default function MembershipPage() {
             Choose Your Path
           </h1>
           <p className="mt-5 text-base sm:text-lg text-gray-600 max-w-xl mx-auto leading-relaxed">
-            From student to enterprise, find the plan that matches where you are and where you&rsquo;re headed.
+            Free to join as a student or professional, find the path that matches where you are.
           </p>
         </div>
       </section>
@@ -105,7 +89,7 @@ export default function MembershipPage() {
       {/* Pricing tiers */}
       <section className="pb-16 sm:pb-20" style={{ backgroundColor: '#ffffff' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-stretch pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-stretch pt-4 max-w-3xl mx-auto">
             {PRICING_TIERS.map((tier, index) => (
               <div
                 key={index}
@@ -171,13 +155,7 @@ export default function MembershipPage() {
                   ))}
                 </ul>
                 <Link
-                  href={
-                    tier.name === 'Student'
-                      ? '/join/student'
-                      : tier.name === 'Enterprise'
-                      ? '/contact?topic=enterprise'
-                      : '/join'
-                  }
+                  href={tier.name === 'Student' ? '/join/student' : '/join'}
                   className="mt-8 inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 font-semibold transition-all duration-200 text-white text-center hover:brightness-110 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2"
                   style={{ backgroundColor: tier.highlighted ? '#D97706' : '#1C1917' }}
                 >
@@ -187,7 +165,7 @@ export default function MembershipPage() {
             ))}
           </div>
           <p className="mt-10 text-center text-sm text-gray-500">
-            All plans are annual. Upgrade, downgrade, or cancel any time from your dashboard.
+            Membership is free. Upgrade your track any time from your dashboard.
           </p>
         </div>
       </section>

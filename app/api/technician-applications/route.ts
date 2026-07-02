@@ -3,6 +3,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { technicianApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
 import type { TechnicianApplication } from '@/types/index';
 
 function toTechnicianApplication(
@@ -50,7 +51,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json().catch(() => ({}))) as Partial<TechnicianApplication>;
+  const body = (await req.json().catch(() => ({}))) as Partial<TechnicianApplication> & { password?: string };
 
   const required: Array<keyof TechnicianApplication> = [
     'name', 'nationalId', 'registrationNumber', 'email',
@@ -60,6 +61,13 @@ export async function POST(req: Request) {
     if (!body[key]) {
       return NextResponse.json({ error: `${key} is required` }, { status: 400 });
     }
+  }
+
+  if (!isPasswordStrongEnough(body.password ?? '')) {
+    return NextResponse.json(
+      { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` },
+      { status: 400 },
+    );
   }
 
   const email = String(body.email).trim().toLowerCase();
@@ -87,6 +95,8 @@ export async function POST(req: Request) {
     );
   }
 
+  const passwordHash = await hashPassword(body.password!);
+
   const [inserted] = await db
     .insert(technicianApplications)
     .values({
@@ -94,6 +104,7 @@ export async function POST(req: Request) {
       nationalId: String(body.nationalId).trim(),
       registrationNumber: regNo,
       email,
+      passwordHash,
       contactNumber: String(body.contactNumber).trim(),
       province: String(body.province).trim(),
       district: String(body.district).trim(),

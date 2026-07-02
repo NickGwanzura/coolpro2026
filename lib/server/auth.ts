@@ -1,9 +1,9 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { SessionPayload } from './auth-edge';
+import { getSessionSecret } from './session-secret';
 
 export type { SessionPayload };
 
-const SECRET = process.env.SESSION_SECRET ?? 'dev-secret-change-me-in-prod';
 const SESSION_COOKIE = 'coolpro_session';
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
@@ -18,7 +18,7 @@ function base64urlDecode(str: string): string {
 export function signSession(payload: Omit<SessionPayload, 'exp'>): string {
   const full: SessionPayload = { ...payload, exp: Date.now() + MAX_AGE_MS };
   const header = base64urlEncode(JSON.stringify(full));
-  const sig = createHmac('sha256', SECRET).update(header).digest('base64url');
+  const sig = createHmac('sha256', getSessionSecret()).update(header).digest('base64url');
   return `${header}.${sig}`;
 }
 
@@ -28,7 +28,7 @@ export function verifySession(token: string): SessionPayload | null {
     if (dot === -1) return null;
     const header = token.slice(0, dot);
     const sig = token.slice(dot + 1);
-    const expected = createHmac('sha256', SECRET).update(header).digest('base64url');
+    const expected = createHmac('sha256', getSessionSecret()).update(header).digest('base64url');
     if (!timingSafeEqual(Buffer.from(sig, 'base64url'), Buffer.from(expected, 'base64url'))) return null;
     const payload = JSON.parse(base64urlDecode(header)) as SessionPayload;
     if (payload.exp < Date.now()) return null;

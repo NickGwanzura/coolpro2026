@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import {
   GraduationCap,
-  Building2,
   Factory,
   Wrench,
   CheckCircle,
@@ -12,7 +11,7 @@ import {
 } from 'lucide-react';
 
 type JoinPath = {
-  slug: 'student' | 'technician' | 'supplier' | 'business';
+  slug: 'student' | 'technician' | 'supplier';
   eyebrow: string;
   icon: React.ReactNode;
   title: string;
@@ -32,8 +31,8 @@ const PATHS: JoinPath[] = [
     eyebrow: 'Polytechnic Students',
     icon: <GraduationCap className="h-6 w-6" />,
     title: 'Student',
-    price: '$7',
-    priceNote: '/ year',
+    price: 'Free',
+    priceNote: 'ID verification required',
     blurb:
       'For students currently enrolled at a recognised Polytechnic in Zimbabwe studying HVAC-R or refrigeration.',
     features: [
@@ -53,7 +52,7 @@ const PATHS: JoinPath[] = [
     eyebrow: 'Certified Technicians',
     icon: <Wrench className="h-6 w-6" />,
     title: 'Technician',
-    price: 'Apply',
+    price: 'Free',
     priceNote: 'verification required',
     blurb:
       'For working refrigeration and HVAC technicians. Get listed on the national verification registry so businesses and clients can confirm your credentials.',
@@ -74,7 +73,7 @@ const PATHS: JoinPath[] = [
     eyebrow: 'Refrigerant Suppliers',
     icon: <Factory className="h-6 w-6" />,
     title: 'Supplier',
-    price: 'Apply',
+    price: 'Free',
     priceNote: 'approval required',
     blurb:
       'For registered gas suppliers selling regulated refrigerants. HEVACRAZ + NOU approval is required before you can transact on the platform.',
@@ -89,27 +88,6 @@ const PATHS: JoinPath[] = [
     href: '/supplier-register',
     accent: '#D97706',
     accentBg: 'rgba(217,119,6,0.1)',
-  },
-  {
-    slug: 'business',
-    eyebrow: 'Businesses & Enterprises',
-    icon: <Building2 className="h-6 w-6" />,
-    title: 'Business',
-    price: 'Custom',
-    priceNote: 'per team size',
-    blurb:
-      'For companies hiring certified technicians, managing team credentials, and aligning with NOU refrigerant regulations at scale.',
-    features: [
-      'Verify any technician in seconds',
-      'Bulk certification management',
-      'Team CPD tracking',
-      'API access for embedded verification',
-      'Dedicated account contact',
-    ],
-    cta: 'Talk to Enterprise Sales',
-    href: '/contact?topic=enterprise',
-    accent: '#1C1917',
-    accentBg: 'rgba(28,25,23,0.08)',
   },
 ];
 
@@ -146,12 +124,12 @@ export default function JoinPage() {
 
       {/* Three paths */}
       <section className="pb-20 sm:pb-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 items-stretch">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch">
             {PATHS.map((p) => (
               <div
                 key={p.slug}
-                className="group relative flex flex-col p-7 sm:p-8 border-2 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                className="group relative flex flex-col h-full p-7 sm:p-8 border-2 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                 style={{ borderColor: '#E5E0DB' }}
               >
                 <div
@@ -172,18 +150,23 @@ export default function JoinPage() {
                   {p.title}
                 </h2>
 
-                <div className="mt-3 flex items-baseline gap-1.5">
+                <div className="mt-3 flex items-center gap-2.5 flex-wrap">
                   <p className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: '#1C1917' }}>
                     {p.price}
                   </p>
-                  <span className="text-sm text-gray-500">{p.priceNote}</span>
+                  <span
+                    className="text-[11px] font-semibold uppercase tracking-wide px-2 py-1 whitespace-nowrap"
+                    style={{ backgroundColor: p.accentBg, color: p.accent }}
+                  >
+                    {p.priceNote}
+                  </span>
                 </div>
 
                 <p className="mt-4 text-sm text-gray-600 leading-relaxed">{p.blurb}</p>
 
-                <div className="my-6 h-px bg-gray-100" />
+                <div className="mt-6 h-px bg-gray-100" />
 
-                <ul className="space-y-2.5 flex-1">
+                <ul className="mt-6 space-y-2.5">
                   {p.features.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-sm text-gray-700">
                       <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: p.accent }} />
@@ -194,11 +177,11 @@ export default function JoinPage() {
 
                 <Link
                   href={p.href}
-                  className="group/btn mt-8 inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 font-semibold transition-all duration-200 text-white shadow-sm hover:shadow-md hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  className="group/btn mt-auto pt-8 inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 font-semibold whitespace-nowrap transition-all duration-200 text-white shadow-sm hover:shadow-md hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                   style={{ backgroundColor: p.accent, outlineColor: p.accent }}
                 >
                   {p.cta}
-                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover/btn:translate-x-1" />
+                  <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover/btn:translate-x-1" />
                 </Link>
               </div>
             ))}

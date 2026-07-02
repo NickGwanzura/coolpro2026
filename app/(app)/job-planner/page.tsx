@@ -1,24 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { CalendarRange, ShieldCheck } from 'lucide-react';
-import { getSession, type UserSession } from '@/lib/auth';
+import { type UserSession } from '@/lib/auth';
+import { useClientSession } from '@/lib/useClientSession';
 import JobPlanner from '@/components/JobPlanner';
 
 const ALLOWED_ROLES: UserSession['role'][] = ['technician', 'org_admin'];
 
 export default function JobPlannerPage() {
-    const [session, setSession] = useState<UserSession | null | undefined>(undefined);
-
-    useEffect(() => { setSession(getSession()); }, []);
-
-    if (session === undefined) {
-        return (
-            <div className="flex min-h-[320px] items-center justify-center">
-                <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#D97706] border-t-transparent" />
-            </div>
-        );
-    }
+    const session = useClientSession();
 
     if (!session || !ALLOWED_ROLES.includes(session.role)) {
         return (

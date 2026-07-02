@@ -1,20 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { BellRing, ChevronRight, Plus, Search, TimerReset } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { getSession, type UserSession } from '@/lib/auth';
+import { useClientSession } from '@/lib/useClientSession';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import {
     type EquipmentRecord,
     type EquipmentStatus,
-    type PlannerJob,
     type PredictiveAlert,
 } from '@/types/index';
-import { MOCK_EQUIPMENT_RECORDS } from '@/constants/field-scheduling';
-import { MOCK_PLANNER_JOBS, MOCK_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
+import { MOCK_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
 import { MOCK_REFRIGERANTS } from '@/constants/refrigerants';
-import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
+import { useEquipmentRecords, createPlannerJob } from '@/lib/api';
 
 type ViewScope = 'own' | 'fleet';
 
@@ -29,67 +27,9 @@ function statusStyles(status: EquipmentStatus) {
     }
 }
 
-type LegacyServiceHistoryItem = {
-    date: string;
-    summary?: string;
-    result?: string;
-    notes?: string;
-    technicianName?: string;
-    status?: string;
-};
-
-type LegacyEquipmentRecord = Partial<EquipmentRecord> & {
-    refrigerant?: string;
-    lastService?: string;
-    nextDue?: string;
-    assignedTechnicianId?: string;
-    history?: LegacyServiceHistoryItem[];
-    predictedFailure?: string;
-    recommendedAction?: string;
-};
-
-function normalizeEquipmentRecord(record: LegacyEquipmentRecord): EquipmentRecord {
-    return {
-        id: record.id ?? `eq-${Math.random().toString(36).slice(2, 8)}`,
-        equipmentId: record.equipmentId ?? 'EQ-UNKNOWN',
-        clientName: record.clientName ?? 'Unknown Client',
-        province: record.province ?? 'Harare',
-        refrigerantType: record.refrigerantType ?? record.refrigerant ?? 'R-290',
-        ashraeSafetyClass:
-            record.ashraeSafetyClass ??
-            (MOCK_REFRIGERANTS[record.refrigerantType ?? record.refrigerant ?? 'R-290'] ?? MOCK_REFRIGERANTS['R-290']).ashraeSafetyClass,
-        lastServiceDate: record.lastServiceDate ?? record.lastService ?? '2026-03-01',
-        nextServiceDue: record.nextServiceDue ?? record.nextDue ?? '2026-04-01',
-        status: record.status ?? 'normal',
-        technicianName: record.technicianName ?? 'Demo Technician',
-        serviceHistory: (record.serviceHistory ?? record.history ?? []).map(item => {
-            const notes = 'notes' in item && item.notes ? item.notes : ('summary' in item && item.summary ? item.summary : 'Service record');
-            const technicianName = 'technicianName' in item && item.technicianName ? item.technicianName : (record.technicianName ?? 'Demo Technician');
-            const status = 'status' in item && item.status ? (item.status as PlannerJob['status']) : 'completed';
-
-            return {
-                id: `${record.id ?? 'eq'}-${item.date}`,
-                date: item.date,
-                notes,
-                technicianName,
-                status,
-            };
-        }),
-        predictedFailureReason: record.predictedFailureReason ?? record.predictedFailure ?? 'Service interval exceeded.',
-        recommendedAction: record.recommendedAction ?? 'Schedule follow-up service.',
-    };
-}
-
-function seedPlannerJob(record: EquipmentRecord) {
-    if (typeof window === 'undefined') {
-        return;
-    }
-
-    const plannerJobs = readCollection<PlannerJob>(STORAGE_KEYS.plannerJobs, MOCK_PLANNER_JOBS);
-
+async function seedPlannerJob(record: EquipmentRecord) {
     const refrigerantDefinition = MOCK_REFRIGERANTS[record.refrigerantType] ?? MOCK_REFRIGERANTS['R-290'];
-    const plannerJob: PlannerJob = {
-        id: `job-plan-${Date.now()}`,
+    await createPlannerJob({
         clientId: record.id,
         clientName: record.clientName,
         location: record.province,
@@ -98,45 +38,27 @@ function seedPlannerJob(record: EquipmentRecord) {
         refrigerantClass: refrigerantDefinition.ashraeSafetyClass,
         status: 'scheduled',
         scheduledDate: record.nextServiceDue,
-        technicianId: getSession()?.id ?? 'tech-001',
-        technicianName: getSession()?.name ?? 'Demo Technician',
         preJobChecklistComplete: record.status === 'normal',
         checklistItems: MOCK_PLANNER_SAFETY_CHECKLIST.map(item => ({
             ...item,
             completed: record.status === 'normal'
         })),
         notes: `Scheduled from ${record.equipmentId} predictive maintenance alert.`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
-
-    writeCollection(STORAGE_KEYS.plannerJobs, [plannerJob, ...plannerJobs]);
+    });
 }
 
 export default function FieldScheduling() {
     const router = useRouter();
-    const [session, setSession] = useState<UserSession | null>(null);
-    const [scope, setScope] = useState<ViewScope>('own');
+    const session = useClientSession();
+    const [scope, setScope] = useState<ViewScope>(() => (session?.role === 'org_admin' ? 'fleet' : 'own'));
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<EquipmentStatus | ''>('');
     const [provinceFilter, setProvinceFilter] = useState('');
     const [refrigerantFilter, setRefrigerantFilter] = useState('');
-    const [records, setRecords] = useState<EquipmentRecord[]>(MOCK_EQUIPMENT_RECORDS);
-    const [selectedRecord, setSelectedRecord] = useState<EquipmentRecord | null>(MOCK_EQUIPMENT_RECORDS[0]);
+    const { data: recordsData, isLoading: recordsLoading } = useEquipmentRecords();
+    const records = recordsData ?? [];
+    const [selectedRecord, setSelectedRecord] = useState<EquipmentRecord | null>(null);
     const [message, setMessage] = useState('');
-
-    useEffect(() => {
-        const currentSession = getSession();
-        setSession(currentSession);
-        setScope(currentSession?.role === 'org_admin' ? 'fleet' : 'own');
-
-        const parsed = readCollection<LegacyEquipmentRecord>(STORAGE_KEYS.fieldSchedulingRecords, MOCK_EQUIPMENT_RECORDS as LegacyEquipmentRecord[]);
-        setRecords(parsed.map(normalizeEquipmentRecord));
-    }, []);
-
-    useEffect(() => {
-        writeCollection(STORAGE_KEYS.fieldSchedulingRecords, records);
-    }, [records]);
 
     const filteredRecords = useMemo(() => {
         return records.filter(record => {
@@ -178,15 +100,20 @@ export default function FieldScheduling() {
             status: record.status,
         }));
 
-    const handleScheduleService = (entry: EquipmentRecord | PredictiveAlert) => {
+    const handleScheduleService = async (entry: EquipmentRecord | PredictiveAlert) => {
         const record =
             'refrigerantType' in entry
                 ? entry
-                : records.find(item => item.id === entry.id || item.equipmentId === entry.equipmentId) ?? records[0];
+                : records.find(item => item.id === entry.id || item.equipmentId === entry.equipmentId);
+        if (!record) return;
 
-        seedPlannerJob(record);
-        setMessage(`Scheduled a planner job from ${record.equipmentId}.`);
-        router.push('/job-planner');
+        try {
+            await seedPlannerJob(record);
+            setMessage(`Scheduled a planner job from ${record.equipmentId}.`);
+            router.push('/job-planner');
+        } catch (err) {
+            setMessage(err instanceof Error ? err.message : 'Failed to schedule the planner job.');
+        }
     };
 
     const handleViewHistory = (record: EquipmentRecord) => {
@@ -348,7 +275,12 @@ export default function FieldScheduling() {
                             </table>
                         </div>
 
-                        {!filteredRecords.length && (
+                        {recordsLoading && (
+                            <div className="px-5 py-8 text-center text-sm text-gray-500">
+                                Loading equipment register…
+                            </div>
+                        )}
+                        {!recordsLoading && !filteredRecords.length && (
                             <div className="px-5 py-8 text-center text-sm text-gray-500">
                                 No equipment matches the current filters.
                             </div>

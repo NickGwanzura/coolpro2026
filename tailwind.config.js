@@ -20,7 +20,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['GeistSans', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-google-sans)', 'system-ui', 'sans-serif'],
       },
       colors: {
         // HEVACRAZ brand palette use hevac-* in components

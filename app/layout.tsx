@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import { GeistSans } from 'geist/font/sans';
+import { googleSans } from './fonts/google-sans';
 import './globals.css';
-import { FloatingVoiceButton } from '@/components/FloatingVoiceButton';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { AuthProvider } from '@/lib/auth';
 import { EmergencyModeProvider } from '@/lib/emergencyMode';
@@ -19,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={GeistSans.variable}>
+    <html lang="en" className={googleSans.variable}>
       <body className="min-h-screen bg-white text-[#1C1917] antialiased font-sans">
         <I18nProvider>
           <EmergencyModeProvider>
@@ -27,7 +26,6 @@ export default function RootLayout({
               <ToastProvider>
                 <OfflineBanner />
                 {children}
-                <FloatingVoiceButton />
               </ToastProvider>
             </AuthProvider>
           </EmergencyModeProvider>

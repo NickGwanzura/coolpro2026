@@ -16,14 +16,16 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
-import { RefrigerantLog, Installation, JobType, JobTypeLabels } from '../types';
+import { RefrigerantLog, Installation, JobType, JobTypeLabels, Refrigerant } from '../types';
 import { jsPDF } from 'jspdf';
-import { MOCK_APPROVED_SUPPLIERS } from '@/constants/suppliers';
 import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
-import { createGasLogs } from '@/lib/api';
+import { createGasLogs, useApprovedSuppliers } from '@/lib/api';
+import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 
 const FieldToolkit: React.FC = () => {
   const { user } = useAuth();
+  const { data: approvedSuppliersData } = useApprovedSuppliers();
+  const approvedSuppliers = approvedSuppliersData ?? [];
   const [activeTab, setActiveTab] = useState<'checklist' | 'installations' | 'leaks'>('checklist');
   const [checklistType, setChecklistType] = useState<'installation' | 'regassing'>('installation');
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
@@ -76,7 +78,8 @@ const FieldToolkit: React.FC = () => {
     clientName: '',
     location: '',
     jobType: 'COLD_ROOM' as JobType,
-    refrigerantType: 'R-290',
+    refrigerant: null as Refrigerant | null,
+    refrigerantType: '',
     amount: '',
     actionType: 'Charge' as 'Charge' | 'Recovery' | 'Leak Repair',
     approvedSupplierId: '',
@@ -328,7 +331,7 @@ const FieldToolkit: React.FC = () => {
     e.preventDefault();
     if (!formData.clientName || !formData.amount) return;
 
-    const selectedSupplier = MOCK_APPROVED_SUPPLIERS.find(
+    const selectedSupplier = approvedSuppliers.find(
       supplier => supplier.id === formData.approvedSupplierId
     );
 
@@ -340,6 +343,7 @@ const FieldToolkit: React.FC = () => {
       location: formData.location,
       plannerJobId: formData.plannerJobId || undefined,
       jobType: formData.jobType,
+      refrigerantId: formData.refrigerant?.id,
       refrigerantType: formData.refrigerantType,
       amount: parseFloat(formData.amount),
       actionType: formData.actionType,
@@ -361,7 +365,8 @@ const FieldToolkit: React.FC = () => {
       clientName: '',
       location: '',
       jobType: 'COLD_ROOM' as JobType,
-      refrigerantType: 'R-290',
+      refrigerant: null,
+      refrigerantType: '',
       amount: '',
       actionType: 'Charge',
       approvedSupplierId: '',
@@ -759,15 +764,13 @@ const FieldToolkit: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">Refrigerant Type</label>
-                  <select
-                    value={formData.refrigerantType}
-                    onChange={(e) => setFormData({ ...formData, refrigerantType: e.target.value })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
-                  >
-                    <option>R-290</option>
-                    <option>R-744 (CO2)</option>
-                    <option>R-32</option>
-                  </select>
+                  <RefrigerantAutocomplete
+                    value={formData.refrigerant}
+                    onSelect={(r) =>
+                      setFormData({ ...formData, refrigerant: r, refrigerantType: r ? refrigerantLabel(r) : '' })
+                    }
+                    accentColor="#2563eb"
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">Approved Supplier</label>
@@ -777,7 +780,7 @@ const FieldToolkit: React.FC = () => {
                     className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
                   >
                     <option value="">Select approved supplier</option>
-                    {MOCK_APPROVED_SUPPLIERS.map((supplier) => (
+                    {approvedSuppliers.map((supplier) => (
                       <option key={supplier.id} value={supplier.id}>
                         {supplier.name}
                       </option>
@@ -813,7 +816,7 @@ const FieldToolkit: React.FC = () => {
                     {['Charge', 'Recovery', 'Leak Repair'].map((type) => (
                       <button
                         key={type}
-                        onClick={() => setFormData({ ...formData, actionType: type as any })}
+                        onClick={() => setFormData({ ...formData, actionType: type as 'Charge' | 'Recovery' | 'Leak Repair' })}
                         className={`py-3 font-medium border transition-all ${formData.actionType === type
                             ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                             : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShieldCheck, Menu, X, ChevronDown, ArrowRight } from 'lucide-react';
+import { Menu, X, ChevronDown, ArrowRight } from 'lucide-react';
 
 type SolutionLink = { name: string; href: string; description: string };
 
@@ -103,20 +103,18 @@ export function SiteNav() {
               className="group flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2"
               aria-label="HEVACRAZ home"
             >
-              <ShieldCheck
-                className="h-8 w-8 transition-transform duration-300 group-hover:-rotate-6"
-                style={{ color: '#1C1917' }}
-              />
-              <div className="ml-3 leading-none">
-                <span
-                  className="block text-lg sm:text-xl font-bold tracking-tight transition-colors duration-200 group-hover:text-[#D97706]"
-                  style={{ color: '#1C1917' }}
-                >
-                  HEVACRAZ
-                </span>
-                <p className="mt-1 hidden sm:block text-[11px] text-gray-500 tracking-wide">
-                  HVAC-R Professionals Zimbabwe
-                </p>
+              <div className="flex items-center gap-2.5">
+                <img
+                  src="/logos/ministry-of-environment.jpeg"
+                  alt="Ministry of Environment, Climate and Wildlife"
+                  className="h-9 w-9 rounded-full object-cover"
+                />
+                <span className="h-7 w-px bg-gray-300" />
+                <img
+                  src="/logos/hevacraz-logo.jpeg"
+                  alt="HEVACRAZ"
+                  className="h-9 w-9 rounded-full object-cover transition-transform duration-300 group-hover:-rotate-6"
+                />
               </div>
             </Link>
 

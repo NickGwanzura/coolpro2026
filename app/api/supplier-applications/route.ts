@@ -3,6 +3,7 @@ import { and, eq, or } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { supplierApplications } from '@/db/schema/index';
 import { readSessionFromRequest } from '@/lib/server/auth';
+import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
 import type { SupplierRegistration } from '@/types/index';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -58,10 +59,17 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const body = await req.json() as Partial<SupplierRegistration>;
+  const body = await req.json() as Partial<SupplierRegistration> & { password?: string };
 
   if (!body.companyName || !body.contactName || !body.email) {
     return NextResponse.json({ error: 'companyName, contactName, and email are required' }, { status: 400 });
+  }
+
+  if (!isPasswordStrongEnough(body.password ?? '')) {
+    return NextResponse.json(
+      { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` },
+      { status: 400 },
+    );
   }
 
   const email = String(body.email).trim().toLowerCase();
@@ -100,6 +108,8 @@ export async function POST(req: Request) {
     }
   }
 
+  const passwordHash = await hashPassword(body.password!);
+
   const [inserted] = await db
     .insert(supplierApplications)
     .values({
@@ -109,6 +119,7 @@ export async function POST(req: Request) {
       supplierType: (body.supplierType ?? 'distributor') as typeof supplierApplications.$inferInsert['supplierType'],
       contactName: body.contactName.trim(),
       email,
+      passwordHash,
       phone: body.phone ?? '',
       province: body.province ?? '',
       city: body.city ?? '',

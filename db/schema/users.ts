@@ -6,6 +6,7 @@ export const userRoleEnum = pgEnum('user_role', [
   'lecturer',
   'vendor',
   'org_admin',
+  'student',
 ]);
 
 export const userStatusEnum = pgEnum('user_status', [
@@ -19,6 +20,7 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
+  passwordHash: text('password_hash'),
   role: userRoleEnum('role').notNull(),
   region: text('region').notNull(),
   registrationNo: text('registration_no'),

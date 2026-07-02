@@ -18,7 +18,6 @@ import {
     Users,
     ShieldCheck,
     LogOut,
-    Thermometer,
     X,
     AlertTriangle,
     WifiOff,
@@ -28,6 +27,11 @@ import {
     HeartPulse,
     GraduationCap,
     BarChart3,
+    Database,
+    Cylinder,
+    FileText,
+    Recycle,
+    RefreshCw,
 } from 'lucide-react';
 import { useAuth, logout } from '@/lib/auth';
 import { useEmergencyMode } from '@/lib/emergencyMode';
@@ -49,13 +53,13 @@ interface NavSection {
 const NAV_SECTIONS: NavSection[] = [
     {
         items: [
-            { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin'] },
+            { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] },
         ],
     },
     {
         label: 'Operations',
         items: [
-            { name: 'Learning Hub', href: '/learn', icon: BookOpen, roles: ['technician', 'trainer', 'lecturer', 'org_admin'] },
+            { name: 'Learning Hub', href: '/learn', icon: BookOpen, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
             { name: 'Field Scheduling', href: '/field-scheduling', icon: BellRing, roles: ['technician', 'org_admin'] },
         ],
     },
@@ -65,20 +69,30 @@ const NAV_SECTIONS: NavSection[] = [
             { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician'] },
             { name: 'Job Planner', href: '/job-planner', icon: CalendarRange, roles: ['technician'] },
             { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician'] },
-            { name: 'Health & Wellness', href: '/health-safety', icon: HeartPulse, roles: ['technician'] },
+            { name: 'Health & Wellness', href: '/health-safety', icon: HeartPulse, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
         ],
     },
     {
         label: 'Tools',
         items: [
-            { name: 'WhatGas + Risk Engine', href: '/whatgas', icon: FlaskConical, roles: ['technician', 'trainer', 'lecturer', 'org_admin'] },
+            { name: 'WhatGas + Risk Engine', href: '/whatgas', icon: FlaskConical, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
             { name: 'Sizing Tool', href: '/sizing-tool', icon: Calculator, roles: ['technician'] },
+        ],
+    },
+    {
+        label: 'Refrigerants',
+        items: [
+            { name: 'Refrigerant Catalogue', href: '/refrigerants', icon: Database, roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] },
+            { name: 'Cylinder Registry', href: '/cylinders', icon: Cylinder, roles: ['technician', 'vendor', 'org_admin'] },
+            { name: 'Import/Export Permits', href: '/permits', icon: FileText, roles: ['vendor', 'org_admin'] },
+            { name: 'Reclamation', href: '/reclamation', icon: Recycle, roles: ['technician', 'vendor', 'org_admin'] },
+            { name: 'Recycling', href: '/recycling', icon: RefreshCw, roles: ['technician', 'org_admin'] },
         ],
     },
     {
         label: 'Compliance',
         items: [
-            { name: 'Certification', href: '/certifications', icon: Award, roles: ['technician', 'trainer', 'lecturer', 'org_admin'] },
+            { name: 'Certification', href: '/certifications', icon: Award, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
             { name: 'Rewards', href: '/rewards', icon: Award, roles: ['technician', 'vendor', 'org_admin'] },
             { name: 'Supplier Registration', href: '/supplier-register', icon: Building2, roles: ['vendor'] },
             { name: 'Supplier Compliance', href: '/supplier-compliance', icon: ShieldCheck, roles: ['vendor'] },
@@ -107,6 +121,8 @@ const NAV_SECTIONS: NavSection[] = [
             { name: 'Certification Engine', href: '/admin/certification-engine', icon: Award, roles: ['org_admin'] },
             { name: 'Accidents Module', href: '/admin/accidents', icon: AlertTriangle, roles: ['org_admin'] },
             { name: 'Reporting', href: '/admin/reporting', icon: BarChart3, roles: ['org_admin'] },
+            { name: 'Refrigerants (WhatGas Sync)', href: '/admin/refrigerants', icon: Database, roles: ['org_admin'] },
+            { name: 'Refrigerant Analytics', href: '/admin/refrigerant-analytics', icon: BarChart3, roles: ['org_admin'] },
         ],
     },
 ];
@@ -158,14 +174,18 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
             <div className="h-16 flex items-center px-5 border-b border-white/10 flex-shrink-0">
                 <div className="flex items-center justify-between w-full">
                     <Link href="/dashboard" className="flex items-center gap-2.5 focus-visible:outline-none">
-                        <span className="inline-flex h-8 w-8 items-center justify-center bg-[#D97706] flex-shrink-0">
-                            <Thermometer className="w-4 h-4 text-white" />
-                        </span>
-                        <div>
-                            <span className="text-sm font-bold text-white tracking-tight block">HEVACRAZ</span>
-                            <span className="text-[9px] font-semibold uppercase tracking-widest text-[#57534E] leading-none block">
-                                HVAC-R Zimbabwe
-                            </span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            <img
+                                src="/logos/ministry-of-environment.jpeg"
+                                alt="Ministry of Environment, Climate and Wildlife"
+                                className="h-7 w-7 rounded-full object-cover"
+                            />
+                            <span className="h-6 w-px bg-white/20" />
+                            <img
+                                src="/logos/hevacraz-logo.jpeg"
+                                alt="HEVACRAZ"
+                                className="h-7 w-7 rounded-full object-cover"
+                            />
                         </div>
                     </Link>
                     {onClose && (

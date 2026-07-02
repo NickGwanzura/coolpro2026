@@ -8,6 +8,7 @@ export const ROLES: Record<string, UserRole> = {
   VENDOR: 'vendor',
   ORG_ADMIN: 'org_admin',
   LECTURER: 'lecturer',
+  STUDENT: 'student',
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -16,4 +17,5 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   vendor: 'Vendor/Supplier',
   org_admin: 'Organization Admin',
   lecturer: 'Lecturer',
+  student: 'Student',
 };

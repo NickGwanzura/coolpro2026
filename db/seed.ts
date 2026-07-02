@@ -5,9 +5,14 @@ import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { sql } from 'drizzle-orm';
 import * as schema from './schema/index';
+import { hashPassword } from '../lib/server/password';
 
 const connection = neon(process.env.DATABASE_URL!);
 const db = drizzle(connection, { schema });
+
+// Every seeded demo account shares this password so local/staging sign-in works
+// without the demo-persona quick-login flag. Never used for anything real.
+const SEED_PASSWORD = 'Demo1234!';
 
 // ---------------------------------------------------------------------------
 // Seed users mirroring MOCK_USERS from lib/auth.tsx
@@ -744,17 +749,137 @@ const seedSupplierLedger: (typeof schema.supplierLedger.$inferInsert)[] = [
   },
 ];
 
+const SAFETY_CHECKLIST = [
+  { id: 'pcl-1', label: 'PPE confirmed', required: true, completed: true, appliesTo: 'all' as const },
+  { id: 'pcl-2', label: 'Ventilation verified', required: true, completed: true, appliesTo: ['A2L', 'A3'] },
+  { id: 'pcl-3', label: 'Leak detector available', required: true, completed: true, appliesTo: 'all' as const },
+];
+
+const seedPlannerJobs: (typeof schema.plannerJobs.$inferInsert)[] = [
+  {
+    clientId: 'client-1', clientName: 'Meikles Hotel', location: '3 Jason Moyo Ave, Harare', province: 'Harare',
+    technicianId: U.tech, technicianName: 'Demo Technician',
+    jobType: 'COLD_ROOM', refrigerantClass: 'A1', refrigerantType: 'R-744', amount: '18.5',
+    scheduledDate: '2026-04-04', status: 'scheduled', preJobChecklistComplete: true,
+    checklistItems: SAFETY_CHECKLIST, notes: 'Quarterly cold room inspection.',
+  },
+  {
+    clientId: 'client-2', clientName: 'Pick n Pay Highlands', location: 'Enterprise Road, Harare', province: 'Harare',
+    technicianId: U.tech, technicianName: 'Demo Technician',
+    jobType: 'C60_FREEZER', refrigerantClass: 'A2L', refrigerantType: 'R-32', amount: '6.2',
+    scheduledDate: '2026-04-08', status: 'in-progress', preJobChecklistComplete: true,
+    checklistItems: SAFETY_CHECKLIST, notes: 'CO2 rack compressor service.',
+  },
+  {
+    clientId: 'client-3', clientName: 'Spar Bulawayo', location: 'Fife Street, Bulawayo', province: 'Bulawayo',
+    technicianId: U.tech, technicianName: 'Demo Technician',
+    jobType: 'FREEZER_ROOM', refrigerantClass: 'A3', refrigerantType: 'R-290', amount: '9.0',
+    scheduledDate: '2026-04-12', status: 'follow-up', preJobChecklistComplete: false,
+    checklistItems: SAFETY_CHECKLIST.map((i) => ({ ...i, completed: false })), notes: 'Door seal inspection follow-up.',
+  },
+];
+
+const seedEquipmentRecords: (typeof schema.equipmentRecords.$inferInsert)[] = [
+  {
+    equipmentId: 'EQ-HTR-001', clientName: 'Meikles Hotel', province: 'Harare',
+    refrigerantType: 'R-290', ashraeSafetyClass: 'A3',
+    lastServiceDate: '2026-01-15', nextServiceDue: '2026-04-15', status: 'due-soon',
+    technicianName: 'Tapiwa Moyo',
+    serviceHistory: [{ id: 'srv-1', date: '2026-01-15', notes: 'Quarterly maintenance completed', technicianName: 'Tapiwa Moyo', status: 'completed' }],
+    predictedFailureReason: 'Compressor vibration rising above baseline.',
+    recommendedAction: 'Schedule service before peak occupancy weekend.',
+  },
+  {
+    equipmentId: 'EQ-SPR-002', clientName: 'Spar Bulawayo', province: 'Bulawayo',
+    refrigerantType: 'R-744', ashraeSafetyClass: 'A1',
+    lastServiceDate: '2026-01-28', nextServiceDue: '2026-04-28', status: 'normal',
+    technicianName: 'Nyasha Chikomo',
+    serviceHistory: [{ id: 'srv-2', date: '2026-01-28', notes: 'Temperature calibration performed', technicianName: 'Nyasha Chikomo', status: 'completed' }],
+  },
+  {
+    equipmentId: 'EQ-DEL-003', clientName: 'Delta Beverages', province: 'Harare',
+    refrigerantType: 'R-32', ashraeSafetyClass: 'A2L',
+    lastServiceDate: '2025-12-20', nextServiceDue: '2026-03-20', status: 'overdue',
+    technicianName: 'Munyaradzi Dube',
+    serviceHistory: [{ id: 'srv-3', date: '2025-12-20', notes: 'Leak test and recharge completed', technicianName: 'Munyaradzi Dube', status: 'completed' }],
+    predictedFailureReason: 'Evaporator coil frosting and reduced airflow.',
+    recommendedAction: 'Create urgent service job and inspect airflow path.',
+  },
+  {
+    equipmentId: 'EQ-OKZ-004', clientName: 'Ok Zimbabwe - Harare', province: 'Harare',
+    refrigerantType: 'R-290', ashraeSafetyClass: 'A3',
+    lastServiceDate: '2026-02-03', nextServiceDue: '2026-05-03', status: 'normal',
+    technicianName: 'Tapiwa Moyo',
+    serviceHistory: [{ id: 'srv-4', date: '2026-02-03', notes: 'Cabinet seals replaced', technicianName: 'Tapiwa Moyo', status: 'completed' }],
+  },
+  {
+    equipmentId: 'EQ-GWE-006', clientName: 'Gweru Fresh Foods', province: 'Midlands',
+    refrigerantType: 'R-744', ashraeSafetyClass: 'A1',
+    lastServiceDate: '2025-11-30', nextServiceDue: '2026-02-28', status: 'overdue',
+    technicianName: 'Nyasha Chikomo',
+    serviceHistory: [{ id: 'srv-6', date: '2025-11-30', notes: 'Pressure sensor replaced', technicianName: 'Nyasha Chikomo', status: 'completed' }],
+    predictedFailureReason: 'Pressure instability observed in trend logs.',
+    recommendedAction: 'Dispatch technician and capture differential pressure readings.',
+  },
+];
+
+const seedTrainingSessions: (typeof schema.trainingSessions.$inferInsert)[] = [
+  {
+    title: 'Low GWP Refrigerants Safety', summary: 'Essential safety protocols for handling flammable and high-pressure low GWP refrigerants.',
+    venue: 'HEVACRAZ Training Centre', province: 'Harare',
+    startDate: new Date('2026-04-15T09:00:00.000Z'), endDate: new Date('2026-04-15T16:00:00.000Z'),
+    feeUsd: '120.00', seats: 20, seatsRemaining: 14,
+    trainerName: 'Demo Trainer', trainerEmail: 'trainer@coolpro.demo', status: 'open',
+  },
+  {
+    title: 'R-744 (CO2) System Specialist', summary: 'Advanced transcritical and subcritical CO2 system design, installation, and maintenance.',
+    venue: 'Bulawayo Polytechnic', province: 'Bulawayo',
+    startDate: new Date('2026-05-06T09:00:00.000Z'), endDate: new Date('2026-05-07T16:00:00.000Z'),
+    feeUsd: '220.00', seats: 15, seatsRemaining: 15,
+    trainerName: 'Demo Trainer', trainerEmail: 'trainer@coolpro.demo', status: 'scheduled',
+  },
+];
+
+const seedCertificateRequests: (typeof schema.trainerCertificateRequests.$inferInsert)[] = [
+  {
+    technicianId: U.tTendai, technicianName: 'Tendai Moyo', technicianRegistrationNumber: 'TEC-2024-001',
+    technicianCompany: 'Independent technician', trainerName: 'Demo Trainer', trainerEmail: 'trainer@coolpro.demo',
+    courseTitle: 'Low GWP Refrigerants Safety', examDate: '2026-03-10', theoryScore: 88, practicalScore: 92,
+    overallScore: 90, status: 'issued', certificateNumber: 'HEV-240318',
+    verificationToken: 'verify-demo2403', cpdCredits: 12,
+    submittedAt: new Date('2026-03-10T10:00:00.000Z'), issuedAt: new Date('2026-03-18T09:00:00.000Z'),
+    reviewedAt: new Date('2026-03-12T09:00:00.000Z'), adminReviewer: 'Demo Org Admin',
+  },
+  {
+    technicianId: U.tChiedza, technicianName: 'Chiedza Nhamo', technicianRegistrationNumber: 'TEC-2024-002',
+    technicianCompany: 'Independent technician', trainerName: 'Demo Trainer', trainerEmail: 'trainer@coolpro.demo',
+    courseTitle: 'Hydrocarbon Refrigerant Handling', examDate: '2026-03-20', theoryScore: 81, practicalScore: 79,
+    overallScore: 80, status: 'submitted-for-admin-approval',
+    submittedAt: new Date('2026-03-20T10:00:00.000Z'),
+  },
+];
+
 async function seed() {
+  if (process.env.ALLOW_SEED_TRUNCATE !== 'true') {
+    console.error(
+      '\n✖ Refusing to run: this script TRUNCATEs users, technicians, courses, exams, and all supplier data.\n' +
+      '  Set ALLOW_SEED_TRUNCATE=true only when DATABASE_URL points at a database you intend to wipe\n' +
+      '  (local/dev/staging). Never set this against production.\n',
+    );
+    process.exit(1);
+  }
+
   console.log('Seeding database...\n');
 
   // Truncate in dependency order (exam_submissions refs courses, so courses last to drop)
-  await db.execute(sql`TRUNCATE TABLE supplier_ledger, supplier_compliance_applications, supplier_applications, technician_verifications, supplier_reorders, exam_submissions, courses, technicians, users RESTART IDENTITY CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE supplier_ledger, supplier_compliance_applications, supplier_applications, technician_verifications, supplier_reorders, exam_submissions, courses, technicians, users, planner_jobs, equipment_records, training_sessions, trainer_certificate_requests, student_applications, technician_applications, gas_usage_logs RESTART IDENTITY CASCADE`);
   console.log('Tables truncated.\n');
 
   // Users
-  await db.insert(schema.users).values(seedUsers);
+  const seedPasswordHash = await hashPassword(SEED_PASSWORD);
+  await db.insert(schema.users).values(seedUsers.map((u) => ({ ...u, passwordHash: seedPasswordHash })));
   const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.users);
-  console.log(`users: ${userCount[0].count} rows`);
+  console.log(`users: ${userCount[0].count} rows (password: ${SEED_PASSWORD})`);
 
   // Technicians
   await db.insert(schema.technicians).values(seedTechnicians);
@@ -807,6 +932,26 @@ async function seed() {
     .select({ count: sql<number>`count(*)` })
     .from(schema.supplierLedger);
   console.log(`supplier_ledger: ${slCount[0].count} rows`);
+
+  // Planner jobs
+  await db.insert(schema.plannerJobs).values(seedPlannerJobs);
+  const pjCount = await db.select({ count: sql<number>`count(*)` }).from(schema.plannerJobs);
+  console.log(`planner_jobs: ${pjCount[0].count} rows`);
+
+  // Equipment records
+  await db.insert(schema.equipmentRecords).values(seedEquipmentRecords);
+  const eqCount = await db.select({ count: sql<number>`count(*)` }).from(schema.equipmentRecords);
+  console.log(`equipment_records: ${eqCount[0].count} rows`);
+
+  // Training sessions
+  await db.insert(schema.trainingSessions).values(seedTrainingSessions);
+  const tsCount = await db.select({ count: sql<number>`count(*)` }).from(schema.trainingSessions);
+  console.log(`training_sessions: ${tsCount[0].count} rows`);
+
+  // Trainer certificate requests
+  await db.insert(schema.trainerCertificateRequests).values(seedCertificateRequests);
+  const tcrCount = await db.select({ count: sql<number>`count(*)` }).from(schema.trainerCertificateRequests);
+  console.log(`trainer_certificate_requests: ${tcrCount[0].count} rows`);
 
   console.log('\nSeed complete.');
 }

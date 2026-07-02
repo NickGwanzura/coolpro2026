@@ -14,7 +14,6 @@ import {
   Scale,
   BookOpen,
   Landmark,
-  Building2,
   Briefcase,
   Mail,
   ArrowRight,
@@ -119,7 +118,7 @@ const PARTNERS = [
     role: 'Operating authority',
   },
   {
-    icon: <Users className="h-6 w-6" />,
+    logo: '/logos/hevacraz-logo.jpeg',
     name: 'HEVACRAZ',
     role: 'Industry partner',
   },
@@ -134,7 +133,7 @@ const PARTNERS = [
     role: 'Funding mechanism',
   },
   {
-    icon: <Building2 className="h-6 w-6" />,
+    logo: '/logos/ministry-of-environment.jpeg',
     name: 'Ministry of Environment, Climate and Tourism',
     role: 'Government oversight',
   },
@@ -224,21 +223,18 @@ export default function AboutPage() {
               className="flex items-center gap-4 px-5 py-5 border"
               style={{ borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.03)' }}
             >
-              <div
-                className="shrink-0 flex items-center justify-center w-12 h-12 text-[10px] font-bold tracking-[0.12em] uppercase text-white border"
-                style={{ borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.05)' }}
-              >
-                HVCZ
-              </div>
+              <img
+                src="/logos/hevacraz-logo.jpeg"
+                alt="HEVACRAZ"
+                className="shrink-0 w-12 h-12 rounded-full object-cover border"
+                style={{ borderColor: 'rgba(255,255,255,0.25)' }}
+              />
               <div>
                 <p className="text-[11px] text-white/50 uppercase tracking-[0.18em]">Industry partner</p>
                 <p className="text-sm font-semibold text-white mt-0.5">HEVACRAZ</p>
               </div>
             </div>
           </div>
-          <p className="mt-3 text-[11px] text-white/40 tracking-wide">
-            Branding pack pending, plain text placeholders shown above.
-          </p>
 
           {/* Tag row */}
           <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-[11px] sm:text-xs font-medium text-white/70 uppercase tracking-[0.18em]">
@@ -635,7 +631,11 @@ export default function AboutPage() {
                   className="inline-flex p-2.5 mb-4 transition-colors group-hover:bg-[#D97706]/10"
                   style={{ backgroundColor: '#FAFAF9', color: '#5A7D5A' }}
                 >
-                  <span className="transition-colors group-hover:text-[#D97706]">{p.icon}</span>
+                  {p.logo ? (
+                    <img src={p.logo} alt={p.name} className="h-6 w-6 rounded-full object-cover" />
+                  ) : (
+                    <span className="transition-colors group-hover:text-[#D97706]">{p.icon}</span>
+                  )}
                 </div>
                 <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-500">
                   {p.role}

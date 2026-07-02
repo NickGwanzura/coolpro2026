@@ -1,10 +1,8 @@
 'use client';
 
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useMemo, useState } from 'react';
 import { CalendarDays, MapPin, Plus, Ticket, Users } from 'lucide-react';
-import { MOCK_TRAINING_SESSIONS } from '@/constants/training';
-import { STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
-import type { TrainingSession } from '@/types/index';
+import { useTrainingSessions, createTrainingSession } from '@/lib/api';
 import type { UserSession } from '@/lib/auth';
 
 type SessionFormState = {
@@ -28,23 +26,10 @@ function formatDate(value: string) {
 }
 
 export default function TrainerLearningHub({ session }: { session: UserSession }) {
-  const storedSessions = useSyncExternalStore(
-    () => () => undefined,
-    () => {
-      if (typeof window === 'undefined') return MOCK_TRAINING_SESSIONS;
-      const raw = window.localStorage.getItem(STORAGE_KEYS.trainingSessions);
-      if (!raw) return MOCK_TRAINING_SESSIONS;
-
-      try {
-        return JSON.parse(raw) as TrainingSession[];
-      } catch {
-        return MOCK_TRAINING_SESSIONS;
-      }
-    },
-    () => MOCK_TRAINING_SESSIONS
-  );
-  const [localSessions, setLocalSessions] = useState<TrainingSession[] | null>(null);
+  const { data: sessionsData, isLoading: sessionsLoading } = useTrainingSessions();
+  const sessions = useMemo(() => sessionsData ?? [], [sessionsData]);
   const [notice, setNotice] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [summaryReferenceTime] = useState(() => Date.now());
   const [form, setForm] = useState<SessionFormState>({
     title: '',
@@ -57,10 +42,8 @@ export default function TrainerLearningHub({ session }: { session: UserSession }
     seats: '20',
   });
 
-  const sessions = localSessions ?? storedSessions;
   const trainerSessions = useMemo(() => {
-    const mine = sessions.filter(entry => entry.trainerEmail === session.email);
-    return mine.length > 0 ? mine : sessions.filter(entry => entry.trainerEmail === 'trainer@coolpro.demo');
+    return sessions.filter(entry => entry.trainerEmail === session.email);
   }, [session.email, sessions]);
 
   const summary = useMemo(() => ({
@@ -70,12 +53,7 @@ export default function TrainerLearningHub({ session }: { session: UserSession }
     provinces: new Set(trainerSessions.map(entry => entry.province)).size,
   }), [summaryReferenceTime, trainerSessions]);
 
-  const saveSessions = (items: TrainingSession[]) => {
-    setLocalSessions(items);
-    writeCollection(STORAGE_KEYS.trainingSessions, items);
-  };
-
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.title || !form.venue || !form.summary || !form.startDate || !form.endDate) {
       setNotice('Complete the title, venue, schedule, and summary before saving the training.');
@@ -89,34 +67,34 @@ export default function TrainerLearningHub({ session }: { session: UserSession }
       return;
     }
 
-    const entry: TrainingSession = {
-      id: `training-${Date.now()}`,
-      title: form.title.trim(),
-      summary: form.summary.trim(),
-      venue: form.venue.trim(),
-      province: form.province.trim(),
-      startDate: new Date(form.startDate).toISOString(),
-      endDate: new Date(form.endDate).toISOString(),
-      feeUsd,
-      seats,
-      seatsRemaining: seats,
-      trainerName: session.name,
-      trainerEmail: session.email,
-      status: 'scheduled',
-    };
-
-    saveSessions([entry, ...sessions]);
-    setNotice(`${entry.title} added to the training calendar.`);
-    setForm({
-      title: '',
-      summary: '',
-      venue: '',
-      province: session.region,
-      startDate: form.startDate,
-      endDate: form.endDate,
-      feeUsd: '120',
-      seats: '20',
-    });
+    setSubmitting(true);
+    try {
+      const created = await createTrainingSession({
+        title: form.title.trim(),
+        summary: form.summary.trim(),
+        venue: form.venue.trim(),
+        province: form.province.trim(),
+        startDate: new Date(form.startDate).toISOString(),
+        endDate: new Date(form.endDate).toISOString(),
+        feeUsd,
+        seats,
+      });
+      setNotice(`${created.title} added to the training calendar.`);
+      setForm({
+        title: '',
+        summary: '',
+        venue: '',
+        province: session.region,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        feeUsd: '120',
+        seats: '20',
+      });
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Failed to save the training session.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -139,6 +117,10 @@ export default function TrainerLearningHub({ session }: { session: UserSession }
           </div>
 
           <div className="space-y-3">
+            {sessionsLoading && <p className="text-sm text-gray-500">Loading training sessions…</p>}
+            {!sessionsLoading && trainerSessions.length === 0 && (
+              <p className="text-sm text-gray-500">No training sessions scheduled yet.</p>
+            )}
             {trainerSessions.map((sessionItem) => (
               <div key={sessionItem.id} className="border border-gray-200 bg-gray-50 p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -232,10 +214,11 @@ export default function TrainerLearningHub({ session }: { session: UserSession }
 
           <button
             type="submit"
-            className="mt-5 inline-flex items-center gap-2 bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+            disabled={submitting}
+            className="mt-5 inline-flex items-center gap-2 bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
-            Add Training Course
+            {submitting ? 'Saving…' : 'Add Training Course'}
           </button>
 
           {notice && (

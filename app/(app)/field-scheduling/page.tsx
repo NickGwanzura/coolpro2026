@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { BellRing, CalendarDays, Gauge, ShieldCheck, Wrench } from 'lucide-react';
-import { getSession, type UserSession } from '@/lib/auth';
+import { type UserSession } from '@/lib/auth';
+import { useClientSession } from '@/lib/useClientSession';
 import FieldScheduling from '@/components/FieldScheduling';
 
 const ALLOWED_ROLES: UserSession['role'][] = ['technician'];
@@ -25,24 +25,8 @@ function AccessDenied() {
     );
 }
 
-function LoadingState() {
-    return (
-        <div className="flex min-h-[320px] items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-        </div>
-    );
-}
-
 export default function FieldSchedulingPage() {
-    const [session, setSession] = useState<UserSession | null | undefined>(undefined);
-
-    useEffect(() => {
-        setSession(getSession());
-    }, []);
-
-    if (session === undefined) {
-        return <LoadingState />;
-    }
+    const session = useClientSession();
 
     if (!session || !ALLOWED_ROLES.includes(session.role)) {
         return <AccessDenied />;

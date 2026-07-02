@@ -36,6 +36,34 @@
       "when": 1779357000000,
       "tag": "0004_create_gas_usage_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782998804370,
+      "tag": "0005_add_password_auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783001504924,
+      "tag": "0006_add_planner_scheduling_training_certs",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783014875557,
+      "tag": "0007_add_whatgas_and_refrigerant_registry_modules",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783018577511,
+      "tag": "0008_add_permit_verification_token",
+      "breakpoints": true
     }
   ]
 }

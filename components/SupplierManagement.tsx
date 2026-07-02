@@ -19,11 +19,9 @@ import {
     Users,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { useSupplierApplications, approveSupplierApplication, rejectSupplierApplication, type SupplierApplicationRecord } from '@/lib/api';
-import { MOCK_APPROVED_SUPPLIERS } from '@/constants/suppliers';
+import { useSupplierApplications, approveSupplierApplication, rejectSupplierApplication, useApprovedSuppliers } from '@/lib/api';
 import VendorReportingPanel from '@/components/VendorReportingPanel';
 import type {
-    ApprovedSupplier,
     SupplierRegistrationStatus,
 } from '@/types/index';
 
@@ -50,24 +48,6 @@ function formatDate(value: string) {
     }).format(new Date(value));
 }
 
-function toApprovedSupplier(application: SupplierApplicationRecord): ApprovedSupplier {
-    const refrigerants = application.refrigerantsSupplied.length > 0
-        ? application.refrigerantsSupplied
-        : ['R-290'];
-
-    return {
-        id: application.id,
-        name: application.tradingName || application.companyName,
-        refrigerants,
-        totalSalesKg: 0,
-        importQuotaKg: 0,
-        usagePercent: 0,
-        quotaStatus: 'within-quota',
-        nouApproved: true,
-        region: application.province,
-    };
-}
-
 function Badge({
     children,
     className,
@@ -85,6 +65,7 @@ function Badge({
 export default function SupplierManagement() {
     const { user: session, isLoading } = useAuth();
     const { data: applications = [], isLoading: applicationsLoading, error: applicationsError } = useSupplierApplications();
+    const { data: approvedSuppliersData } = useApprovedSuppliers();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [provinceFilter, setProvinceFilter] = useState('all');
@@ -130,18 +111,7 @@ export default function SupplierManagement() {
         [selectedId, visibleApplications]
     );
 
-    const approvedApplications = applications.filter(application => application.status === 'approved');
-    const approvedSupplierList = useMemo(() => {
-        const merged = [...MOCK_APPROVED_SUPPLIERS, ...approvedApplications.map(toApprovedSupplier)];
-        const seen = new Set<string>();
-
-        return merged.filter((supplier) => {
-            const key = supplier.name.toLowerCase();
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-        });
-    }, [approvedApplications]);
+    const approvedSupplierList = approvedSuppliersData ?? [];
 
     const stats = [
         {
@@ -167,7 +137,7 @@ export default function SupplierManagement() {
         },
         {
             label: 'NOU flags',
-            value: MOCK_APPROVED_SUPPLIERS.filter(supplier => supplier.usagePercent >= 95).length,
+            value: approvedSupplierList.filter(supplier => supplier.usagePercent >= 95).length,
             icon: ShieldAlert,
             tone: 'rose',
             detail: 'Suppliers approaching quota limits',

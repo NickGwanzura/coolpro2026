@@ -1,3 +1,5 @@
+import { getSessionSecret } from './session-secret';
+
 export interface SessionPayload {
   id: string;
   role: string;
@@ -6,8 +8,6 @@ export interface SessionPayload {
   region: string;
   exp: number;
 }
-
-const SECRET = process.env.SESSION_SECRET ?? 'dev-secret-change-me-in-prod';
 
 function base64urlDecode(str: string): Uint8Array {
   const padded = str.replace(/-/g, '+').replace(/_/g, '/').padEnd(str.length + (4 - (str.length % 4)) % 4, '=');
@@ -28,7 +28,7 @@ async function importKey(): Promise<CryptoKey> {
   const enc = new TextEncoder();
   return crypto.subtle.importKey(
     'raw',
-    enc.encode(SECRET),
+    enc.encode(getSessionSecret()),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign', 'verify'],

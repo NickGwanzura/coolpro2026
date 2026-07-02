@@ -1,4 +1,4 @@
-import { uuid, text, numeric, timestamp, pgTable, jsonb, boolean } from 'drizzle-orm/pg-core';
+import { uuid, text, numeric, timestamp, pgTable, jsonb, boolean, integer } from 'drizzle-orm/pg-core';
 
 export const gasUsageLogs = pgTable('gas_usage_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -8,6 +8,7 @@ export const gasUsageLogs = pgTable('gas_usage_logs', {
   location: text('location').notNull().default(''),
   plannerJobId: uuid('planner_job_id'),
   jobType: text('job_type').notNull(),
+  refrigerantId: integer('refrigerant_id'),
   refrigerantType: text('refrigerant_type').notNull(),
   refrigerantClass: text('refrigerant_class'),
   amount: numeric('amount', { precision: 10, scale: 3 }).notNull(),

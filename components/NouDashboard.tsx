@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { jsPDF } from 'jspdf';
 import {
   Activity,
   AlertTriangle,
@@ -365,7 +366,6 @@ export default function NouDashboard() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => {
-                const { jsPDF } = require('jspdf');
                 const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
                 // Header bar
@@ -373,18 +373,18 @@ export default function NouDashboard() {
                 doc.rect(0, 0, 297, 30, 'F');
                 doc.setFontSize(16);
                 doc.setTextColor(255, 255, 255);
-                doc.setFont(undefined, 'bold');
+                doc.setFont('', 'bold');
                 doc.text('UNEP COMPLIANCE REPORT NATIONAL REFRIGERATION PROGRAMME', 148.5, 18, { align: 'center' });
 
                 doc.setFontSize(9);
-                doc.setFont(undefined, 'normal');
+                doc.setFont('', 'normal');
                 doc.setTextColor(156, 163, 175);
                 doc.text(`Republic of Zimbabwe  |  Generated: ${new Date().toLocaleDateString('en-ZW', { day: 'numeric', month: 'long', year: 'numeric' })}`, 148.5, 25, { align: 'center' });
 
                 // KPI Section
                 doc.setFontSize(12);
                 doc.setTextColor(15, 23, 42);
-                doc.setFont(undefined, 'bold');
+                doc.setFont('', 'bold');
                 doc.text('Programme Summary', 20, 45);
 
                 doc.setLineWidth(0.3);
@@ -406,18 +406,18 @@ export default function NouDashboard() {
                   doc.setFillColor(248, 250, 252);
                   doc.rect(x, y - 8, 83, 18, 'F');
                   doc.setFontSize(7);
-                  doc.setFont(undefined, 'normal');
+                  doc.setFont('', 'normal');
                   doc.setTextColor(107, 114, 128);
                   doc.text(label.toUpperCase(), x + 4, y - 1);
                   doc.setFontSize(13);
-                  doc.setFont(undefined, 'bold');
+                  doc.setFont('', 'bold');
                   doc.setTextColor(15, 23, 42);
                   doc.text(val, x + 4, y + 7);
                 });
 
                 // Compliance note
                 doc.setFontSize(8);
-                doc.setFont(undefined, 'normal');
+                doc.setFont('', 'normal');
                 doc.setTextColor(107, 114, 128);
                 doc.text('This report was generated in accordance with Montreal Protocol Article 7 reporting obligations.', 20, 115);
                 doc.text('Data reflects current registry and field submissions. Figures are subject to final verification.', 20, 120);

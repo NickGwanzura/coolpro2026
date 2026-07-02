@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import {
     CalendarDays, ChevronRight, Clock3, ClipboardList, MapPin,
     Plus, Search, ShieldAlert, ShieldCheck, Sparkles, User, X,
@@ -9,16 +9,16 @@ import {
     JobType, JobTypeLabels, JobTypeDescriptions,
     type PlannerJob, type PlannerJobStatus,
     type PlannerSafetyChecklistItem, type RefrigerantSafetyClass,
+    type Refrigerant,
 } from '@/types/index';
-import { MOCK_PLANNER_CLIENTS, MOCK_PLANNER_JOBS, MOCK_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
-import { MOCK_REFRIGERANT_LIST } from '@/constants/refrigerants';
-import { useTechnicians } from '@/lib/api';
-import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
+import { MOCK_PLANNER_CLIENTS, MOCK_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
+import { useTechnicians, usePlannerJobs, createPlannerJob } from '@/lib/api';
+import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 
 interface PlannerFormState {
     clientId: string; clientName: string; location: string;
     jobType: JobType; refrigerantClass: RefrigerantSafetyClass;
-    refrigerantType: string; amount: number;
+    refrigerant: Refrigerant | null; amount: number;
     scheduledDate: string; technicianId: string; technicianName: string;
     preJobChecklistComplete: boolean; notes: string;
 }
@@ -52,64 +52,28 @@ const REF_STYLES: Partial<Record<RefrigerantSafetyClass, string>> = {
 };
 function refStyle(c: RefrigerantSafetyClass) { return REF_STYLES[c] ?? 'bg-gray-100 text-gray-600'; }
 
-type LegacyPlannerJob = Partial<PlannerJob> & { date?: string; technician?: string; checklistComplete?: boolean };
-
-function normalize(job: LegacyPlannerJob): PlannerJob {
-    const scheduledDate = job.scheduledDate ?? job.date ?? '2026-04-01';
-    const technicianName = job.technicianName ?? job.technician ?? 'Demo Technician';
-    const checklistItems = job.checklistItems ?? MOCK_PLANNER_SAFETY_CHECKLIST.map(i => ({
-        ...i, completed: Boolean(job.preJobChecklistComplete ?? job.checklistComplete),
-    }));
-    return {
-        id: job.id ?? `job-${Math.random().toString(36).slice(2, 9)}`,
-        clientId: job.clientId ?? MOCK_PLANNER_CLIENTS[0].id,
-        clientName: job.clientName ?? MOCK_PLANNER_CLIENTS[0].name,
-        location: job.location ?? MOCK_PLANNER_CLIENTS[0].location,
-        province: job.province ?? MOCK_PLANNER_CLIENTS[0].province,
-        district: job.district,
-        technicianId: job.technicianId ?? 'tech-001',
-        technicianName,
-        jobType: job.jobType ?? 'COLD_ROOM',
-        refrigerantClass: job.refrigerantClass ?? 'A1',
-        refrigerantType: job.refrigerantType ?? '',
-        amount: job.amount ?? 0,
-        scheduledDate,
-        status: job.status ?? 'scheduled',
-        preJobChecklistComplete: job.preJobChecklistComplete ?? job.checklistComplete ?? false,
-        checklistItems,
-        notes: job.notes ?? '',
-        createdAt: job.createdAt ?? new Date().toISOString(),
-        updatedAt: job.updatedAt ?? new Date().toISOString(),
-    };
-}
-
 export default function JobPlanner() {
     const { data: techniciansData } = useTechnicians();
     const technicians = techniciansData ?? [];
-    const [jobs, setJobs] = useState<PlannerJob[]>(MOCK_PLANNER_JOBS);
+    const { data: jobsData, isLoading: jobsLoading } = usePlannerJobs();
+    const jobs = jobsData ?? [];
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClient, setSelectedClient] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
     const [startDate, setStartDate] = useState('2026-03-29');
     const [endDate, setEndDate] = useState('2026-04-30');
     const [showModal, setShowModal] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [notice, setNotice] = useState('');
     const [formData, setFormData] = useState<PlannerFormState>({
         clientId: MOCK_PLANNER_CLIENTS[0].id,
         clientName: MOCK_PLANNER_CLIENTS[0].name,
         location: MOCK_PLANNER_CLIENTS[0].location,
         jobType: 'COLD_ROOM', refrigerantClass: 'A1',
-        refrigerantType: '', amount: 0,
+        refrigerant: null, amount: 0,
         scheduledDate: '2026-04-04', technicianId: 'tech-001',
         technicianName: 'Demo Technician', preJobChecklistComplete: false, notes: '',
     });
-
-    useEffect(() => {
-        const parsed = readCollection<LegacyPlannerJob>(STORAGE_KEYS.plannerJobs, MOCK_PLANNER_JOBS as LegacyPlannerJob[]);
-        setJobs(parsed.map(normalize));
-    }, []);
-
-    useEffect(() => { writeCollection(STORAGE_KEYS.plannerJobs, jobs); }, [jobs]);
 
     const safetyRequired = formData.refrigerantClass === 'A2L' || formData.refrigerantClass === 'A3';
 
@@ -143,31 +107,36 @@ export default function JobPlanner() {
         });
     };
 
-    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (safetyRequired && !formData.preJobChecklistComplete) {
             setNotice('A2L and A3 jobs require the pre-job safety checklist before scheduling.');
             return;
         }
         const client = MOCK_PLANNER_CLIENTS.find(c => c.id === formData.clientId) ?? MOCK_PLANNER_CLIENTS[0];
-        const newJob: PlannerJob = {
-            id: `job-plan-${Date.now()}`,
-            clientId: formData.clientId, clientName: formData.clientName,
-            location: formData.location, province: client.province,
-            jobType: formData.jobType, refrigerantClass: formData.refrigerantClass,
-            refrigerantType: formData.refrigerantType || undefined,
-            amount: formData.amount > 0 ? formData.amount : undefined,
-            status: 'scheduled', scheduledDate: formData.scheduledDate,
-            technicianId: formData.technicianId, technicianName: formData.technicianName,
-            preJobChecklistComplete: formData.preJobChecklistComplete,
-            checklistItems: MOCK_PLANNER_SAFETY_CHECKLIST.map((i): PlannerSafetyChecklistItem => ({ ...i, completed: formData.preJobChecklistComplete })),
-            notes: formData.notes, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        };
-        setJobs(prev => [newJob, ...prev]);
-        setShowModal(false);
-        setNotice(`Job created for ${newJob.clientName} on ${formatDateShort(newJob.scheduledDate)}.`);
-        setFormData(prev => ({ ...prev, jobType: 'COLD_ROOM', refrigerantClass: 'A1', scheduledDate: addDays(prev.scheduledDate, 1), preJobChecklistComplete: false, notes: '' }));
-        setTimeout(() => setNotice(''), 4000);
+        setSubmitting(true);
+        try {
+            const created = await createPlannerJob({
+                clientId: formData.clientId, clientName: formData.clientName,
+                location: formData.location, province: client.province,
+                jobType: formData.jobType, refrigerantClass: formData.refrigerantClass,
+                refrigerantId: formData.refrigerant?.id,
+                refrigerantType: formData.refrigerant ? refrigerantLabel(formData.refrigerant) : undefined,
+                amount: formData.amount > 0 ? formData.amount : undefined,
+                status: 'scheduled', scheduledDate: formData.scheduledDate,
+                preJobChecklistComplete: formData.preJobChecklistComplete,
+                checklistItems: MOCK_PLANNER_SAFETY_CHECKLIST.map((i): PlannerSafetyChecklistItem => ({ ...i, completed: formData.preJobChecklistComplete })),
+                notes: formData.notes,
+            });
+            setShowModal(false);
+            setNotice(`Job created for ${created.clientName} on ${formatDateShort(created.scheduledDate)}.`);
+            setFormData(prev => ({ ...prev, jobType: 'COLD_ROOM', refrigerantClass: 'A1', refrigerant: null, scheduledDate: addDays(prev.scheduledDate, 1), preJobChecklistComplete: false, notes: '' }));
+            setTimeout(() => setNotice(''), 4000);
+        } catch (err) {
+            setNotice(err instanceof Error ? err.message : 'Failed to create job.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -242,7 +211,12 @@ export default function JobPlanner() {
 
             {/* Timeline */}
             <div className="space-y-6">
-                {sortedDates.length === 0 && (
+                {jobsLoading && (
+                    <div className="border border-gray-200 bg-white p-10 text-center">
+                        <p className="text-sm font-semibold text-gray-400">Loading jobs…</p>
+                    </div>
+                )}
+                {!jobsLoading && sortedDates.length === 0 && (
                     <div className="border border-dashed border-gray-200 bg-white p-10 text-center">
                         <CalendarDays className="mx-auto mb-3 h-8 w-8 text-gray-200" />
                         <p className="text-sm font-semibold text-gray-400">No jobs match the current filters</p>
@@ -362,15 +336,12 @@ export default function JobPlanner() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Refrigerant Type (Gas)</label>
-                                    <select value={formData.refrigerantType}
-                                        onChange={e => setFormData(p => ({ ...p, refrigerantType: e.target.value }))}
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
-                                        <option value="">— Select gas —</option>
-                                        {MOCK_REFRIGERANT_LIST.map(r => (
-                                            <option key={r.code} value={r.code}>{r.code} — {r.name}</option>
-                                        ))}
-                                    </select>
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Refrigerant (Gas)</label>
+                                    <RefrigerantAutocomplete
+                                        value={formData.refrigerant}
+                                        onSelect={(r) => setFormData(p => ({ ...p, refrigerant: r }))}
+                                        placeholder="Search gas — e.g. R290, R-32…"
+                                    />
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">Estimated Amount (kg)</label>
@@ -431,9 +402,9 @@ export default function JobPlanner() {
                                     className="border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                                     Cancel
                                 </button>
-                                <button type="submit" disabled={safetyRequired && !formData.preJobChecklistComplete}
+                                <button type="submit" disabled={submitting || (safetyRequired && !formData.preJobChecklistComplete)}
                                     className="inline-flex items-center justify-center gap-2 bg-[#D97706] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#b45309] disabled:cursor-not-allowed disabled:opacity-50 transition-colors">
-                                    <Sparkles className="h-4 w-4" /> Save Job
+                                    <Sparkles className="h-4 w-4" /> {submitting ? 'Saving…' : 'Save Job'}
                                 </button>
                             </div>
                         </form>

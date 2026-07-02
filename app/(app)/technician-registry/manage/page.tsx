@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Search, Filter, Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, ChevronRight, UserPlus, Download, Eye, X } from 'lucide-react';
 import { Technician } from '@/types/index';
 import { ZIMBABWE_PROVINCES, TECHNICIAN_SPECIALIZATIONS } from '@/constants/registry';
-import { getSession, UserSession } from '@/lib/auth';
+import { useClientSession } from '@/lib/useClientSession';
 import { useTechnicians, updateTechnician, deleteTechnician } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -19,7 +19,7 @@ const PENDING_CERT_MOCK = [
 export default function ManageTechniciansPage() {
   const router = useRouter();
   const { success, info } = useToast();
-  const [session, setSession] = useState<UserSession | null>(null);
+  const session = useClientSession();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
@@ -31,10 +31,6 @@ export default function ManageTechniciansPage() {
   const [mutationError, setMutationError] = useState<string | null>(null);
 
   const { data: techniciansData, error: techniciansError, isLoading: techniciansLoading } = useTechnicians();
-
-  useEffect(() => {
-    setSession(getSession());
-  }, []);
 
   const filteredTechnicians = useMemo(() => {
     const data = techniciansData ?? [];

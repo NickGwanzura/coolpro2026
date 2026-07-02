@@ -1,0 +1,1 @@
+ALTER TABLE "trade_permits" ADD COLUMN "verification_token" text;

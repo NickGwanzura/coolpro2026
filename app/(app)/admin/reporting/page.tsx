@@ -192,6 +192,7 @@ export default function ReportingPage() {
     const { data: reorders } = useReorders();
 
     const [dateFilter, setDateFilter] = useState('all');
+    const [nowRef] = useState(() => Date.now());
 
     const reports = useMemo(() => {
         const totalStudents = students?.length ?? 0;
@@ -244,18 +245,17 @@ export default function ReportingPage() {
 
         // Apply date filter
         if (dateFilter !== 'all') {
-            const now = Date.now();
             const rangeMs = dateFilter === 'today'
                 ? 24 * 60 * 60 * 1000
                 : dateFilter === 'week'
                     ? 7 * 24 * 60 * 60 * 1000
                     : 30 * 24 * 60 * 60 * 1000;
-            const cutoff = now - rangeMs;
+            const cutoff = nowRef - rangeMs;
             return all.filter(e => new Date(e.timestamp).getTime() >= cutoff);
         }
 
         return all.slice(0, 200); // Limit display
-    }, [students, technicianApps, courses, suppliers, reorders, dateFilter]);
+    }, [students, technicianApps, courses, suppliers, reorders, dateFilter, nowRef]);
 
     const exportCSV = () => {
         const rows = [

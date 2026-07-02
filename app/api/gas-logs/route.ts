@@ -14,6 +14,7 @@ function toRefrigerantLog(row: typeof gasUsageLogs.$inferSelect): RefrigerantLog
     location: row.location,
     plannerJobId: row.plannerJobId ?? undefined,
     jobType: row.jobType as RefrigerantLog['jobType'],
+    refrigerantId: row.refrigerantId ?? undefined,
     refrigerantType: row.refrigerantType,
     refrigerantClass: (row.refrigerantClass ?? undefined) as RefrigerantLog['refrigerantClass'],
     amount: Number(row.amount),
@@ -51,16 +52,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
+  // Technicians can only ever log gas usage under their own identity — the client-supplied
+  // technicianId/technicianName is ignored for that role to prevent misattribution. Reviewer
+  // roles (trainer/lecturer/org_admin) are trusted to log on a technician's behalf.
   const inserted = await db
     .insert(gasUsageLogs)
     .values(
       logs.map((log) => ({
-        technicianId: log.technicianId,
-        technicianName: log.technicianName,
+        technicianId: session.role === 'technician' ? session.id : log.technicianId,
+        technicianName: session.role === 'technician' ? session.name : log.technicianName,
         clientName: log.clientName,
         location: log.location ?? '',
         plannerJobId: log.plannerJobId ?? null,
         jobType: log.jobType,
+        refrigerantId: log.refrigerantId ?? null,
         refrigerantType: log.refrigerantType,
         refrigerantClass: log.refrigerantClass ?? null,
         amount: log.amount.toString(),

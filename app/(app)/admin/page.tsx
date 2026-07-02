@@ -1,15 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getSession, UserSession } from '@/lib/auth';
+import { useClientSession } from '@/lib/useClientSession';
 import ComplianceDashboard from '@/components/ComplianceDashboard';
 
 export default function AdminPage() {
-    const [session, setSession] = useState<UserSession | null>(null);
-
-    useEffect(() => {
-        setSession(getSession());
-    }, []);
+    const session = useClientSession();
 
     if (!session) return null;
 
@@ -21,7 +16,7 @@ export default function AdminPage() {
                     <p className="text-gray-500 mt-1">Program administration and compliance monitoring</p>
                 </div>
             </div>
-            <ComplianceDashboard role={session.role as any} />
+            <ComplianceDashboard role={session.role} />
         </div>
     );
 }

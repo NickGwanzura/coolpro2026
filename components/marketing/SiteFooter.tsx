@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, Facebook, Linkedin, Mail, ArrowRight, CheckCircle } from 'lucide-react';
+import { Facebook, Linkedin, Mail, ArrowRight, CheckCircle } from 'lucide-react';
 
 export function SiteFooter() {
   const [email, setEmail] = useState('');
@@ -32,9 +32,18 @@ export function SiteFooter() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12">
           {/* Brand */}
           <div className="sm:col-span-2 lg:col-span-1">
-            <Link href="/" className="inline-flex items-center group">
-              <ShieldCheck className="h-8 w-8 text-white transition-transform duration-300 group-hover:-rotate-6" />
-              <span className="ml-3 text-xl font-bold tracking-tight">HEVACRAZ</span>
+            <Link href="/" className="inline-flex items-center gap-2.5 group">
+              <img
+                src="/logos/ministry-of-environment.jpeg"
+                alt="Ministry of Environment, Climate and Wildlife"
+                className="h-9 w-9 rounded-full object-cover"
+              />
+              <span className="h-7 w-px bg-white/20" />
+              <img
+                src="/logos/hevacraz-logo.jpeg"
+                alt="HEVACRAZ"
+                className="h-9 w-9 rounded-full object-cover transition-transform duration-300 group-hover:-rotate-6"
+              />
             </Link>
             <p className="mt-4 text-gray-400 text-sm leading-relaxed max-w-sm">
               Advance the HVAC-R profession in Zimbabwe through education, certification, and advocacy.
@@ -155,6 +164,20 @@ export function SiteFooter() {
             <a href="#" className="hover:text-white transition-colors">Terms</a>
             <a href="#" className="hover:text-white transition-colors">Cookies</a>
           </div>
+        </div>
+
+        <div className="mt-4 text-center sm:text-right text-xs text-gray-500">
+          <p>
+            Developed and maintained by{' '}
+            <a
+              href="https://spiritusglobal.tech"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              Spiritus
+            </a>
+          </p>
         </div>
       </div>
     </footer>

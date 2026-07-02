@@ -1,16 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getSession, UserSession, logout } from '@/lib/auth';
+import { useState } from 'react';
+import { logout } from '@/lib/auth';
+import { useClientSession } from '@/lib/useClientSession';
 import { Menu, Bell, LogOut, User, ChevronDown } from 'lucide-react';
 
 export function Topbar({ onMenuClick, title }: { onMenuClick: () => void; title?: string }) {
-    const [session, setSession] = useState<UserSession | null>(null);
+    const session = useClientSession();
     const [showUserMenu, setShowUserMenu] = useState(false);
-
-    useEffect(() => {
-        setSession(getSession());
-    }, []);
 
     return (
         <header className="sticky top-0 z-30 h-14 bg-white border-b border-[#E7E5E4] flex items-center justify-between px-6">

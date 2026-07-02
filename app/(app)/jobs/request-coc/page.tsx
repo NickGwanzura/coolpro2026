@@ -11,17 +11,19 @@ import {
     ClipboardList,
     ShieldCheck
 } from 'lucide-react';
-import { STORAGE_KEYS, readCollection } from '@/lib/platformStore';
-import { JobTypeLabels, type PlannerJob } from '@/types/index';
+import { usePlannerJobs } from '@/lib/api';
+import { JobTypeLabels } from '@/types/index';
 
 function RequestCoCForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const jobId = searchParams.get('jobId');
 
-    const [job, setJob] = useState<PlannerJob | null>(null);
+    const { data: plannerJobs } = usePlannerJobs();
+    const job = plannerJobs?.find(j => j.id === jobId) ?? null;
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [digitalId] = useState(() => Math.random().toString(36).substr(2, 9).toUpperCase());
     const [formData, setFormData] = useState({
         equipmentType: '',
         serialNumber: '',
@@ -31,20 +33,15 @@ function RequestCoCForm() {
     });
 
     useEffect(() => {
-        if (jobId) {
-            const jobs = readCollection<PlannerJob>(STORAGE_KEYS.plannerJobs, []);
-            const foundJob = jobs.find(j => j.id === jobId);
-            if (foundJob) {
-                setJob(foundJob);
-                setFormData(prev => ({
-                    ...prev,
-                    equipmentType: JobTypeLabels[foundJob.jobType] ?? foundJob.jobType,
-                    serialNumber: '',
-                    installationDate: foundJob.scheduledDate
-                }));
-            }
+        if (job) {
+            setFormData(prev => ({
+                ...prev,
+                equipmentType: JobTypeLabels[job.jobType] ?? job.jobType,
+                serialNumber: '',
+                installationDate: job.scheduledDate
+            }));
         }
-    }, [jobId]);
+    }, [job]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -204,7 +201,7 @@ function RequestCoCForm() {
                     </button>
 
                     <p className="text-[10px] text-gray-400 text-center uppercase tracking-widest font-bold">
-                        Digital ID: TECH-{Math.random().toString(36).substr(2, 9).toUpperCase()}
+                        Digital ID: TECH-{digitalId}
                     </p>
                 </div>
             </form>

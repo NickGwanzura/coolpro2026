@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { supplierApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { provisionUserFromApplication } from '@/lib/server/provision-user';
 import type { SupplierRegistration } from '@/types/index';
 
 function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): SupplierRegistration & {
@@ -52,6 +53,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .set({ status: 'approved', reviewedBy: session.name, reviewedAt: new Date() })
     .where(eq(supplierApplications.id, id))
     .returning();
+
+  await provisionUserFromApplication({
+    name: row.contactName,
+    email: row.email,
+    passwordHash: row.passwordHash,
+    role: 'vendor',
+    region: row.province || row.city,
+  });
 
   return NextResponse.json(toSupplierRegistration(updated));
 }

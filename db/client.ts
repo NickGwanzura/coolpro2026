@@ -21,7 +21,7 @@ function getDb(): DrizzleDB {
       .then((res) => {
         if (res[0]?.count === 0) {
           console.warn(
-            '\n⚠️  [db/client] The users table is empty. Demo logins will fall back to MOCK_USERS, but seeded data is missing.\n   Run: npm run db:seed\n'
+            '\n⚠️  [db/client] The users table is empty — no accounts exist to log in with.\n   Run: npm run db:seed\n'
           );
         }
       })

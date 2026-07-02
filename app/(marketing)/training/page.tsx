@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   MapPin,
@@ -13,8 +13,7 @@ import {
   Filter,
   X,
 } from 'lucide-react';
-import { MOCK_TRAINING_SESSIONS } from '@/constants/training';
-import { STORAGE_KEYS } from '@/lib/platformStore';
+import { useTrainingSessions } from '@/lib/api';
 import type { TrainingSession } from '@/types/index';
 
 const MONTH_LABELS = [
@@ -104,20 +103,8 @@ export default function TrainingPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
 
-  const storedSessions = useSyncExternalStore(
-    () => () => undefined,
-    () => {
-      if (typeof window === 'undefined') return MOCK_TRAINING_SESSIONS;
-      const raw = window.localStorage.getItem(STORAGE_KEYS.trainingSessions);
-      if (!raw) return MOCK_TRAINING_SESSIONS;
-      try {
-        return JSON.parse(raw) as TrainingSession[];
-      } catch {
-        return MOCK_TRAINING_SESSIONS;
-      }
-    },
-    () => MOCK_TRAINING_SESSIONS
-  );
+  const { data: storedSessionsData } = useTrainingSessions();
+  const storedSessions = storedSessionsData ?? [];
 
   const upcomingSessions = useMemo(
     () =>

@@ -2,7 +2,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { SizingInputs, JobType, JobTypeLabels, JobTypeDefaults, JobTypeImages, JobTypeDescriptions, ProcessingMode, ProcessingModeLabels, ProcessingModeDescriptions } from '../types';
 import { INSULATION_U_VALUES, Icons, REFRIGERANTS } from '../constants';
-import { getTechnicalAdvice } from '../services/groq';
 import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download, Snowflake, ExternalLink, Gauge, ArrowUpDown, Droplets } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { MOCK_REFRIGERANTS } from '@/constants/refrigerants';
@@ -524,9 +523,20 @@ const SizingTool: React.FC = () => {
     2. Specific low-GWP natural refrigerant alternatives suitable for this load.
     3. Any additional field recommendations for this specific setup.`;
     
-    const advice = await getTechnicalAdvice(prompt);
-    setAiAdvice(advice || '');
-    setIsLoadingAi(false);
+    try {
+      const res = await fetch('/api/sizing-advice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      setAiAdvice(res.ok ? (data.advice ?? '') : (data.error ?? 'Technical assistant unavailable.'));
+    } catch {
+      setAiAdvice('Technical assistant unavailable. Please check your network connection.');
+    } finally {
+      setIsLoadingAi(false);
+    }
   };
 
   const steps = [
@@ -1128,7 +1138,7 @@ const SizingTool: React.FC = () => {
                     {['Polyurethane', 'Polystyrene'].map(type => (
                       <button 
                         key={type}
-                        onClick={() => setInputs({...inputs, insulationType: type as any})}
+                        onClick={() => setInputs({...inputs, insulationType: type as SizingInputs['insulationType']})}
                         className={`p-3 border-2 text-sm font-semibold transition-all ${
                           inputs.insulationType === type 
                             ? 'border-blue-600 bg-blue-50 text-blue-700' 

@@ -1,11 +1,11 @@
 "use client";
 
 import React, { Suspense, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../lib/auth';
-import { SupplierRegistration, UserRole } from '../../../types';
-import { createSupplierApplication } from '@/lib/api';
-import { Thermometer, Lock, Mail, ArrowRight, MapPin, ShieldCheck, Building2, PackageSearch, User, GraduationCap } from 'lucide-react';
+import { UserRole } from '../../../types';
+import { Thermometer, Lock, Mail, ArrowRight, MapPin, Building2, PackageSearch, User, GraduationCap } from 'lucide-react';
 
 const DEMO_ROLES: Array<{
   role: UserRole;
@@ -20,42 +20,9 @@ const DEMO_ROLES: Array<{
   { role: 'vendor',     label: 'Vendor',      description: 'Supplier-facing demo workspace.', icon: PackageSearch },
 ];
 
-type SupplierFormState = {
-  companyName: string; contactPerson: string; email: string; phone: string;
-  province: string; refrigerants: string; businessRegNumber: string; category: string;
-};
-
-function getSupplierType(category: string): SupplierRegistration['supplierType'] {
-  switch (category) {
-    case 'Importer': return 'importer';
-    case 'Service Partner': return 'service-partner';
-    case 'Equipment Supplier': return 'wholesaler';
-    default: return 'distributor';
-  }
-}
-
-function buildSupplierRegistration(f: SupplierFormState): SupplierRegistration {
-  const ts = Date.now();
-  return {
-    id: `SUP-APP-${ts}`,
-    companyName: f.companyName,
-    registrationNumber: f.businessRegNumber || `SUP-${ts}`,
-    supplierType: getSupplierType(f.category),
-    contactName: f.contactPerson,
-    email: f.email,
-    phone: f.phone,
-    province: f.province,
-    city: f.province,
-    address: f.province,
-    refrigerantsSupplied: f.refrigerants.split(',').map(s => s.trim()).filter(Boolean),
-    status: 'submitted',
-    submittedAt: new Date().toISOString(),
-    notes: `Submitted from login supplier onboarding flow (${f.category}).`,
-  };
-}
-
 const inputCls = 'block w-full px-3 py-2.5 bg-white border border-[#E7E5E4] text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#D97706] focus:ring-1 focus:ring-[#D97706] transition-colors text-sm';
 const REGIONS = ["Harare", "Bulawayo", "Mutare", "Gweru", "Masvingo", "Other"];
+const DEMO_LOGIN_ENABLED = process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === 'true';
 
 function LoginPageContent() {
   const router = useRouter();
@@ -65,14 +32,8 @@ function LoginPageContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [supplierSubmitted, setSupplierSubmitted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [selectedRegion, setSelectedRegion] = useState('Harare');
-  const [supplierForm, setSupplierForm] = useState<SupplierFormState>({
-    companyName: '', contactPerson: '', email: '', phone: '',
-    province: 'Harare', refrigerants: 'R-290, R-32, R-744',
-    businessRegNumber: '', category: 'Distributor',
-  });
 
   const isSupplierFlow = searchParams.get('flow') === 'supplier';
   const activeMode = manualMode ?? (isSupplierFlow ? 'supplier' : 'signin');
@@ -116,30 +77,6 @@ function LoginPageContent() {
     }
   };
 
-  const handleSupplierSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!supplierForm.companyName || !supplierForm.contactPerson || !supplierForm.email || !supplierForm.phone) return;
-    setIsLoading(true);
-    const reg = buildSupplierRegistration(supplierForm);
-    await createSupplierApplication({
-      companyName: reg.companyName,
-      tradingName: reg.tradingName,
-      registrationNumber: reg.registrationNumber,
-      supplierType: reg.supplierType,
-      contactName: reg.contactName,
-      email: reg.email,
-      phone: reg.phone,
-      province: reg.province,
-      city: reg.city,
-      address: reg.address,
-      refrigerantsSupplied: reg.refrigerantsSupplied,
-      notes: reg.notes,
-    }).catch(() => undefined);
-    if (demo) { await demo('vendor', supplierForm.province); }
-    setSupplierSubmitted(true);
-    redirectAfterLogin();
-  };
-
   const tabs: { id: typeof activeMode; label: string }[] = [
     { id: 'signin',   label: 'Sign In' },
     { id: 'supplier', label: 'Supplier' },
@@ -181,61 +118,71 @@ function LoginPageContent() {
           <div className="p-6 space-y-5">
             {activeMode === 'signin' && (
               <div className="space-y-5">
-                {/* Demo personas first — instant access, no password */}
-                <div>
-                  <div className="mb-3 border border-[#FED7AA] bg-[#FFF7ED] px-3 py-2.5 text-sm text-[#9A3412]">
-                    <strong className="font-semibold text-[#7C2D12]">Demo access</strong> — pick a persona below to log in instantly. No password required.
-                  </div>
+                {DEMO_LOGIN_ENABLED && (
+                  <>
+                    {/* Demo personas — instant access, no password. Never shown in production. */}
+                    <div>
+                      <div className="mb-3 border border-[#FED7AA] bg-[#FFF7ED] px-3 py-2.5 text-sm text-[#9A3412]">
+                        <strong className="font-semibold text-[#7C2D12]">Demo access</strong> — pick a persona below to log in instantly. No password required.
+                      </div>
 
-                  {fieldErrors.form && (
-                    <div className="mb-3 border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
-                      {fieldErrors.form}
-                    </div>
-                  )}
+                      {fieldErrors.form && (
+                        <div className="mb-3 border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                          {fieldErrors.form}
+                        </div>
+                      )}
 
-                  <div className="mb-3 space-y-1.5">
-                    <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#78716C]">
-                      Operating Region
-                    </label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A8A29E]" />
-                      <select
-                        value={selectedRegion}
-                        onChange={(e) => setSelectedRegion(e.target.value)}
-                        className={`${inputCls} pl-9`}
-                      >
-                        {REGIONS.map((r) => (
-                          <option key={r} value={r}>{r}</option>
+                      <div className="mb-3 space-y-1.5">
+                        <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#78716C]">
+                          Operating Region
+                        </label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A8A29E]" />
+                          <select
+                            value={selectedRegion}
+                            onChange={(e) => setSelectedRegion(e.target.value)}
+                            className={`${inputCls} pl-9`}
+                          >
+                            {REGIONS.map((r) => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {DEMO_ROLES.map(({ role, label, icon: Icon }) => (
+                          <button
+                            key={role}
+                            type="button"
+                            onClick={() => handleDemoAccess(role)}
+                            disabled={isLoading}
+                            className="group inline-flex items-center gap-2 border border-[#E7E5E4] bg-white px-3 py-2.5 text-left text-sm hover:border-[#D97706] hover:bg-[#FFF7ED] disabled:opacity-50 transition-colors"
+                          >
+                            <span className="flex h-7 w-7 items-center justify-center bg-[#D97706]/10 text-[#D97706] flex-shrink-0">
+                              <Icon className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="font-semibold text-[#1C1917] truncate">{label}</span>
+                          </button>
                         ))}
-                      </select>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {DEMO_ROLES.map(({ role, label, icon: Icon }) => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => handleDemoAccess(role)}
-                        disabled={isLoading}
-                        className="group inline-flex items-center gap-2 border border-[#E7E5E4] bg-white px-3 py-2.5 text-left text-sm hover:border-[#D97706] hover:bg-[#FFF7ED] disabled:opacity-50 transition-colors"
-                      >
-                        <span className="flex h-7 w-7 items-center justify-center bg-[#D97706]/10 text-[#D97706] flex-shrink-0">
-                          <Icon className="h-3.5 w-3.5" />
-                        </span>
-                        <span className="font-semibold text-[#1C1917] truncate">{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                    <div className="relative flex items-center">
+                      <div className="flex-grow border-t border-[#E7E5E4]" />
+                      <span className="flex-shrink mx-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A8A29E]">
+                        Or use your account
+                      </span>
+                      <div className="flex-grow border-t border-[#E7E5E4]" />
+                    </div>
+                  </>
+                )}
 
-                <div className="relative flex items-center">
-                  <div className="flex-grow border-t border-[#E7E5E4]" />
-                  <span className="flex-shrink mx-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A8A29E]">
-                    Or use your account
-                  </span>
-                  <div className="flex-grow border-t border-[#E7E5E4]" />
-                </div>
+                {!DEMO_LOGIN_ENABLED && fieldErrors.form && (
+                  <div className="border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                    {fieldErrors.form}
+                  </div>
+                )}
 
                 <form onSubmit={handleNormalLogin} className="space-y-4">
                 <div className="space-y-1.5">
@@ -279,82 +226,44 @@ function LoginPageContent() {
                   }
                 </button>
                 </form>
+
+                <p className="text-center text-sm text-[#78716C]">
+                  New here?{' '}
+                  <Link href="/join" className="font-semibold text-[#D97706] hover:underline">
+                    Create an account
+                  </Link>
+                </p>
               </div>
             )}
 
             {activeMode === 'supplier' && (
-              <form onSubmit={handleSupplierSubmit} className="space-y-4">
+              <div className="space-y-4">
                 <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-3 flex items-start gap-3 text-sm text-[#44403C]">
                   <Building2 className="h-4 w-4 text-[#D97706] mt-0.5 flex-shrink-0" />
                   <span><strong className="font-semibold text-[#1C1917]">Supplier Onboarding</strong> Register for approved supplier consideration and NOU traceability.</span>
                 </div>
-
-                {supplierSubmitted && (
-                  <div className="border border-green-200 bg-green-50 px-3 py-2.5 text-sm text-green-800">
-                    Registration saved. Continuing to vendor portal.
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#78716C]">Business Name</label>
-                  <input value={supplierForm.companyName} onChange={e => setSupplierForm({ ...supplierForm, companyName: e.target.value })} className={inputCls} placeholder="Zimbabwe Refrigeration Supplies" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#78716C]">Contact Person</label>
-                    <input value={supplierForm.contactPerson} onChange={e => setSupplierForm({ ...supplierForm, contactPerson: e.target.value })} className={inputCls} placeholder="Full name" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#78716C]">Reg. No.</label>
-                    <input value={supplierForm.businessRegNumber} onChange={e => setSupplierForm({ ...supplierForm, businessRegNumber: e.target.value })} className={inputCls} placeholder="CO/24/0001" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#78716C]">Email</label>
-                    <input type="email" value={supplierForm.email} onChange={e => setSupplierForm({ ...supplierForm, email: e.target.value })} className={inputCls} placeholder="supplier@co.zw" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#78716C]">Phone</label>
-                    <input value={supplierForm.phone} onChange={e => setSupplierForm({ ...supplierForm, phone: e.target.value })} className={inputCls} placeholder="+263 77 123 4567" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#78716C]">Province</label>
-                    <select value={supplierForm.province} onChange={e => setSupplierForm({ ...supplierForm, province: e.target.value })} className={inputCls}>
-                      {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-[#78716C]">Category</label>
-                    <select value={supplierForm.category} onChange={e => setSupplierForm({ ...supplierForm, category: e.target.value })} className={inputCls}>
-                      <option>Distributor</option>
-                      <option>Importer</option>
-                      <option>Equipment Supplier</option>
-                      <option>Service Partner</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-[#78716C]">Refrigerants Supplied</label>
-                  <input value={supplierForm.refrigerants} onChange={e => setSupplierForm({ ...supplierForm, refrigerants: e.target.value })} className={inputCls} placeholder="R-290, R-32, R-744" />
-                </div>
-
-                <button
-                  type="submit" disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-[#D97706] text-white text-sm font-semibold py-2.5 px-4 hover:bg-[#b45309] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                <p className="text-sm text-[#78716C] leading-relaxed">
+                  Supplier registration collects company, compliance, and account details on a dedicated
+                  page. HEVACRAZ and the NOU review every application before an account is activated.
+                </p>
+                <Link
+                  href="/supplier-register"
+                  className="w-full inline-flex items-center justify-center gap-2 bg-[#D97706] text-white text-sm font-semibold py-2.5 px-4 hover:bg-[#b45309] transition-colors"
                 >
-                  {isLoading
-                    ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    : <><span>Register Supplier</span><PackageSearch className="h-4 w-4" /></>
-                  }
-                </button>
-              </form>
+                  <span>Continue to Supplier Registration</span>
+                  <PackageSearch className="h-4 w-4" />
+                </Link>
+                <p className="text-center text-sm text-[#78716C]">
+                  Already an approved supplier?{' '}
+                  <button
+                    type="button"
+                    onClick={() => setManualMode('signin')}
+                    className="font-semibold text-[#D97706] hover:underline"
+                  >
+                    Sign in instead
+                  </button>
+                </p>
+              </div>
             )}
           </div>
         </div>

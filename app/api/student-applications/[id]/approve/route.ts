@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { studentApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { provisionUserFromApplication } from '@/lib/server/provision-user';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -25,6 +26,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .set({ status: 'approved', reviewedBy: session.name, reviewedAt: new Date() })
     .where(eq(studentApplications.id, id))
     .returning();
+
+  await provisionUserFromApplication({
+    name: `${row.firstName} ${row.lastName}`.trim(),
+    email: row.email,
+    passwordHash: row.passwordHash,
+    role: 'student',
+    region: row.polytech,
+  });
 
   return NextResponse.json({
     id: updated.id,

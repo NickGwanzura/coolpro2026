@@ -16,7 +16,6 @@ import {
   Search,
   Cpu,
   Award,
-  Building2,
   Briefcase,
   ExternalLink,
 } from 'lucide-react';
@@ -114,9 +113,9 @@ const FEATURES = [
 
 const PARTNERS = [
   { icon: <Landmark className="h-5 w-5" />, name: 'National Ozone Unit Zimbabwe' },
-  { icon: <Users className="h-5 w-5" />, name: 'HEVACRAZ' },
+  { logo: '/logos/hevacraz-logo.jpeg', name: 'HEVACRAZ' },
   { icon: <Globe className="h-5 w-5" />, name: 'UNEP OzonAction' },
-  { icon: <Building2 className="h-5 w-5" />, name: 'Ministry of Environment, Climate and Tourism' },
+  { logo: '/logos/ministry-of-environment.jpeg', name: 'Ministry of Environment, Climate and Tourism' },
   { icon: <Briefcase className="h-5 w-5" />, name: 'Multilateral Fund for the Implementation of the Montreal Protocol' },
 ];
 
@@ -431,7 +430,11 @@ export default function HomePage() {
                   className="inline-flex p-2 transition-colors group-hover:bg-[#D97706]/10"
                   style={{ backgroundColor: '#FAFAF9', color: '#5A7D5A' }}
                 >
-                  <span className="transition-colors group-hover:text-[#D97706]">{p.icon}</span>
+                  {p.logo ? (
+                    <img src={p.logo} alt={p.name} className="h-5 w-5 rounded-full object-cover" />
+                  ) : (
+                    <span className="transition-colors group-hover:text-[#D97706]">{p.icon}</span>
+                  )}
                 </span>
                 <p
                   className="text-[13px] sm:text-sm font-semibold tracking-tight leading-snug"

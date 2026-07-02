@@ -314,7 +314,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                 <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Severity</label>
                                 <select
                                     value={formData.severity}
-                                    onChange={e => setFormData({ ...formData, severity: e.target.value as any })}
+                                    onChange={e => setFormData({ ...formData, severity: e.target.value as OccupationalAccident['severity'] })}
                                     className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none transition-all"
                                 >
                                     <option value="Low">Low</option>
@@ -568,7 +568,7 @@ const InvestigationModal = ({
                                 <button
                                     key={key}
                                     type="button"
-                                    onClick={() => setData({ ...data, rootCause: key as any })}
+                                    onClick={() => setData({ ...data, rootCause: key as keyof typeof RootCauseCategories })}
                                     className={`p-3 border-2 text-left transition-all ${
                                         data.rootCause === key
                                             ? 'border-purple-500 bg-purple-50'
@@ -597,7 +597,7 @@ const InvestigationModal = ({
                             <label className="text-xs font-bold text-gray-600 uppercase">Status</label>
                             <select
                                 value={data.status}
-                                onChange={e => setData({ ...data, status: e.target.value as any })}
+                                onChange={e => setData({ ...data, status: e.target.value as InvestigationData['status'] })}
                                 className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
                             >
                                 <option value="Open">Open</option>

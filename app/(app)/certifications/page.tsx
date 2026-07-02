@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ArrowRight,
   Award,
@@ -16,10 +16,8 @@ import {
 import { CertificateQRCode } from '@/components/CertificateQRCode';
 import { useAuth } from '@/lib/auth';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
-import { MOCK_TRAINER_CERTIFICATE_REQUESTS } from '@/constants/training';
-import { useTechnicians } from '@/lib/api';
-import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
-import type { CertificateRecord, TrainerCertificateRequest } from '@/types/index';
+import { useTechnicians, useCertificateRequests, createCertificateRequest, reviewCertificateRequest } from '@/lib/api';
+import type { TrainerCertificateRequest } from '@/types/index';
 
 const AVAILABLE_EXAMS = [
   {
@@ -57,38 +55,6 @@ type TrainerFormState = {
   notes: string;
 };
 
-function generateCertificateNumber() {
-  return `HEV-${Date.now().toString().slice(-6)}`;
-}
-
-function generateVerificationToken() {
-  return `verify-${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`;
-}
-
-function buildCertificateRecord(request: TrainerCertificateRequest): CertificateRecord | null {
-  if (!request.certificateNumber) {
-    return null;
-  }
-
-  const issueDate = request.issuedAt ?? new Date().toISOString();
-  const expiry = new Date(issueDate);
-  expiry.setFullYear(expiry.getFullYear() + 2);
-
-  return {
-    id: request.id,
-    technicianId: request.technicianId,
-    technicianName: request.technicianName,
-    certificateNumber: request.certificateNumber,
-    certificateType: request.courseTitle,
-    issuingBody: 'HEVACRAZ / CertifyZim Demo',
-    issueDate,
-    expiryDate: expiry.toISOString(),
-    verificationToken: request.verificationToken ?? generateVerificationToken(),
-    verificationUrl: request.verificationUrl ?? '',
-    status: 'valid',
-  };
-}
-
 function SummaryStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="border border-gray-200 bg-white p-5 shadow-sm">
@@ -108,21 +74,8 @@ export default function CertificationsPage() {
   const isTrainer = session?.role === 'trainer' || session?.role === 'lecturer';
   const isAdminOrTrainer = isAdmin || isTrainer;
   const { data: techniciansData } = useTechnicians(undefined, isAdminOrTrainer);
-  const [storedRequests, setStoredRequests] = useState<TrainerCertificateRequest[]>(MOCK_TRAINER_CERTIFICATE_REQUESTS);
-  const [localRequests, setLocalRequests] = useState<TrainerCertificateRequest[] | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const raw = window.localStorage.getItem(STORAGE_KEYS.trainerCertificateRequests);
-      if (raw) {
-        try {
-          setStoredRequests(JSON.parse(raw) as TrainerCertificateRequest[]);
-        } catch {
-          // fallback to mock
-        }
-      }
-    }
-  }, []);
+  const { data: requestsData, isLoading: requestsLoading } = useCertificateRequests();
+  const [nowRef] = useState(() => Date.now());
   const [examTaking, setExamTaking] = useState<string | null>(null);
   const [completedExams, setCompletedExams] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -138,12 +91,11 @@ export default function CertificationsPage() {
     notes: '',
   });
 
-  const requests = localRequests ?? storedRequests;
+  const requests = useMemo(() => requestsData ?? [], [requestsData]);
 
   const trainerRequests = useMemo(() => {
     if (!session) return [];
-    const mine = requests.filter(request => request.trainerEmail === session.email);
-    return mine.length > 0 ? mine : requests.filter(request => request.trainerEmail === 'trainer@coolpro.demo');
+    return requests.filter(request => request.trainerEmail === session.email);
   }, [requests, session]);
 
   const filteredAdminRequests = useMemo(() => {
@@ -178,81 +130,28 @@ export default function CertificationsPage() {
     issued: trainerRequests.filter(item => item.status === 'issued').length,
   }), [trainerRequests]);
 
+  // Derive issued certs for this technician from stored requests
+  const issuedCerts = useMemo(() => {
+    return requests.filter(r => r.status === 'issued');
+  }, [requests]);
+
   // Only admin and trainer views need the technicians list — don't block technicians on this
-  if ((isAdmin || isTrainer) && techniciansData === undefined) {
+  if (((isAdmin || isTrainer) && techniciansData === undefined) || requestsLoading) {
     return <div className="p-8 text-sm text-slate-500">Loading…</div>;
   }
 
-  const saveRequests = (items: TrainerCertificateRequest[]) => {
-    setLocalRequests(items);
-    writeCollection(STORAGE_KEYS.trainerCertificateRequests, items);
-  };
-
-  const upsertCertificateRecord = (request: TrainerCertificateRequest) => {
-    const record = buildCertificateRecord(request);
-    if (!record || typeof window === 'undefined') {
-      return null;
-    }
-
-    const verificationUrl =
-      request.verificationUrl ||
-      `${window.location.origin}/verify-technician?mode=certificate&q=${encodeURIComponent(record.certificateNumber)}&token=${record.verificationToken}`;
-
-    const nextRecord = {
-      ...record,
-      verificationUrl,
-    };
-
-    const existing = readCollection<CertificateRecord>(STORAGE_KEYS.certificateRecords, []);
-    const next = [
-      nextRecord,
-      ...existing.filter(
-        (item) => item.id !== nextRecord.id && item.certificateNumber !== nextRecord.certificateNumber
-      ),
-    ];
-    writeCollection(STORAGE_KEYS.certificateRecords, next);
-    return nextRecord;
-  };
-
-  const updateRequest = (id: string, updater: (request: TrainerCertificateRequest) => TrainerCertificateRequest) => {
-    const next = requests.map((request) => (request.id === id ? updater(request) : request));
-    saveRequests(next);
-  };
-
-  const handleIssueCertificate = (requestId: string) => {
-    let issuedRequest: TrainerCertificateRequest | null = null;
-
-    updateRequest(requestId, (item) => {
-      const issuedAt = new Date().toISOString();
-      const certificateNumber = item.certificateNumber ?? generateCertificateNumber();
-      const verificationToken = item.verificationToken ?? generateVerificationToken();
-      const verificationUrl =
-        typeof window === 'undefined'
-          ? ''
-          : `${window.location.origin}/verify-technician?mode=certificate&q=${encodeURIComponent(certificateNumber)}&token=${verificationToken}`;
-
-      issuedRequest = {
-        ...item,
-        status: 'issued',
-        certificateNumber,
-        issuedAt,
-        verificationToken,
-        verificationUrl,
-        cpdCredits: item.cpdCredits ?? 12,
-      };
-
-      return issuedRequest;
-    });
-
-    if (issuedRequest) {
-      const record = upsertCertificateRecord(issuedRequest);
-      if (record) {
-        setNotice(`Certificate ${record.certificateNumber} is now live on the Public Certificate Verification Portal.`);
+  const handleReviewRequest = async (requestId: string, action: 'approve' | 'reject' | 'issue') => {
+    try {
+      const updated = await reviewCertificateRequest(requestId, action);
+      if (action === 'issue' && updated.certificateNumber) {
+        setNotice(`Certificate ${updated.certificateNumber} is now live on the Public Certificate Verification Portal.`);
       }
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Failed to update this request.');
     }
   };
 
-  const handleTrainerSubmit = (event: React.FormEvent) => {
+  const handleTrainerSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const technician = (techniciansData ?? []).find(item => item.id === trainerForm.technicianId);
     const theoryScore = Number(trainerForm.theoryScore);
@@ -268,33 +167,28 @@ export default function CertificationsPage() {
       return;
     }
 
-    const overallScore = Math.round((theoryScore + practicalScore) / 2);
-    const entry: TrainerCertificateRequest = {
-      id: `trainer-cert-${Date.now()}`,
-      technicianId: technician.id,
-      technicianName: technician.name,
-      technicianRegistrationNumber: technician.registrationNumber,
-      technicianCompany: technician.employer ?? 'Independent technician',
-      trainerName: session.name,
-      trainerEmail: session.email,
-      courseTitle: trainerForm.courseTitle,
-      examDate: trainerForm.examDate,
-      theoryScore,
-      practicalScore,
-      overallScore,
-      notes: trainerForm.notes.trim(),
-      status: 'submitted-for-admin-approval',
-      submittedAt: new Date().toISOString(),
-    };
-
-    saveRequests([entry, ...requests]);
-    setNotice(`Assessment recorded for ${technician.name} and submitted for admin approval.`);
-    setTrainerForm((current) => ({
-      ...current,
-      theoryScore: '78',
-      practicalScore: '84',
-      notes: '',
-    }));
+    try {
+      await createCertificateRequest({
+        technicianId: technician.id,
+        technicianName: technician.name,
+        technicianRegistrationNumber: technician.registrationNumber,
+        technicianCompany: technician.employer ?? 'Independent technician',
+        courseTitle: trainerForm.courseTitle,
+        examDate: trainerForm.examDate,
+        theoryScore,
+        practicalScore,
+        notes: trainerForm.notes.trim(),
+      });
+      setNotice(`Assessment recorded for ${technician.name} and submitted for admin approval.`);
+      setTrainerForm((current) => ({
+        ...current,
+        theoryScore: '78',
+        practicalScore: '84',
+        notes: '',
+      }));
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Failed to submit the assessment.');
+    }
   };
 
   const handleStartExam = (id: string) => {
@@ -401,27 +295,13 @@ export default function CertificationsPage() {
               {request.status === 'submitted-for-admin-approval' && (
                 <div className="mt-4 flex flex-wrap gap-3">
                   <button
-                    onClick={() =>
-                      updateRequest(request.id, (item) => ({
-                        ...item,
-                        status: 'admin-approved',
-                        reviewedAt: new Date().toISOString(),
-                        adminReviewer: session?.name ?? 'Admin',
-                      }))
-                    }
+                    onClick={() => handleReviewRequest(request.id, 'approve')}
                     className="bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
                   >
                     Approve for Issuance
                   </button>
                   <button
-                    onClick={() =>
-                      updateRequest(request.id, (item) => ({
-                        ...item,
-                        status: 'rejected',
-                        reviewedAt: new Date().toISOString(),
-                        adminReviewer: session?.name ?? 'Admin',
-                      }))
-                    }
+                    onClick={() => handleReviewRequest(request.id, 'reject')}
                     className="border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
                   >
                     Reject
@@ -562,7 +442,7 @@ export default function CertificationsPage() {
                 )}
                 {request.status === 'admin-approved' && (
                   <button
-                    onClick={() => handleIssueCertificate(request.id)}
+                    onClick={() => handleReviewRequest(request.id, 'issue')}
                     className="mt-4 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
                   >
                     Issue Certificate
@@ -592,26 +472,6 @@ export default function CertificationsPage() {
     );
   }
 
-  // Derive issued certs for this technician from stored requests
-  const issuedCerts = useMemo(() => {
-    return requests.filter(r => r.status === 'issued');
-  }, [requests]);
-
-  const [allCertRecords, setAllCertRecords] = useState<CertificateRecord[]>([]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const raw = window.localStorage.getItem(STORAGE_KEYS.certificateRecords);
-      if (raw) {
-        try {
-          setAllCertRecords(JSON.parse(raw) as CertificateRecord[]);
-        } catch {
-          // pass
-        }
-      }
-    }
-  }, []);
-
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -631,7 +491,7 @@ export default function CertificationsPage() {
           <Award className="h-5 w-5 text-amber-500" />
           My Issued Certificates
         </h2>
-        {allCertRecords.length === 0 && issuedCerts.length === 0 ? (
+        {issuedCerts.length === 0 ? (
           <div className="bg-white border border-dashed border-gray-200 p-8 text-center">
             <Award className="h-10 w-10 text-gray-200 mx-auto mb-3" />
             <p className="text-sm font-semibold text-gray-500">No certificates issued yet</p>
@@ -639,10 +499,11 @@ export default function CertificationsPage() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {allCertRecords.map(cert => {
-              const expiry = new Date(cert.expiryDate);
-              const now = Date.now();
-              const daysLeft = Math.ceil((expiry.getTime() - now) / (1000 * 60 * 60 * 24));
+            {issuedCerts.map(cert => {
+              const issueDate = cert.issuedAt ?? cert.submittedAt;
+              const expiry = new Date(issueDate);
+              expiry.setFullYear(expiry.getFullYear() + 2);
+              const daysLeft = Math.ceil((expiry.getTime() - nowRef) / (1000 * 60 * 60 * 24));
               const isExpired = daysLeft <= 0;
               const isExpiringSoon = daysLeft > 0 && daysLeft <= 30;
               return (
@@ -652,15 +513,15 @@ export default function CertificationsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <p className="font-bold text-gray-900">{cert.certificateType}</p>
+                      <p className="font-bold text-gray-900">{cert.courseTitle}</p>
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isExpired ? 'bg-red-50 text-red-700' : isExpiringSoon ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
                         {isExpired ? 'Expired' : isExpiringSoon ? `${daysLeft} days left` : 'Valid'}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500">{cert.issuingBody} · No. {cert.certificateNumber}</p>
+                    <p className="text-xs text-gray-500">HEVACRAZ · No. {cert.certificateNumber}</p>
                     <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
-                      <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" /> Issued: {formatDate(cert.issueDate)}</span>
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Expires: {formatDate(cert.expiryDate)}</span>
+                      <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" /> Issued: {formatDate(issueDate)}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Expires: {formatDate(expiry.toISOString())}</span>
                     </div>
                   </div>
                   {cert.verificationUrl && (

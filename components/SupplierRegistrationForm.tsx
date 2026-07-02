@@ -33,6 +33,8 @@ type SupplierFormState = {
   supplierType: SupplierRegistration['supplierType'];
   contactName: string;
   email: string;
+  password: string;
+  confirmPassword: string;
   phone: string;
   province: string;
   city: string;
@@ -52,6 +54,8 @@ const INITIAL: SupplierFormState = {
   supplierType: 'distributor',
   contactName: '',
   email: '',
+  password: '',
+  confirmPassword: '',
   phone: '',
   province: 'Harare',
   city: '',
@@ -93,6 +97,14 @@ export default function SupplierRegistrationForm() {
       setError('Select at least one refrigerant category before submitting.');
       return;
     }
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -104,6 +116,7 @@ export default function SupplierRegistrationForm() {
         supplierType: form.supplierType,
         contactName: form.contactName.trim(),
         email: form.email.trim().toLowerCase(),
+        password: form.password,
         phone: form.phone.trim(),
         province: form.province,
         city: form.city.trim(),
@@ -246,6 +259,22 @@ export default function SupplierRegistrationForm() {
                 onChange={(v) => update('phone', v)}
                 required
                 placeholder="+263 77 000 0000"
+              />
+            </Field>
+            <Field label="Password" required>
+              <Input
+                type="password"
+                value={form.password}
+                onChange={(v) => update('password', v)}
+                required
+              />
+            </Field>
+            <Field label="Confirm password" required>
+              <Input
+                type="password"
+                value={form.confirmPassword}
+                onChange={(v) => update('confirmPassword', v)}
+                required
               />
             </Field>
             <Field label="Province" required>

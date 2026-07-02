@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
+import { FloatingVoiceButton } from '@/components/FloatingVoiceButton';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -42,6 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </div>
                 </main>
             </div>
+            <FloatingVoiceButton />
         </div>
     );
 }

@@ -4,7 +4,7 @@ export type AppLanguage = 'en' | 'fr';
 export type SafetyAlertColor = 'green' | 'orange' | 'red' | 'blue';
 export type RefrigerantRiskLevel = 'low' | 'moderate' | 'high' | 'critical';
 
-export type UserRole = 'technician' | 'trainer' | 'vendor' | 'org_admin' | 'lecturer';
+export type UserRole = 'technician' | 'trainer' | 'vendor' | 'org_admin' | 'lecturer' | 'student';
 
 export const UserRole = {
   TECHNICIAN: 'technician' as const,
@@ -12,6 +12,7 @@ export const UserRole = {
   VENDOR: 'vendor' as const,
   ORG_ADMIN: 'org_admin' as const,
   LECTURER: 'lecturer' as const,
+  STUDENT: 'student' as const,
 };
 
 export interface User {
@@ -140,6 +141,7 @@ export interface PlannerJob {
   technicianName: string;
   jobType: JobType;
   refrigerantClass: RefrigerantSafetyClass;
+  refrigerantId?: number;
   refrigerantType?: string;
   amount?: number;
   scheduledDate: string;
@@ -159,6 +161,7 @@ export interface EquipmentRecord {
   manufacturer?: string;
   model?: string;
   province: string;
+  refrigerantId?: number;
   refrigerantType: string;
   refrigerantClass?: RefrigerantSafetyClass;
   ashraeSafetyClass: RefrigerantSafetyClass;
@@ -547,6 +550,7 @@ export interface RefrigerantLog {
   location: string;
   plannerJobId?: string;
   jobType: JobType;
+  refrigerantId?: number;
   refrigerantType: string;
   refrigerantClass?: RefrigerantSafetyClass;
   amount: number;
@@ -848,4 +852,224 @@ export interface GasUsageByJobTypeResponse {
   entries: GasUsageByJobTypeEntry[];
   totalKg: number;
   totalEntries: number;
+}
+
+// ---------------------------------------------------------------------------
+// UNEP WhatGas refrigerant registry
+// ---------------------------------------------------------------------------
+
+export interface Refrigerant {
+  id: number;
+  odsName: string | null;
+  ashraeCode: string | null;
+  ashraeTypeId: number | null;
+  ashraeTypeName: string | null;
+  chemicalType: string | null;
+  casCode: string | null;
+
+  formulaList: string[];
+  alternativeFormulaList: string[];
+  chemicalNameList: string[];
+  alternativeChemicalNameList: string[];
+  commonTradeNameList: string[];
+  realApplications: string[];
+  dangerSymbol: unknown[];
+  images: unknown[];
+
+  gwp: string | null;
+  gwpSource: string | null;
+  gwpNote: string | null;
+  odp: string | null;
+  odpSource: string | null;
+  odpNote: string | null;
+  mpValue: string | null;
+  mpSource: string | null;
+  mpNote: string | null;
+  kigaliGwpValue: string | null;
+  kigaliGwpSource: string | null;
+
+  ashraeSafetyGroup: string | null;
+  flammability: string | null;
+  toxicity: string | null;
+
+  annexGroupId: number | null;
+  annexGroupName: string | null;
+  isCtrlMontrealProtocol: boolean | null;
+
+  hsCode: string | null;
+  hsCode2017: string | null;
+  hsCode2022: string | null;
+  unCode: string | null;
+
+  isHFC: boolean;
+  isHCFC: boolean;
+  isCFC: boolean;
+  isODP: boolean;
+  isGWP: boolean;
+  isSingle: boolean;
+  hasIcon: boolean;
+
+  detailFetchedAt: string | null;
+  lastUpdated: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RefrigerantListResponse {
+  data: Refrigerant[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export type WhatGasSyncStatus = 'running' | 'success' | 'partial' | 'failed';
+export type WhatGasSyncType = 'manual' | 'daily-incremental' | 'weekly-full';
+
+export interface WhatGasSyncLog {
+  id: string;
+  syncType: WhatGasSyncType;
+  status: WhatGasSyncStatus;
+  totalRecords: number;
+  createdRecords: number;
+  updatedRecords: number;
+  failedRecords: number;
+  failures: { id: unknown; error: string }[];
+  durationMs: number | null;
+  triggeredBy: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Cylinder Registry
+// ---------------------------------------------------------------------------
+
+export type CylinderStatus = 'full' | 'partial' | 'empty' | 'in-service' | 'scrapped';
+export type CylinderOwnerType = 'technician' | 'supplier' | 'company';
+
+export interface Cylinder {
+  id: string;
+  cylinderCode: string;
+  refrigerantId?: number;
+  refrigerantLabel: string;
+  ownerType: CylinderOwnerType;
+  ownerId?: string;
+  ownerName: string;
+  capacityKg: number;
+  currentFillKg: number;
+  status: CylinderStatus;
+  province: string;
+  lastFilledDate?: string;
+  lastInspectionDate?: string;
+  nextInspectionDue?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Import/Export Trade Permits
+// ---------------------------------------------------------------------------
+
+export type PermitType = 'import' | 'export';
+export type PermitStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
+export interface TradePermit {
+  id: string;
+  permitNumber: string;
+  permitType: PermitType;
+  applicantName: string;
+  applicantCompany: string;
+  applicantEmail: string;
+  refrigerantId?: number;
+  refrigerantLabel: string;
+  quantityKg: number;
+  countryOfOriginOrDestination: string;
+  status: PermitStatus;
+  issuedDate?: string;
+  expiryDate?: string;
+  verificationToken?: string;
+  verificationUrl?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNote?: string;
+  notes?: string;
+  submittedAt: string;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Reclamation
+// ---------------------------------------------------------------------------
+
+export type ReclamationStatus = 'pending' | 'passed' | 'failed';
+
+export interface ReclamationRecord {
+  id: string;
+  batchNumber: string;
+  refrigerantId?: number;
+  refrigerantLabel: string;
+  sourceDescription: string;
+  quantityKg: number;
+  purityPercent?: number;
+  testMethod?: string;
+  facilityName: string;
+  technicianId?: string;
+  technicianName: string;
+  status: ReclamationStatus;
+  testedDate?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Recycling
+// ---------------------------------------------------------------------------
+
+export interface PublicPermitVerification {
+  permitNumber: string;
+  permitType: PermitType;
+  applicantCompany: string;
+  refrigerantLabel: string;
+  quantityKg: number;
+  countryOfOriginOrDestination: string;
+  status: PermitStatus;
+  issuedDate: string | null;
+  expiryDate: string | null;
+}
+
+export interface RefrigerantUsageEntry {
+  refrigerant: string;
+  totalKg: number;
+  count: number;
+}
+
+export interface ClassificationBreakdown {
+  category: string;
+  totalKg: number;
+  count: number;
+}
+
+export interface RefrigerantAnalytics {
+  mostUsed: RefrigerantUsageEntry[];
+  mostInstalled: RefrigerantUsageEntry[];
+  mostRecovered: RefrigerantUsageEntry[];
+  classificationBreakdown: ClassificationBreakdown[];
+  monthlyTrend: { month: string; totalKg: number }[];
+}
+
+export interface RecyclingRecord {
+  id: string;
+  equipmentId?: string;
+  refrigerantId?: number;
+  refrigerantLabel: string;
+  quantityKg: number;
+  method: string;
+  technicianId: string;
+  technicianName: string;
+  jobSite: string;
+  recycledDate: string;
+  notes?: string;
+  createdAt: string;
 }

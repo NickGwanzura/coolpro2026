@@ -17,6 +17,19 @@ import type {
   TechnicianApplication,
   RefrigerantLog,
   GasUsageByJobTypeResponse,
+  PlannerJob,
+  EquipmentRecord,
+  TrainingSession,
+  TrainerCertificateRequest,
+  ApprovedSupplier,
+  Refrigerant,
+  RefrigerantListResponse,
+  WhatGasSyncLog,
+  Cylinder,
+  TradePermit,
+  ReclamationRecord,
+  RecyclingRecord,
+  RefrigerantAnalytics,
 } from '@/types/index';
 
 async function fetcher<T>(url: string): Promise<T> {
@@ -241,7 +254,7 @@ export function useSupplierApplications(enabled = true) {
 }
 
 export async function createSupplierApplication(
-  body: Omit<SupplierRegistration, 'id' | 'status' | 'submittedAt'>
+  body: Omit<SupplierRegistration, 'id' | 'status' | 'submittedAt'> & { password: string }
 ): Promise<SupplierApplicationRecord> {
   const result = await post<SupplierApplicationRecord>('/api/supplier-applications', body);
   await mutate('/api/supplier-applications');
@@ -309,7 +322,7 @@ export async function createLedgerEntry(body: Omit<SupplierLedgerEntry, 'id'>): 
 // Student applications (public submit + admin review)
 // ---------------------------------------------------------------------------
 
-export type StudentApplicationInput = Omit<StudentApplication, 'id' | 'status' | 'submittedAt' | 'reviewedAt' | 'reviewedBy' | 'reviewNote'>;
+export type StudentApplicationInput = Omit<StudentApplication, 'id' | 'status' | 'submittedAt' | 'reviewedAt' | 'reviewedBy' | 'reviewNote'> & { password: string };
 
 export function useStudentApplications() {
   return useSWR<StudentApplication[]>('/api/student-applications', fetcher);
@@ -340,7 +353,7 @@ export async function rejectStudentApplication(id: string, notes?: string): Prom
 export type TechnicianApplicationInput = Omit<
   TechnicianApplication,
   'id' | 'status' | 'submittedAt' | 'reviewedAt' | 'reviewedBy' | 'reviewNote' | 'approvedTechnicianId'
->;
+> & { password: string };
 
 export function useTechnicianApplications() {
   return useSWR<TechnicianApplication[]>('/api/technician-applications', fetcher);
@@ -415,4 +428,226 @@ export function useGasLogs(from?: string, to?: string, limit?: number) {
   if (limit) params.set('limit', String(limit));
   const qs = params.toString();
   return useSWR<RefrigerantLog[]>(`/api/gas-logs${qs ? `?${qs}` : ''}`, fetcher);
+}
+
+// ---------------------------------------------------------------------------
+// Job Planner (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function usePlannerJobs() {
+  return useSWR<PlannerJob[]>('/api/planner-jobs', fetcher);
+}
+
+export async function createPlannerJob(
+  body: Omit<PlannerJob, 'id' | 'createdAt' | 'updatedAt' | 'technicianId' | 'technicianName'> & {
+    technicianId?: string;
+    technicianName?: string;
+  },
+): Promise<PlannerJob> {
+  const result = await post<PlannerJob>('/api/planner-jobs', body);
+  await mutate('/api/planner-jobs');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Field Scheduling — equipment register (DB-backed, read-only from the client)
+// ---------------------------------------------------------------------------
+
+export function useEquipmentRecords() {
+  return useSWR<EquipmentRecord[]>('/api/equipment-records', fetcher);
+}
+
+// ---------------------------------------------------------------------------
+// Training sessions (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useTrainingSessions() {
+  return useSWR<TrainingSession[]>('/api/training-sessions', fetcher);
+}
+
+export async function createTrainingSession(
+  body: Omit<TrainingSession, 'id' | 'trainerName' | 'trainerEmail' | 'seatsRemaining' | 'status'>,
+): Promise<TrainingSession> {
+  const result = await post<TrainingSession>('/api/training-sessions', body);
+  await mutate('/api/training-sessions');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Trainer certificate requests (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useCertificateRequests() {
+  return useSWR<TrainerCertificateRequest[]>('/api/certificate-requests', fetcher);
+}
+
+export async function createCertificateRequest(
+  body: Omit<
+    TrainerCertificateRequest,
+    'id' | 'trainerName' | 'trainerEmail' | 'overallScore' | 'status' | 'submittedAt'
+  >,
+): Promise<TrainerCertificateRequest> {
+  const result = await post<TrainerCertificateRequest>('/api/certificate-requests', body);
+  await mutate('/api/certificate-requests');
+  return result;
+}
+
+export async function reviewCertificateRequest(
+  id: string,
+  action: 'approve' | 'reject' | 'issue',
+): Promise<TrainerCertificateRequest> {
+  const result = await post<TrainerCertificateRequest>(`/api/certificate-requests/${id}/${action}`);
+  await mutate('/api/certificate-requests');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Approved suppliers directory (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useApprovedSuppliers() {
+  return useSWR<ApprovedSupplier[]>('/api/suppliers/approved', fetcher);
+}
+
+// ---------------------------------------------------------------------------
+// UNEP WhatGas refrigerant registry (DB-backed, synced from services.ozonaction.org)
+// ---------------------------------------------------------------------------
+
+export type RefrigerantFilterParams = {
+  q?: string;
+  page?: number;
+  pageSize?: number;
+  isHFC?: boolean;
+  isHCFC?: boolean;
+  isCFC?: boolean;
+  isSingle?: boolean;
+  isODP?: boolean;
+  highGwp?: boolean;
+  kigali?: boolean;
+  montreal?: boolean;
+};
+
+function buildRefrigerantQuery(params: RefrigerantFilterParams): string {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set('q', params.q);
+  if (params.page) qs.set('page', String(params.page));
+  if (params.pageSize) qs.set('pageSize', String(params.pageSize));
+  for (const key of ['isHFC', 'isHCFC', 'isCFC', 'isSingle', 'isODP', 'highGwp', 'kigali', 'montreal'] as const) {
+    if (params[key] !== undefined) qs.set(key, String(params[key]));
+  }
+  return qs.toString();
+}
+
+export function useRefrigerants(params: RefrigerantFilterParams = {}) {
+  const qs = buildRefrigerantQuery(params);
+  return useSWR<RefrigerantListResponse>(`/api/refrigerants${qs ? `?${qs}` : ''}`, fetcher);
+}
+
+export function useRefrigerant(id: number | null | undefined) {
+  return useSWR<Refrigerant>(id != null ? `/api/refrigerants/${id}` : null, fetcher);
+}
+
+export async function searchRefrigerantsOnce(params: RefrigerantFilterParams): Promise<RefrigerantListResponse> {
+  const qs = buildRefrigerantQuery(params);
+  return fetcher<RefrigerantListResponse>(`/api/refrigerants${qs ? `?${qs}` : ''}`);
+}
+
+export function useWhatGasSyncStatus() {
+  return useSWR<{ logs: WhatGasSyncLog[]; lastSuccessfulSync: WhatGasSyncLog | null; totalRefrigerants: number }>(
+    '/api/admin/sync/whatgas',
+    fetcher,
+  );
+}
+
+export async function triggerWhatGasSync() {
+  const result = await post<{ status: string }>('/api/admin/sync/whatgas');
+  await mutate('/api/admin/sync/whatgas');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Cylinder Registry (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useCylinders() {
+  return useSWR<Cylinder[]>('/api/cylinders', fetcher);
+}
+
+export async function createCylinder(
+  body: Omit<Cylinder, 'id' | 'ownerId' | 'ownerName' | 'createdAt' | 'updatedAt'>,
+): Promise<Cylinder> {
+  const result = await post<Cylinder>('/api/cylinders', body);
+  await mutate('/api/cylinders');
+  return result;
+}
+
+export async function updateCylinder(
+  id: string,
+  body: Partial<Pick<Cylinder, 'status' | 'currentFillKg' | 'lastFilledDate' | 'lastInspectionDate' | 'nextInspectionDue' | 'notes'>>,
+) {
+  const result = await patch<Pick<Cylinder, 'id' | 'status' | 'currentFillKg' | 'updatedAt'>>(`/api/cylinders/${id}`, body);
+  await mutate('/api/cylinders');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Import/Export Trade Permits (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useTradePermits() {
+  return useSWR<TradePermit[]>('/api/permits', fetcher);
+}
+
+export async function createTradePermit(
+  body: Omit<TradePermit, 'id' | 'permitNumber' | 'applicantName' | 'applicantEmail' | 'status' | 'submittedAt' | 'createdAt'>,
+): Promise<TradePermit> {
+  const result = await post<TradePermit>('/api/permits', body);
+  await mutate('/api/permits');
+  return result;
+}
+
+export async function reviewTradePermit(id: string, action: 'approve' | 'reject', notes?: string): Promise<TradePermit> {
+  const result = await post<TradePermit>(`/api/permits/${id}/${action}`, notes ? { notes } : undefined);
+  await mutate('/api/permits');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Reclamation (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useReclamationRecords() {
+  return useSWR<ReclamationRecord[]>('/api/reclamation', fetcher);
+}
+
+export async function createReclamationRecord(
+  body: Omit<ReclamationRecord, 'id' | 'batchNumber' | 'technicianId' | 'technicianName' | 'createdAt'>,
+): Promise<ReclamationRecord> {
+  const result = await post<ReclamationRecord>('/api/reclamation', body);
+  await mutate('/api/reclamation');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Recycling (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useRecyclingRecords() {
+  return useSWR<RecyclingRecord[]>('/api/recycling', fetcher);
+}
+
+export async function createRecyclingRecord(
+  body: Omit<RecyclingRecord, 'id' | 'technicianId' | 'technicianName' | 'createdAt'>,
+): Promise<RecyclingRecord> {
+  const result = await post<RecyclingRecord>('/api/recycling', body);
+  await mutate('/api/recycling');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Refrigerant analytics (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useRefrigerantAnalytics() {
+  return useSWR<RefrigerantAnalytics>('/api/admin/refrigerant-analytics', fetcher);
 }

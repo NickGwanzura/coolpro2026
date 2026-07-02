@@ -21,9 +21,7 @@ import {
 } from 'lucide-react';
 import useSWR from 'swr';
 import { CertificateQRCode } from '@/components/CertificateQRCode';
-import { MOCK_TRAINER_CERTIFICATE_REQUESTS } from '@/constants/training';
-import { readCollection, STORAGE_KEYS } from '@/lib/platformStore';
-import type { CertificateRecord, Technician, TrainerCertificateRequest } from '@/types/index';
+import type { CertificateRecord, Technician } from '@/types/index';
 
 type SearchMode = 'registration' | 'name' | 'certificate';
 
@@ -33,69 +31,14 @@ type VerificationResult = {
   matchSource: SearchMode;
 };
 
-const DEFAULT_CERTIFICATE_RECORDS: CertificateRecord[] = [
-  {
-    id: 'trainer-cert-portal-demo',
-    technicianId: '2',
-    technicianName: 'Nyasha Chikomo',
-    certificateNumber: 'HEV-240318',
-    certificateType: 'R-744 (CO2) System Specialist',
-    issuingBody: 'HEVACRAZ / CertifyZim Demo',
-    issueDate: '2026-03-24T09:00:00.000Z',
-    expiryDate: '2028-03-24T09:00:00.000Z',
-    verificationToken: 'verify-demo2403',
-    verificationUrl: 'https://coolpro2026.vercel.app/verify-technician?mode=certificate&q=HEV-240318&token=verify-demo2403',
-    status: 'valid',
-  },
-];
-
 function formatDate(value?: string) {
   if (!value) return 'Not available';
   return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium' }).format(new Date(value));
 }
 
-function deriveCertificateRecordsFromRequests(requests: TrainerCertificateRequest[]) {
-  return requests
-    .filter((request) => request.status === 'issued' && request.certificateNumber)
-    .map<CertificateRecord>((request) => {
-      const issueDate = request.issuedAt ?? request.reviewedAt ?? request.submittedAt;
-      const expiryDate = new Date(issueDate);
-      expiryDate.setFullYear(expiryDate.getFullYear() + 2);
-
-      return {
-        id: request.id,
-        technicianId: request.technicianId,
-        technicianName: request.technicianName,
-        certificateNumber: request.certificateNumber ?? request.id,
-        certificateType: request.courseTitle,
-        issuingBody: 'HEVACRAZ / CertifyZim Demo',
-        issueDate,
-        expiryDate: expiryDate.toISOString(),
-        verificationToken: request.verificationToken ?? `verify-${request.id}`,
-        verificationUrl: request.verificationUrl ?? '',
-        status: 'valid',
-      };
-    });
-}
-
-function buildCertificatePool(certificateRecords: CertificateRecord[], issuedRequests: TrainerCertificateRequest[]) {
-  return [...certificateRecords, ...deriveCertificateRecordsFromRequests(issuedRequests)].filter(
-    (item, index, array) =>
-      array.findIndex((candidate) => candidate.certificateNumber === item.certificateNumber) === index
-  );
-}
-
 function getInitialPortalState() {
-  const certificateRecords = readCollection(STORAGE_KEYS.certificateRecords, DEFAULT_CERTIFICATE_RECORDS);
-  const issuedRequests = readCollection(
-    STORAGE_KEYS.trainerCertificateRequests,
-    MOCK_TRAINER_CERTIFICATE_REQUESTS
-  );
-
   if (typeof window === 'undefined') {
     return {
-      certificateRecords,
-      issuedRequests,
       searchMode: 'registration' as SearchMode,
       searchQuery: '',
       notFound: false,
@@ -109,8 +52,6 @@ function getInitialPortalState() {
     mode === 'name' || mode === 'certificate' || mode === 'registration' ? mode : 'registration';
 
   return {
-    certificateRecords,
-    issuedRequests,
     searchMode,
     searchQuery: query,
     notFound: false,
@@ -177,8 +118,6 @@ export default function VerifyTechnicianPage() {
   const [notFound, setNotFound] = useState(initialState.notFound);
   const [isSearching, setIsSearching] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
-  const [certificateRecords] = useState<CertificateRecord[]>(initialState.certificateRecords);
-  const [issuedRequests] = useState<TrainerCertificateRequest[]>(initialState.issuedRequests);
 
   const { data: techniciansData, isLoading: techniciansLoading } = useSWR<Technician[]>(
     '/api/public/technicians',
@@ -186,24 +125,44 @@ export default function VerifyTechnicianPage() {
   );
   const technicians = techniciansData ?? [];
 
-  const availableCertificates = useMemo(
-    () => buildCertificatePool(certificateRecords, issuedRequests),
-    [certificateRecords, issuedRequests]
+  const { data: certificatesData } = useSWR<CertificateRecord[]>(
+    '/api/public/certificates',
+    (url: string) => fetch(url).then((res) => (res.ok ? res.json() : []))
   );
+  const availableCertificates = useMemo(() => certificatesData ?? [], [certificatesData]);
 
-  // Re-run initial URL query once technicians are loaded
+  // Public technician listings never include contact details (to prevent bulk PII
+  // scraping) — once a specific technician is matched, fetch their single record by id
+  // to fill in email/phone for display.
+  const applySearchResult = (match: VerificationResult | null) => {
+    setSearchResult(match);
+    setNotFound(!match);
+    const technicianId = match?.technician?.id;
+    if (!technicianId) return;
+    fetch(`/api/public/technicians?id=${encodeURIComponent(technicianId)}`)
+      .then((res) => (res.ok ? res.json() as Promise<Technician> : null))
+      .then((enriched) => {
+        if (!enriched) return;
+        setSearchResult((prev) =>
+          prev && prev.technician?.id === enriched.id ? { ...prev, technician: enriched } : prev
+        );
+      })
+      .catch(() => {
+        // Contact-detail enrichment is best-effort; the match itself already succeeded.
+      });
+  };
+
+  // Re-run initial URL query once technicians and certificates are loaded
   const [initialQueryRun, setInitialQueryRun] = useState(false);
   useEffect(() => {
     if (!initialQueryRun && !techniciansLoading && technicians.length > 0 && initialState.searchQuery) {
       const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
       const token = params?.get('token');
-      const pool = buildCertificatePool(certificateRecords, issuedRequests);
-      const match = findVerificationResult(initialState.searchQuery, initialState.searchMode, technicians, pool, token);
-      setSearchResult(match);
-      setNotFound(!match);
+      const match = findVerificationResult(initialState.searchQuery, initialState.searchMode, technicians, availableCertificates, token);
+      applySearchResult(match);
       setInitialQueryRun(true);
     }
-  }, [techniciansLoading, technicians, initialQueryRun, initialState, certificateRecords, issuedRequests]);
+  }, [techniciansLoading, technicians, initialQueryRun, initialState, availableCertificates]);
 
   const recentActivity = useMemo(
     () =>
@@ -226,8 +185,7 @@ export default function VerifyTechnicianPage() {
 
     window.setTimeout(() => {
       const match = findVerificationResult(searchQuery, searchMode, technicians, availableCertificates);
-      setSearchResult(match);
-      setNotFound(!match);
+      applySearchResult(match);
       setIsSearching(false);
     }, 300);
   };

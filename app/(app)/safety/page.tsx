@@ -1,15 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import OccupationalAccidentSection from '@/components/OccupationalAccidentSection';
-import { getSession, type UserSession } from '@/lib/auth';
+import { useClientSession } from '@/lib/useClientSession';
 
 export default function SafetyPage() {
-    const [session, setSession] = useState<UserSession | null>(null);
-
-    useEffect(() => {
-        setSession(getSession());
-    }, []);
+    const session = useClientSession();
 
     const isAdmin = session?.role === 'org_admin';
 

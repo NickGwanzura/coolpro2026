@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, Download, Mail, Phone, Search, ShieldCheck } from 'lucide-react';
 import autoTable from 'jspdf-autotable';
@@ -17,27 +17,13 @@ function TechnicianRegistryContent() {
   const searchParams = useSearchParams();
   const { user: session } = useAuth();
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedProvince, setSelectedProvince] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [selectedSpecialization, setSelectedSpecialization] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') ?? '');
+  const [selectedProvince, setSelectedProvince] = useState(() => searchParams.get('province') ?? '');
+  const [selectedDistrict, setSelectedDistrict] = useState(() => searchParams.get('district') ?? '');
+  const [selectedSpecialization, setSelectedSpecialization] = useState(() => searchParams.get('specialization') ?? '');
+  const [selectedStatus, setSelectedStatus] = useState(() => searchParams.get('status') ?? '');
   const [selectedEmploymentStatus, setSelectedEmploymentStatus] = useState('');
   const [selectedCertificationStatus, setSelectedCertificationStatus] = useState<CertificationFilter>('');
-
-  useEffect(() => {
-    const search = searchParams.get('search');
-    const specialization = searchParams.get('specialization');
-    const province = searchParams.get('province');
-    const district = searchParams.get('district');
-    const status = searchParams.get('status');
-
-    if (search) setSearchTerm(search);
-    if (specialization) setSelectedSpecialization(specialization);
-    if (province) setSelectedProvince(province);
-    if (district) setSelectedDistrict(district);
-    if (status) setSelectedStatus(status);
-  }, [searchParams]);
 
   const availableDistricts = useMemo(() => {
     if (!selectedProvince) {

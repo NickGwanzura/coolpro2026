@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle, AlertTriangle, Clock, MapPin, Phone, Mail, Briefcase, Award, Calendar, FileText, Building2 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import { useTechnician } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 
@@ -273,7 +274,6 @@ export default function TechnicianDetailsPage() {
             <div className="space-y-3">
               <button
                 onClick={() => {
-                  const { jsPDF } = require('jspdf');
                   const doc = new jsPDF({
                     orientation: 'landscape',
                     unit: 'mm',
@@ -338,7 +338,6 @@ export default function TechnicianDetailsPage() {
               </button>
               <button
                 onClick={() => {
-                  const { jsPDF } = require('jspdf');
                   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] });
 
                   // Card background
@@ -364,12 +363,12 @@ export default function TechnicianDetailsPage() {
                   // Name
                   doc.setFontSize(11);
                   doc.setTextColor(255, 255, 255);
-                  doc.setFont(undefined, 'bold');
+                  doc.setFont('', 'bold');
                   doc.text(technician.name.toUpperCase(), 8, 24);
 
                   // Specialization
                   doc.setFontSize(6.5);
-                  doc.setFont(undefined, 'normal');
+                  doc.setFont('', 'normal');
                   doc.setTextColor(156, 163, 175);
                   doc.text(technician.specialization, 8, 29);
 
@@ -379,26 +378,26 @@ export default function TechnicianDetailsPage() {
                   doc.roundedRect(8, 32, 18, 5, 1, 1, 'F');
                   doc.setFontSize(5);
                   doc.setTextColor(255, 255, 255);
-                  doc.setFont(undefined, 'bold');
+                  doc.setFont('', 'bold');
                   doc.text(technician.status.toUpperCase(), 17, 35.5, { align: 'center' });
 
                   // Details
-                  doc.setFont(undefined, 'normal');
+                  doc.setFont('', 'normal');
                   doc.setFontSize(5.5);
                   doc.setTextColor(156, 163, 175);
                   doc.text('REG NO', 8, 43);
                   doc.text('VALID UNTIL', 8, 48);
                   doc.setTextColor(255, 255, 255);
-                  doc.setFont(undefined, 'bold');
+                  doc.setFont('', 'bold');
                   doc.text(technician.registrationNumber, 8, 46);
                   doc.text(technician.expiryDate, 8, 51);
 
                   // Province
-                  doc.setFont(undefined, 'normal');
+                  doc.setFont('', 'normal');
                   doc.setTextColor(156, 163, 175);
                   doc.text('PROVINCE', 55, 43);
                   doc.setTextColor(255, 255, 255);
-                  doc.setFont(undefined, 'bold');
+                  doc.setFont('', 'bold');
                   doc.text(technician.province, 55, 46);
 
                   doc.save(`${technician.name.replace(/\s+/g, '-')}-digital-id.pdf`);

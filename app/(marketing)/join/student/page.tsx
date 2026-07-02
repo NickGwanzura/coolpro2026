@@ -38,6 +38,8 @@ export default function JoinStudentPage() {
     studentId: '',
     fieldOfStudy: '',
     enrolmentYear: new Date().getFullYear(),
+    password: '',
+    confirmPassword: '',
     agree: false,
   });
   const [idFile, setIdFile] = useState<File | null>(null);
@@ -45,6 +47,14 @@ export default function JoinStudentPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.agree || submitting) return;
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -53,6 +63,7 @@ export default function JoinStudentPage() {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim().toLowerCase(),
+        password: form.password,
         phone: form.phone.trim(),
         polytech: form.polytech,
         fieldOfStudy: form.fieldOfStudy,
@@ -212,6 +223,41 @@ export default function JoinStudentPage() {
                       />
                     </div>
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                      <label htmlFor="password" className="block text-sm font-medium mb-2" style={{ color: '#1C1917' }}>
+                        Password
+                      </label>
+                      <input
+                        id="password"
+                        type="password"
+                        required
+                        minLength={8}
+                        value={form.password}
+                        onChange={(e) => update('password', e.target.value)}
+                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        style={{ borderColor: '#E5E0DB' }}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2" style={{ color: '#1C1917' }}>
+                        Confirm password
+                      </label>
+                      <input
+                        id="confirmPassword"
+                        type="password"
+                        required
+                        minLength={8}
+                        value={form.confirmPassword}
+                        onChange={(e) => update('confirmPassword', e.target.value)}
+                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        style={{ borderColor: '#E5E0DB' }}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    This will be your sign-in password once your application is approved. Minimum 8 characters.
+                  </p>
                 </fieldset>
 
                 <fieldset className="space-y-5 pt-5 border-t" style={{ borderColor: '#E5E0DB' }}>

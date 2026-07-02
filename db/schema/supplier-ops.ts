@@ -52,6 +52,7 @@ export const supplierApplications = pgTable('supplier_applications', {
   supplierType: supplierTypeEnum('supplier_type').notNull().default('distributor'),
   contactName: text('contact_name').notNull(),
   email: text('email').notNull(),
+  passwordHash: text('password_hash'),
   phone: text('phone').notNull().default(''),
   province: text('province').notNull().default(''),
   city: text('city').notNull().default(''),

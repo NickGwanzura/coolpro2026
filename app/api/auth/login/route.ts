@@ -3,83 +3,103 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { users } from '@/db/schema/index';
 import { signSession, sessionCookie } from '@/lib/server/auth';
-import { MOCK_USERS } from '@/lib/mock-users';
+import { verifyPassword } from '@/lib/server/password';
 import type { UserSession } from '@/lib/mock-users';
 
-const VALID_ROLES = ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin'] as const;
+const VALID_ROLES = ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] as const;
 type ValidRole = (typeof VALID_ROLES)[number];
 
+const DEMO_LOGIN_ENABLED = process.env.ENABLE_DEMO_LOGIN === 'true';
+
+function toUserSession(user: typeof users.$inferSelect, region?: string): UserSession {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role as UserSession['role'],
+    region: region ?? user.region,
+    isDemo: user.isDemo,
+  };
+}
+
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({})) as { role?: string; region?: string; email?: string };
-  const { role, region, email } = body;
+  const body = await req.json().catch(() => ({})) as {
+    role?: string;
+    region?: string;
+    email?: string;
+    password?: string;
+  };
+  const { role, region, email, password } = body;
 
-  if (!role && !email) {
-    return NextResponse.json({ error: 'email or role is required' }, { status: 400 });
-  }
+  // Demo persona quick-login: never available in production, and only when explicitly
+  // opted into via ENABLE_DEMO_LOGIN. Bypasses password by design, so it must only ever
+  // touch rows that are themselves flagged isDemo in the database.
+  if (role && !email) {
+    if (!DEMO_LOGIN_ENABLED) {
+      return NextResponse.json({ error: 'Demo login is disabled' }, { status: 403 });
+    }
+    if (!VALID_ROLES.includes(role as ValidRole)) {
+      return NextResponse.json({ error: 'Unknown role' }, { status: 400 });
+    }
 
-  let user: typeof users.$inferSelect | undefined;
-  let dbError = false;
-
-  try {
-    if (role) {
-      if (!VALID_ROLES.includes(role as ValidRole)) {
-        return NextResponse.json({ error: 'Unknown role' }, { status: 400 });
-      }
-      [user] = await db
+    let demoUser: typeof users.$inferSelect | undefined;
+    try {
+      [demoUser] = await db
         .select()
         .from(users)
         .where(eq(users.role, role as ValidRole))
         .limit(1);
-    } else if (email) {
-      [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, email.trim().toLowerCase()))
-        .limit(1);
-    }
-  } catch (err) {
-    console.error('[auth/login] DB lookup failed', err);
-    dbError = true;
-  }
-
-  // Fallback to MOCK_USERS when DB is empty/unavailable or user not found
-  // This makes demo logins resilient even if seed hasn't been run.
-  if (!user) {
-    const mockKey = role ?? Object.keys(MOCK_USERS).find(k => MOCK_USERS[k].email === email?.trim().toLowerCase());
-    const mockUser = mockKey ? MOCK_USERS[mockKey] : undefined;
-
-    if (mockUser) {
-      const token = signSession({
-        id: mockUser.id,
-        role: mockUser.role,
-        email: mockUser.email,
-        name: mockUser.name,
-        region: region ?? mockUser.region,
-      });
-
-      const userSession: UserSession = {
-        id: mockUser.id,
-        name: mockUser.name,
-        email: mockUser.email,
-        role: mockUser.role,
-        region: region ?? mockUser.region,
-        isDemo: true,
-      };
-
-      return NextResponse.json(
-        { user: userSession },
-        {
-          status: 200,
-          headers: { 'Set-Cookie': sessionCookie(token) },
-        },
-      );
-    }
-
-    if (dbError) {
+    } catch (err) {
+      console.error('[auth/login] demo lookup failed');
       return NextResponse.json({ error: 'Login service unavailable' }, { status: 500 });
     }
 
-    return NextResponse.json({ error: 'No matching user found' }, { status: 401 });
+    if (!demoUser || !demoUser.isDemo) {
+      return NextResponse.json({ error: 'No demo account for that role' }, { status: 404 });
+    }
+
+    const token = signSession({
+      id: demoUser.id,
+      role: demoUser.role,
+      email: demoUser.email,
+      name: demoUser.name,
+      region: region ?? demoUser.region,
+    });
+
+    return NextResponse.json(
+      { user: toUserSession(demoUser, region) },
+      { status: 200, headers: { 'Set-Cookie': sessionCookie(token) } },
+    );
+  }
+
+  if (!email || !password) {
+    return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+  }
+
+  let user: typeof users.$inferSelect | undefined;
+  try {
+    [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email.trim().toLowerCase()))
+      .limit(1);
+  } catch (err) {
+    console.error('[auth/login] DB lookup failed');
+    return NextResponse.json({ error: 'Login service unavailable' }, { status: 500 });
+  }
+
+  // Generic error for both "no such user" and "wrong password" to avoid leaking
+  // which emails are registered.
+  const invalidCredentials = () =>
+    NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+
+  if (!user || !user.passwordHash) {
+    return invalidCredentials();
+  }
+
+  const passwordMatches = await verifyPassword(password, user.passwordHash);
+  if (!passwordMatches) {
+    return invalidCredentials();
   }
 
   if (user.status !== 'active') {
@@ -96,20 +116,8 @@ export async function POST(req: Request) {
 
   const token = signSession(sessionPayload);
 
-  const userSession: UserSession = {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role as UserSession['role'],
-    region: region ?? user.region,
-    isDemo: user.isDemo,
-  };
-
   return NextResponse.json(
-    { user: userSession },
-    {
-      status: 200,
-      headers: { 'Set-Cookie': sessionCookie(token) },
-    },
+    { user: toUserSession(user, region) },
+    { status: 200, headers: { 'Set-Cookie': sessionCookie(token) } },
   );
 }
