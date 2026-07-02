@@ -1,9 +1,17 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Info, Search, ShieldAlert } from 'lucide-react';
-import { buildPreJobChecklist, getRiskSummary, getWhatGasProfile } from '@/lib/refrigerantIntelligence';
+import { buildPreJobChecklist, getRiskSummary } from '@/lib/refrigerantIntelligence';
 import { RefrigerantRiskBadge } from '@/components/RefrigerantRiskBadge';
+import type { WhatGasRefrigerantProfile, SafetyAlertColor } from '@/types/index';
+
+type Summary = {
+    color: SafetyAlertColor;
+    label: string;
+    guidance: string;
+    profile: WhatGasRefrigerantProfile;
+};
 
 export function RefrigerantIntelligencePanel({
     initialCode = 'R-290',
@@ -11,9 +19,43 @@ export function RefrigerantIntelligencePanel({
     initialCode?: string;
 }) {
     const [query, setQuery] = useState(initialCode);
-    const profile = useMemo(() => getWhatGasProfile(query), [query]);
-    const summary = useMemo(() => getRiskSummary(query), [query]);
-    const checklist = useMemo(() => buildPreJobChecklist(query), [query]);
+    const [summary, setSummary] = useState<Summary | null>(null);
+    const [checklist, setChecklist] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        const trimmed = query.trim();
+
+        const timer = setTimeout(() => {
+            if (cancelled) return;
+
+            if (!trimmed) {
+                setSummary(null);
+                setChecklist([]);
+                setIsLoading(false);
+                return;
+            }
+
+            setIsLoading(true);
+            Promise.all([getRiskSummary(trimmed), buildPreJobChecklist(trimmed)])
+                .then(([nextSummary, nextChecklist]) => {
+                    if (cancelled) return;
+                    setSummary(nextSummary);
+                    setChecklist(nextChecklist);
+                })
+                .finally(() => {
+                    if (!cancelled) setIsLoading(false);
+                });
+        }, 250);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [query]);
+
+    const profile = summary?.profile ?? null;
 
     return (
         <section className="border border-gray-200 bg-white p-6 shadow-sm">
@@ -37,9 +79,13 @@ export function RefrigerantIntelligencePanel({
                 </label>
             </div>
 
-            {!profile || !summary ? (
+            {isLoading ? (
                 <div className="mt-5 border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
-                    Enter a refrigerant code like `R-290`, `R-32`, `R-744`, or `R-717`.
+                    Searching the WhatGas registry...
+                </div>
+            ) : !profile || !summary ? (
+                <div className="mt-5 border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
+                    No match found. Try a code like `R-290`, `R-32`, `R-744`, or `R-717`.
                 </div>
             ) : (
                 <div className="mt-5 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
@@ -62,7 +108,7 @@ export function RefrigerantIntelligencePanel({
                         <div className="mt-5 border border-gray-200 bg-white p-4">
                             <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                                 <Info className="h-4 w-4" />
-                                Mock WhatGas match
+                                WhatGas match
                             </div>
                             <p className="mt-2 text-sm text-gray-600">{profile.whatGasReference}</p>
                             <p className="mt-3 text-sm text-gray-700">{summary.guidance}</p>

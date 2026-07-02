@@ -1,67 +1,12 @@
 import type {
     AppLanguage,
     OcrScanRecord,
+    Refrigerant,
     RefrigerantRiskLevel,
-    RefrigerantSafetyClass,
     SafetyAlertColor,
     WhatGasRefrigerantProfile,
 } from '@/types/index';
 export { getEmergencySafetyScripts } from '@/lib/emergencySafety';
-
-const WHATGAS_PROFILES: Record<string, WhatGasRefrigerantProfile> = {
-    'R-290': {
-        code: 'R-290',
-        commonName: 'Propane',
-        ashraeSafetyClass: 'A3',
-        riskColor: 'red',
-        riskLevel: 'high',
-        typicalUse: 'Light commercial cabinets and low-charge systems.',
-        odp: 0,
-        gwp: 3,
-        emergencyNotes: ['Remove ignition sources immediately.', 'Ventilate the space before restarting work.'],
-        fieldChecklist: ['Confirm ventilation', 'Isolate sparks and flame', 'Wear anti-static PPE'],
-        whatGasReference: 'Mock WhatGas profile for propane systems',
-    },
-    'R-32': {
-        code: 'R-32',
-        commonName: 'Difluoromethane',
-        ashraeSafetyClass: 'A2L',
-        riskColor: 'orange',
-        riskLevel: 'moderate',
-        typicalUse: 'Split systems and medium-charge commercial equipment.',
-        odp: 0,
-        gwp: 675,
-        emergencyNotes: ['Treat as mildly flammable.', 'Verify continuous ventilation when charging.'],
-        fieldChecklist: ['Check ignition controls', 'Use leak detector', 'Record confined-space controls'],
-        whatGasReference: 'Mock WhatGas profile for mildly flammable HFC/HFO transition systems',
-    },
-    'R-744': {
-        code: 'R-744',
-        commonName: 'Carbon Dioxide',
-        ashraeSafetyClass: 'A1',
-        riskColor: 'green',
-        riskLevel: 'low',
-        typicalUse: 'Transcritical commercial refrigeration and cold-chain racks.',
-        odp: 0,
-        gwp: 1,
-        emergencyNotes: ['Monitor pressure closely.', 'Check confined-space ventilation to avoid asphyxiation risk.'],
-        fieldChecklist: ['Confirm pressure relief devices', 'Review high-pressure zone markings', 'Validate ventilation'],
-        whatGasReference: 'Mock WhatGas profile for CO2 systems',
-    },
-    'R-717': {
-        code: 'R-717',
-        commonName: 'Ammonia',
-        ashraeSafetyClass: 'B2L',
-        riskColor: 'blue',
-        riskLevel: 'critical',
-        typicalUse: 'Industrial refrigeration plants.',
-        odp: 0,
-        gwp: 0,
-        emergencyNotes: ['Evacuate immediately on large leak.', 'Use respiratory protection and supervisor escalation.'],
-        fieldChecklist: ['Confirm emergency wash stations', 'Use respiratory PPE', 'Notify supervisor before entry'],
-        whatGasReference: 'Mock WhatGas profile for toxic low-flammability industrial systems',
-    },
-};
 
 const NAMEPLATE_PATTERNS = {
     refrigerantCode: /(R[- ]?\d{2,3}[A-Z]?)/i,
@@ -80,36 +25,105 @@ export function normaliseRefrigerantCode(value: string) {
     return value.toUpperCase().replace(/\s+/g, '').replace('R', 'R-').replace('R--', 'R-');
 }
 
-export function getWhatGasProfile(code: string | undefined | null) {
-    if (!code) {
-        return null;
-    }
+function toProfile(record: Refrigerant): WhatGasRefrigerantProfile {
+    const code = record.ashraeCode ?? record.odsName ?? 'Unknown';
+    const ashraeSafetyClass = record.ashraeSafetyGroup ?? 'Unclassified';
+    const classification = classifySafetyAlert(ashraeSafetyClass);
 
-    return WHATGAS_PROFILES[normaliseRefrigerantCode(code)] ?? null;
+    return {
+        code,
+        commonName: record.odsName ?? code,
+        ashraeSafetyClass,
+        riskColor: classification.color,
+        riskLevel: classification.riskLevel,
+        typicalUse: record.realApplications?.[0] ?? 'See the WhatGas record for application detail.',
+        odp: Number(record.odp) || 0,
+        gwp: Number(record.gwp) || 0,
+        emergencyNotes: buildEmergencyNotes(record, classification.color),
+        fieldChecklist: buildFieldChecklist(record, classification.color),
+        whatGasReference: `UNEP WhatGas registry record #${record.id}`,
+    };
 }
 
-export function classifySafetyAlert(ashraeSafetyClass: RefrigerantSafetyClass): {
+function buildEmergencyNotes(record: Refrigerant, color: SafetyAlertColor): string[] {
+    if (color === 'red') {
+        return ['Remove ignition sources immediately.', 'Ventilate the space before restarting work.'];
+    }
+    if (color === 'blue') {
+        return ['Evacuate immediately on a large leak.', 'Use respiratory protection and escalate to a supervisor.'];
+    }
+    if (color === 'orange') {
+        return ['Treat as mildly flammable.', 'Verify continuous ventilation when charging.'];
+    }
+    if (record.toxicity) {
+        return [`Toxicity note: ${record.toxicity}`, 'Confirm ventilation before opening the system.'];
+    }
+    return ['Follow standard leak-response procedure.', 'Confirm ventilation before opening the system.'];
+}
+
+function buildFieldChecklist(record: Refrigerant, color: SafetyAlertColor): string[] {
+    if (color === 'red') {
+        return ['Confirm ventilation', 'Isolate sparks and flame', 'Wear anti-static PPE'];
+    }
+    if (color === 'blue') {
+        return ['Confirm emergency wash stations', 'Use respiratory PPE', 'Notify supervisor before entry'];
+    }
+    if (color === 'orange') {
+        return ['Check ignition controls', 'Use leak detector', 'Record confined-space controls'];
+    }
+    return ['Confirm pressure relief devices', 'Review high-pressure zone markings', 'Validate ventilation'];
+}
+
+/**
+ * Looks up a refrigerant against the live UNEP WhatGas-backed registry
+ * (synced into the `refrigerants` table). Returns null on no match, no
+ * session, or a network/API failure.
+ */
+export async function fetchWhatGasProfile(code: string | undefined | null): Promise<WhatGasRefrigerantProfile | null> {
+    if (!code) return null;
+
+    try {
+        const res = await fetch(`/api/refrigerants?q=${encodeURIComponent(code)}&pageSize=1`, {
+            credentials: 'include',
+        });
+        if (!res.ok) return null;
+
+        const body = await res.json() as { data: Refrigerant[] };
+        const record = body.data?.[0];
+        return record ? toProfile(record) : null;
+    } catch {
+        return null;
+    }
+}
+
+export function classifySafetyAlert(ashraeSafetyClass: string): {
     color: SafetyAlertColor;
     riskLevel: RefrigerantRiskLevel;
     label: string;
 } {
-    if (ashraeSafetyClass.startsWith('B')) {
+    const value = ashraeSafetyClass.toUpperCase();
+
+    if (value.startsWith('B')) {
         return { color: 'blue', riskLevel: 'critical', label: `Blue / ${ashraeSafetyClass}` };
     }
 
-    if (ashraeSafetyClass === 'A3') {
+    if (value === 'A3') {
         return { color: 'red', riskLevel: 'high', label: 'Red / A3' };
     }
 
-    if (ashraeSafetyClass === 'A2L' || ashraeSafetyClass === 'A2') {
+    if (value === 'A2L' || value === 'A2') {
         return { color: 'orange', riskLevel: 'moderate', label: `Orange / ${ashraeSafetyClass}` };
     }
 
-    return { color: 'green', riskLevel: 'low', label: `Green / ${ashraeSafetyClass}` };
+    if (value === 'A1') {
+        return { color: 'green', riskLevel: 'low', label: `Green / ${ashraeSafetyClass}` };
+    }
+
+    return { color: 'green', riskLevel: 'low', label: `Unclassified / ${ashraeSafetyClass}` };
 }
 
-export function getRiskSummary(code: string | undefined | null) {
-    const profile = getWhatGasProfile(code);
+export async function getRiskSummary(code: string | undefined | null) {
+    const profile = await fetchWhatGasProfile(code);
 
     if (!profile) {
         return null;
@@ -123,8 +137,8 @@ export function getRiskSummary(code: string | undefined | null) {
     };
 }
 
-export function buildPreJobChecklist(code: string | undefined | null) {
-    const profile = getWhatGasProfile(code);
+export async function buildPreJobChecklist(code: string | undefined | null) {
+    const profile = await fetchWhatGasProfile(code);
 
     if (!profile) {
         return [
@@ -141,11 +155,11 @@ export function buildPreJobChecklist(code: string | undefined | null) {
     ];
 }
 
-export function extractNameplateData(rawText: string): OcrScanRecord {
+export async function extractNameplateData(rawText: string): Promise<OcrScanRecord> {
     const refrigerantCode = rawText.match(NAMEPLATE_PATTERNS.refrigerantCode)?.[1]?.replace(' ', '-') ?? undefined;
     const serialNumber = rawText.match(NAMEPLATE_PATTERNS.serialNumber)?.[2];
     const model = rawText.match(NAMEPLATE_PATTERNS.model)?.[2];
-    const whatGasMatch = getWhatGasProfile(refrigerantCode);
+    const whatGasMatch = await fetchWhatGasProfile(refrigerantCode);
 
     const manufacturerLine = rawText
         .split('\n')
@@ -165,11 +179,9 @@ export function extractNameplateData(rawText: string): OcrScanRecord {
     };
 }
 
-export function buildSafetyAssistantResponse(query: string, language: AppLanguage) {
-    const queryText = query.toUpperCase();
-    const profile = Object.keys(WHATGAS_PROFILES)
-        .map((code) => WHATGAS_PROFILES[code])
-        .find((item) => queryText.includes(item.code));
+export async function buildSafetyAssistantResponse(query: string, language: AppLanguage): Promise<string> {
+    const code = query.match(NAMEPLATE_PATTERNS.refrigerantCode)?.[1]?.replace(' ', '-');
+    const profile = code ? await fetchWhatGasProfile(code) : null;
 
     if (!profile) {
         return language === 'fr'
@@ -178,7 +190,8 @@ export function buildSafetyAssistantResponse(query: string, language: AppLanguag
     }
 
     const classification = classifySafetyAlert(profile.ashraeSafetyClass);
-    const steps = buildPreJobChecklist(profile.code).slice(0, 4).join(language === 'fr' ? ' | ' : ' | ');
+    const checklist = await buildPreJobChecklist(profile.code);
+    const steps = checklist.slice(0, 4).join(language === 'fr' ? ' | ' : ' | ');
 
     return language === 'fr'
         ? `${profile.code} ${profile.commonName} est classe ${profile.ashraeSafetyClass}. Alerte ${classification.color}. Etapes: ${steps}.`

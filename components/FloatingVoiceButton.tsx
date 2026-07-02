@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Globe2, Mic, MicOff, Radio, Volume2, Waves, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useEmergencyMode } from '@/lib/emergencyMode';
@@ -37,7 +37,7 @@ interface BrowserSpeechRecognition {
 
 type RecognitionConstructor = new () => BrowserSpeechRecognition;
 
-function buildContextualResponse(query: string, emergencyMode: boolean, language: 'en' | 'fr') {
+async function buildContextualResponse(query: string, emergencyMode: boolean, language: 'en' | 'fr') {
   const trimmed = query.trim();
   const lower = trimmed.toLowerCase();
 
@@ -59,7 +59,7 @@ function buildContextualResponse(query: string, emergencyMode: boolean, language
       : 'Use the public verification portal with the certificate number or QR code to confirm status and expiry.';
   }
 
-  const baseline = buildSafetyAssistantResponse(trimmed, language);
+  const baseline = await buildSafetyAssistantResponse(trimmed, language);
 
   if (!emergencyMode) {
     return baseline;
@@ -147,7 +147,31 @@ export function FloatingVoiceButton() {
     };
   }, [speechLocale]);
 
-  const latestRisk = useMemo(() => getRiskSummary(query || transcript), [query, transcript]);
+  const [latestRisk, setLatestRisk] = useState<Awaited<ReturnType<typeof getRiskSummary>>>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const source = (query || transcript).trim();
+
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+
+      if (!source) {
+        setLatestRisk(null);
+        return;
+      }
+
+      getRiskSummary(source).then((risk) => {
+        if (!cancelled) setLatestRisk(risk);
+      });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query, transcript]);
+
   const recentSessions = sessions.slice(0, 3);
 
   const speakResponse = (message: string) => {
@@ -158,16 +182,16 @@ export function FloatingVoiceButton() {
     window.speechSynthesis.speak(utterance);
   };
 
-  const persistSession = (nextQuery: string, nextResponse: string) => {
-    const risk = getRiskSummary(nextQuery);
+  const persistSession = async (nextQuery: string, nextResponse: string) => {
+    const risk = await getRiskSummary(nextQuery);
     const session: SafetySession = {
       id: `voice-${Date.now()}`,
       technicianId: user?.id ?? 'public-user',
       query: nextQuery,
       response: nextResponse,
       sourceDocuments: emergencyMode
-        ? ['Offline safety scripts', 'Mock WhatGas refrigerant intelligence']
-        : ['Mock WhatGas refrigerant intelligence', 'HEVACRAZ workflow guidance'],
+        ? ['Offline safety scripts', 'WhatGas refrigerant intelligence']
+        : ['WhatGas refrigerant intelligence', 'HEVACRAZ workflow guidance'],
       refrigerantClass: risk?.profile.ashraeSafetyClass,
       createdAt: new Date().toISOString(),
       language,
@@ -178,14 +202,14 @@ export function FloatingVoiceButton() {
     setSessions(nextSessions);
   };
 
-  const submitQuery = (value: string) => {
+  const submitQuery = async (value: string) => {
     const nextQuery = value.trim();
     if (!nextQuery) return;
 
-    const nextResponse = buildContextualResponse(nextQuery, emergencyMode, language);
+    const nextResponse = await buildContextualResponse(nextQuery, emergencyMode, language);
     setResponse(nextResponse);
     setErrorMessage('');
-    persistSession(nextQuery, nextResponse);
+    await persistSession(nextQuery, nextResponse);
     speakResponse(nextResponse);
   };
 

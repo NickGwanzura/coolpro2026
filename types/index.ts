@@ -698,7 +698,7 @@ export const SeverityCategories = {
 export interface WhatGasRefrigerantProfile {
   code: string;
   commonName: string;
-  ashraeSafetyClass: RefrigerantSafetyClass;
+  ashraeSafetyClass: string;
   riskColor: SafetyAlertColor;
   riskLevel: RefrigerantRiskLevel;
   typicalUse: string;
@@ -738,7 +738,7 @@ export interface SafetySession {
   query: string;
   response: string;
   sourceDocuments: string[];
-  refrigerantClass?: RefrigerantSafetyClass;
+  refrigerantClass?: string;
   createdAt: string;
   language: AppLanguage;
   emergencyMode: boolean;

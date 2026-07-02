@@ -44,7 +44,7 @@ export function OcrNameplateScanner() {
             const scan = await worker.recognize(file);
             await worker.terminate();
 
-            const parsed = extractNameplateData(scan.data.text);
+            const parsed = await extractNameplateData(scan.data.text);
             setResult(parsed);
             prependCollectionItem<OcrScanRecord>(STORAGE_KEYS.ocrScans, parsed);
         } catch (scanError) {
