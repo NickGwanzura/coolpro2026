@@ -30,6 +30,7 @@ import type {
   ReclamationRecord,
   RecyclingRecord,
   RefrigerantAnalytics,
+  Invite,
 } from '@/types/index';
 
 async function fetcher<T>(url: string): Promise<T> {
@@ -650,4 +651,28 @@ export async function createRecyclingRecord(
 
 export function useRefrigerantAnalytics() {
   return useSWR<RefrigerantAnalytics>('/api/admin/refrigerant-analytics', fetcher);
+}
+
+// ---------------------------------------------------------------------------
+// Invites (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useInvites() {
+  return useSWR<{ data: Invite[] }>('/api/admin/invites', fetcher);
+}
+
+export async function createInvite(body: {
+  email: string;
+  role: string;
+  region: string;
+}): Promise<{ invite: Invite; inviteUrl: string; emailSent: boolean }> {
+  const result = await post<{ invite: Invite; inviteUrl: string; emailSent: boolean }>('/api/admin/invites', body);
+  await mutate('/api/admin/invites');
+  return result;
+}
+
+export async function revokeInvite(id: string): Promise<Invite> {
+  const result = await post<Invite>(`/api/admin/invites/${id}/revoke`);
+  await mutate('/api/admin/invites');
+  return result;
 }

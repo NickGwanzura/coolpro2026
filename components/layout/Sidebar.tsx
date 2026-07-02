@@ -32,6 +32,7 @@ import {
     FileText,
     Recycle,
     RefreshCw,
+    UserPlus,
 } from 'lucide-react';
 import { useAuth, logout } from '@/lib/auth';
 import { useEmergencyMode } from '@/lib/emergencyMode';
@@ -113,6 +114,7 @@ const NAV_SECTIONS: NavSection[] = [
         label: 'Admin',
         items: [
             { name: 'Applications', href: '/admin/applications', icon: ShieldCheck, roles: ['org_admin'] },
+            { name: 'Invites', href: '/admin/invites', icon: UserPlus, roles: ['org_admin'] },
             { name: 'NOU Dashboard', href: '/nou-dashboard', icon: AlertTriangle, roles: ['org_admin'] },
             { name: 'Course Approvals', href: '/learn/approvals', icon: ShieldCheck, roles: ['org_admin'] },
             { name: 'Lecturer Directory', href: '/admin/lecturers', icon: GraduationCap, roles: ['org_admin'] },

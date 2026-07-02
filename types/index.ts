@@ -1073,3 +1073,22 @@ export interface RecyclingRecord {
   notes?: string;
   createdAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// Invites
+// ---------------------------------------------------------------------------
+
+export type InviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
+
+export interface Invite {
+  id: string;
+  email: string;
+  role: string;
+  region: string;
+  token: string;
+  status: InviteStatus;
+  invitedBy: string;
+  acceptedAt: string | null;
+  expiresAt: string;
+  createdAt: string;
+}
