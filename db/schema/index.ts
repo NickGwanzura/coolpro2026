@@ -16,3 +16,4 @@ export * from './reclamation';
 export * from './recycling';
 export * from './invites';
 export * from './ocr-scans';
+export * from './coc-requests';

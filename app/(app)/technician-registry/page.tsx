@@ -79,6 +79,7 @@ function TechnicianRegistryContent() {
       );
     });
   }, [
+    techniciansData,
     searchTerm,
     selectedProvince,
     selectedDistrict,

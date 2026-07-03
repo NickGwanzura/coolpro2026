@@ -8,11 +8,22 @@ import {
     CheckCircle,
     AlertCircle,
     Send,
-    ClipboardList,
-    ShieldCheck
+    ShieldCheck,
+    Clock,
 } from 'lucide-react';
-import { usePlannerJobs } from '@/lib/api';
+import { usePlannerJobs, useCocRequests, createCocRequest } from '@/lib/api';
 import { JobTypeLabels } from '@/types/index';
+import { CocPdfButton } from '@/components/CocPdfButton';
+
+const STATUS_STYLE: Record<string, string> = {
+    submitted: 'bg-amber-50 text-amber-700 border-amber-200',
+    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    rejected: 'bg-rose-50 text-rose-700 border-rose-200',
+};
+
+function formatDate(iso: string) {
+    return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium' }).format(new Date(iso));
+}
 
 function RequestCoCForm() {
     const router = useRouter();
@@ -21,10 +32,13 @@ function RequestCoCForm() {
 
     const { data: plannerJobs } = usePlannerJobs();
     const job = plannerJobs?.find(j => j.id === jobId) ?? null;
+    const { data: myRequests } = useCocRequests();
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
-    const [digitalId] = useState(() => Math.random().toString(36).substr(2, 9).toUpperCase());
+    const [error, setError] = useState('');
     const [formData, setFormData] = useState({
+        clientName: '',
+        location: '',
         equipmentType: '',
         serialNumber: '',
         installationDate: '',
@@ -36,6 +50,8 @@ function RequestCoCForm() {
         if (job) {
             setFormData(prev => ({
                 ...prev,
+                clientName: job.clientName,
+                location: job.location,
                 equipmentType: JobTypeLabels[job.jobType] ?? job.jobType,
                 serialNumber: '',
                 installationDate: job.scheduledDate
@@ -43,18 +59,31 @@ function RequestCoCForm() {
         }
     }, [job]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
         setSubmitting(true);
 
-        // Mock API call
-        setTimeout(() => {
-            setSubmitting(false);
+        try {
+            await createCocRequest({
+                plannerJobId: job?.id,
+                clientName: formData.clientName.trim(),
+                location: formData.location.trim(),
+                equipmentType: formData.equipmentType.trim(),
+                serialNumber: formData.serialNumber.trim() || undefined,
+                installationDate: formData.installationDate,
+                details: formData.details.trim() || undefined,
+                complianceCheck: formData.complianceCheck,
+            });
             setSubmitted(true);
             setTimeout(() => {
                 router.push('/jobs');
             }, 3000);
-        }, 1500);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to submit request.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     if (submitted) {
@@ -98,20 +127,49 @@ function RequestCoCForm() {
                             <ShieldCheck className="h-5 w-5 text-blue-400" />
                             <span className="text-xs font-bold uppercase tracking-widest text-blue-400">Compliance Verification</span>
                         </div>
-                        <div>
-                            <p className="text-sm text-slate-400">Client / Project</p>
-                            <h2 className="text-xl font-bold">{job?.clientName || 'Manual Entry'}</h2>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <p className="text-xs text-slate-400">Location</p>
-                                <p className="text-sm font-medium">{job?.location || 'Not specified'}</p>
+                        {job ? (
+                            <>
+                                <div>
+                                    <p className="text-sm text-slate-400">Client / Project</p>
+                                    <h2 className="text-xl font-bold">{job.clientName}</h2>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-xs text-slate-400">Location</p>
+                                        <p className="text-sm font-medium">{job.location}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-400">Job ID</p>
+                                        <p className="text-sm font-medium font-mono text-blue-300">{jobId}</p>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs text-slate-400">Client / Project</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        className="w-full bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500"
+                                        value={formData.clientName}
+                                        onChange={e => setFormData({ ...formData, clientName: e.target.value })}
+                                        placeholder="Client or site name"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs text-slate-400">Location</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        className="w-full bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500"
+                                        value={formData.location}
+                                        onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                        placeholder="Street address"
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-xs text-slate-400">Job ID</p>
-                                <p className="text-sm font-medium font-mono text-blue-300">{jobId || 'NEW-SUBMISSION'}</p>
-                            </div>
-                        </div>
+                        )}
                     </div>
                     <div className="absolute top-0 right-0 p-8 opacity-10">
                         <FileText className="h-24 w-24" />
@@ -182,6 +240,13 @@ function RequestCoCForm() {
                         </label>
                     </div>
 
+                    {error && (
+                        <div className="flex items-center gap-2 border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            {error}
+                        </div>
+                    )}
+
                     <button
                         type="submit"
                         disabled={submitting}
@@ -199,12 +264,35 @@ function RequestCoCForm() {
                             </>
                         )}
                     </button>
-
-                    <p className="text-[10px] text-gray-400 text-center uppercase tracking-widest font-bold">
-                        Digital ID: TECH-{digitalId}
-                    </p>
                 </div>
             </form>
+
+            {myRequests && myRequests.length > 0 && (
+                <div className="border border-gray-200 bg-white shadow-sm">
+                    <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
+                        <Clock className="h-4 w-4 text-gray-400" />
+                        <h2 className="text-sm font-semibold text-gray-900">Your COC requests</h2>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                        {myRequests.map(request => (
+                            <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-gray-900">{request.clientName}</p>
+                                    <p className="mt-0.5 text-xs text-gray-500">
+                                        {request.certificateNumber} · {formatDate(request.submittedAt)}
+                                    </p>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    <span className={`border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${STATUS_STYLE[request.status]}`}>
+                                        {request.status}
+                                    </span>
+                                    {request.status === 'approved' && <CocPdfButton request={request} />}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

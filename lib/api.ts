@@ -33,6 +33,7 @@ import type {
   Invite,
   AdminUserRecord,
   OcrScanRecord,
+  CocRequest,
 } from '@/types/index';
 
 async function fetcher<T>(url: string): Promise<T> {
@@ -719,5 +720,28 @@ export async function createOcrScan(body: {
 }): Promise<OcrScanRecord> {
   const result = await post<OcrScanRecord>('/api/ocr-scans', body);
   await mutate('/api/ocr-scans');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Certificate of Conformity requests (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useCocRequests() {
+  return useSWR<CocRequest[]>('/api/coc-requests', fetcher);
+}
+
+export async function createCocRequest(
+  body: Pick<CocRequest, 'clientName' | 'location' | 'equipmentType' | 'installationDate' | 'complianceCheck'> &
+    Partial<Pick<CocRequest, 'plannerJobId' | 'serialNumber' | 'details'>>,
+): Promise<CocRequest> {
+  const result = await post<CocRequest>('/api/coc-requests', body);
+  await mutate('/api/coc-requests');
+  return result;
+}
+
+export async function reviewCocRequest(id: string, action: 'approve' | 'reject', notes?: string): Promise<CocRequest> {
+  const result = await post<CocRequest>(`/api/coc-requests/${id}/${action}`, notes ? { notes } : undefined);
+  await mutate('/api/coc-requests');
   return result;
 }

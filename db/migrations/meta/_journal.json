@@ -85,6 +85,13 @@
       "when": 1783064442781,
       "tag": "0011_nebulous_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783067177319,
+      "tag": "0012_jazzy_archangel",
+      "breakpoints": true
     }
   ]
 }

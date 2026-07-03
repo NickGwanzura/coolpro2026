@@ -1000,6 +1000,32 @@ export interface TradePermit {
   createdAt: string;
 }
 
+export type CocRequestStatus = 'submitted' | 'approved' | 'rejected';
+
+export interface CocRequest {
+  id: string;
+  certificateNumber: string;
+  plannerJobId?: string;
+  technicianId: string;
+  technicianName: string;
+  clientName: string;
+  location: string;
+  equipmentType: string;
+  serialNumber?: string;
+  installationDate: string;
+  details?: string;
+  complianceCheck: boolean;
+  status: CocRequestStatus;
+  verificationToken?: string;
+  verificationUrl?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNote?: string;
+  issuedDate?: string;
+  submittedAt: string;
+  createdAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Reclamation
 // ---------------------------------------------------------------------------
