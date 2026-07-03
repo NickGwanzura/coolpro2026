@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/components/ui/Toast';
-import { MOCK_REFRIGERANTS } from '@/constants/refrigerants';
+import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
 import { useCourses, useReorders, useVerifications, useSupplierApplications, useSupplierLedger, useSupplierComplianceApplications, useTechnicians } from '@/lib/api';
 import type { SupplierQuotaStatus } from '@/types/index';
 
@@ -121,7 +121,7 @@ export default function NouDashboard() {
     const totalPurchasedKg = purchaseReorders.reduce((sum, r) => sum + r.quantityKg, 0);
     const totalRecoveredKg = recoveryReorders.reduce((sum, r) => sum + r.quantityKg, 0);
     const emissionsAvoidedKgCo2 = recoveryReorders.reduce((sum, r) => {
-      const gwp = MOCK_REFRIGERANTS[r.gasType]?.gwp ?? 0;
+      const gwp = REFRIGERANT_REFERENCE[r.gasType]?.gwp ?? 0;
       return sum + r.quantityKg * gwp;
     }, 0);
     return {

@@ -4,7 +4,7 @@ import { SizingInputs, JobType, JobTypeLabels, JobTypeDefaults, JobTypeImages, J
 import { INSULATION_U_VALUES, Icons, REFRIGERANTS } from '../constants';
 import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download, Snowflake, ExternalLink, Gauge, ArrowUpDown, Droplets } from 'lucide-react';
 import { useAuth } from '../lib/auth';
-import { MOCK_REFRIGERANTS } from '@/constants/refrigerants';
+import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
 
 // Technical References/Sources
 const SIZING_SOURCES = [
@@ -564,7 +564,7 @@ const SizingTool: React.FC = () => {
     subcoolingValue < 3 ? 'Low' : subcoolingValue > 10 ? 'High' : 'Optimal';
 
   const leakEquivalent = useMemo(() => {
-    const refrigerant = MOCK_REFRIGERANTS[leakInputs.refrigerantCode];
+    const refrigerant = REFRIGERANT_REFERENCE[leakInputs.refrigerantCode];
     const co2eq = (leakInputs.leakRate * refrigerant.gwp) / 1000;
     const carJourneys = Math.round(co2eq * 245);
     return {
@@ -1630,7 +1630,7 @@ const SizingTool: React.FC = () => {
             </div>
             <div className="border border-gray-200 bg-gray-50 p-5">
               <p className="text-sm font-semibold text-gray-500">Safety Class</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900">{MOCK_REFRIGERANTS[selectedRefrigerant].ashraeSafetyClass}</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{REFRIGERANT_REFERENCE[selectedRefrigerant].ashraeSafetyClass}</p>
             </div>
             <div className="border border-red-100 bg-red-50 p-5">
               <p className="text-sm font-semibold text-red-700">Max Operating Pressure</p>
@@ -1656,7 +1656,7 @@ const SizingTool: React.FC = () => {
                   onChange={(e) => setLeakInputs({ ...leakInputs, refrigerantCode: e.target.value as RefrigerantCode })}
                   className="w-full border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
                 >
-                  {Object.keys(MOCK_REFRIGERANTS).map((code) => (
+                  {Object.keys(REFRIGERANT_REFERENCE).map((code) => (
                     <option key={code} value={code}>
                       {code}
                     </option>

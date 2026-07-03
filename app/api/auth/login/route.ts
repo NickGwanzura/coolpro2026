@@ -5,7 +5,7 @@ import { users } from '@/db/schema/index';
 import { signSession, sessionCookie } from '@/lib/server/auth';
 import { verifyPassword } from '@/lib/server/password';
 import { VALID_ROLES, type ValidRole } from '@/lib/roles';
-import type { UserSession } from '@/lib/mock-users';
+import type { UserSession } from '@/lib/session-types';
 
 const DEMO_LOGIN_ENABLED = process.env.ENABLE_DEMO_LOGIN === 'true';
 

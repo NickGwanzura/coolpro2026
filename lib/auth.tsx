@@ -1,9 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import type { UserSession } from './mock-users';
-export type { UserSession } from './mock-users';
-export { MOCK_USERS } from './mock-users';
+import type { UserSession } from './session-types';
+export type { UserSession } from './session-types';
 
 export function getSession(): UserSession | null {
     if (typeof window === 'undefined') return null;

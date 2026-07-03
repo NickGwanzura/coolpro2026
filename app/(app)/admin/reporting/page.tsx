@@ -30,6 +30,7 @@ import {
     Eye,
 } from 'lucide-react';
 import Link from 'next/link';
+import { rangeMsFor, type SimpleDateRange } from '@/lib/dateRange';
 
 // ---------------------------------------------------------------------------
 // Types for the activity timeline
@@ -245,11 +246,7 @@ export default function ReportingPage() {
 
         // Apply date filter
         if (dateFilter !== 'all') {
-            const rangeMs = dateFilter === 'today'
-                ? 24 * 60 * 60 * 1000
-                : dateFilter === 'week'
-                    ? 7 * 24 * 60 * 60 * 1000
-                    : 30 * 24 * 60 * 60 * 1000;
+            const rangeMs = rangeMsFor(dateFilter as SimpleDateRange);
             const cutoff = nowRef - rangeMs;
             return all.filter(e => new Date(e.timestamp).getTime() >= cutoff);
         }

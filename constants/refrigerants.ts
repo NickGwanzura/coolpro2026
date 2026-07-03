@@ -1,6 +1,10 @@
 import { RefrigerantDefinition } from '@/types/index';
 
-export const MOCK_REFRIGERANTS: Record<string, RefrigerantDefinition> = {
+// Curated P-T chart / leak-rate reference data for the Sizing Tool. Real published ASHRAE
+// safety class, GWP, and ODP values — not placeholder/mock data — just hardcoded because
+// the underlying pressure-temperature curves are physical constants, not something an API
+// provides. Limited to the common refrigerants this tool has curves for.
+export const REFRIGERANT_REFERENCE: Record<string, RefrigerantDefinition> = {
   'R-290': {
     code: 'R-290',
     name: 'Propane',
@@ -46,5 +50,3 @@ export const MOCK_REFRIGERANTS: Record<string, RefrigerantDefinition> = {
     handlingPrecautions: ['Controlled substance - NOU authorisation required'],
   },
 };
-
-export const MOCK_REFRIGERANT_LIST: RefrigerantDefinition[] = Object.values(MOCK_REFRIGERANTS);

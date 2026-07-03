@@ -11,7 +11,7 @@ import {
     type PlannerSafetyChecklistItem, type RefrigerantSafetyClass,
     type Refrigerant,
 } from '@/types/index';
-import { MOCK_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
+import { DEFAULT_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
 import { useTechnicians, usePlannerJobs, createPlannerJob } from '@/lib/api';
 import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 
@@ -135,7 +135,7 @@ export default function JobPlanner() {
                 amount: formData.amount > 0 ? formData.amount : undefined,
                 status: 'scheduled', scheduledDate: formData.scheduledDate,
                 preJobChecklistComplete: formData.preJobChecklistComplete,
-                checklistItems: MOCK_PLANNER_SAFETY_CHECKLIST.map((i): PlannerSafetyChecklistItem => ({ ...i, completed: formData.preJobChecklistComplete })),
+                checklistItems: DEFAULT_PLANNER_SAFETY_CHECKLIST.map((i): PlannerSafetyChecklistItem => ({ ...i, completed: formData.preJobChecklistComplete })),
                 notes: formData.notes,
             });
             setShowModal(false);

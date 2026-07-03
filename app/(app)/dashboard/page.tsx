@@ -33,6 +33,7 @@ import Link from 'next/link';
 import OccupationalAccidentSection from '@/components/OccupationalAccidentSection';
 import { CertificateRecord, JobType, JobTypeLabels, PlannerJob, RefrigerantLog } from '@/types/index';
 import { BRAND as colors } from '@/constants/colors';
+import { rangeMsFor, type SimpleDateRange } from '@/lib/dateRange';
 
 export default function DashboardPage() {
     const [session, setSession] = useState<UserSession | null>(() => getSession());
@@ -103,11 +104,7 @@ export default function DashboardPage() {
 
     const adminMetrics = useMemo(() => {
         const now = Date.now();
-        const rangeMs = dateRange === 'today'
-            ? 24 * 60 * 60 * 1000
-            : dateRange === 'week'
-                ? 7 * 24 * 60 * 60 * 1000
-                : 30 * 24 * 60 * 60 * 1000;
+        const rangeMs = rangeMsFor(dateRange as SimpleDateRange);
         const rangeStart = now - rangeMs;
 
         const regionFilteredTechs = regionFilter === 'all'
@@ -182,12 +179,7 @@ export default function DashboardPage() {
     // Gas usage aggregated by job type via API
     const gasUsageFrom = useMemo(() => {
         const now = Date.now();
-        const rangeMs = dateRange === 'today'
-            ? 24 * 60 * 60 * 1000
-            : dateRange === 'week'
-                ? 7 * 24 * 60 * 60 * 1000
-                : 30 * 24 * 60 * 60 * 1000;
-        return new Date(now - rangeMs).toISOString();
+        return new Date(now - rangeMsFor(dateRange as SimpleDateRange)).toISOString();
     }, [dateRange]);
     const { data: gasUsageData, error: gasUsageError, isLoading: gasUsageLoading } = useGasUsage(gasUsageFrom);
 

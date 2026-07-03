@@ -4,7 +4,7 @@ import { db } from '@/db/client';
 import { invites, users } from '@/db/schema/index';
 import { signSession, sessionCookie } from '@/lib/server/auth';
 import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
-import type { UserSession } from '@/lib/mock-users';
+import type { UserSession } from '@/lib/session-types';
 
 export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

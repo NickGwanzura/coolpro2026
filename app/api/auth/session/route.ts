@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { users } from '@/db/schema/index';
 import { readSessionFromRequest } from '@/lib/server/auth';
-import type { UserSession } from '@/lib/mock-users';
+import type { UserSession } from '@/lib/session-types';
 
 export async function GET(req: Request) {
   const session = readSessionFromRequest(req);

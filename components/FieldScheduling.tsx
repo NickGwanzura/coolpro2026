@@ -10,8 +10,8 @@ import {
     type EquipmentStatus,
     type PredictiveAlert,
 } from '@/types/index';
-import { MOCK_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
-import { MOCK_REFRIGERANTS } from '@/constants/refrigerants';
+import { DEFAULT_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
+import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
 import { useEquipmentRecords, createPlannerJob } from '@/lib/api';
 
 type ViewScope = 'own' | 'fleet';
@@ -28,7 +28,7 @@ function statusStyles(status: EquipmentStatus) {
 }
 
 async function seedPlannerJob(record: EquipmentRecord) {
-    const refrigerantDefinition = MOCK_REFRIGERANTS[record.refrigerantType] ?? MOCK_REFRIGERANTS['R-290'];
+    const refrigerantDefinition = REFRIGERANT_REFERENCE[record.refrigerantType] ?? REFRIGERANT_REFERENCE['R-290'];
     await createPlannerJob({
         clientId: record.id,
         clientName: record.clientName,
@@ -39,7 +39,7 @@ async function seedPlannerJob(record: EquipmentRecord) {
         status: 'scheduled',
         scheduledDate: record.nextServiceDue,
         preJobChecklistComplete: record.status === 'normal',
-        checklistItems: MOCK_PLANNER_SAFETY_CHECKLIST.map(item => ({
+        checklistItems: DEFAULT_PLANNER_SAFETY_CHECKLIST.map(item => ({
             ...item,
             completed: record.status === 'normal'
         })),

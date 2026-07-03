@@ -6,7 +6,7 @@ import { UserRole } from '../types';
 import { TrendingDown, TrendingUp, ShieldCheck } from 'lucide-react';
 import OccupationalAccidentSection from './OccupationalAccidentSection';
 import { useReorders, useTechnicians } from '@/lib/api';
-import { MOCK_REFRIGERANTS } from '@/constants/refrigerants';
+import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
 
 const NATURAL_REFRIGERANTS = new Set(['R-290', 'R-600a', 'R-744', 'R-717', 'R-1270']);
 
@@ -82,7 +82,7 @@ const ComplianceDashboard: React.FC<{ role: UserRole }> = ({ role }) => {
     const totalKg = approvedReorders.reduce((sum, r) => sum + r.quantityKg, 0);
 
     const gwpImpactTonnes = approvedReorders.reduce((sum, r) => {
-      const gwp = MOCK_REFRIGERANTS[r.gasType]?.gwp ?? 0;
+      const gwp = REFRIGERANT_REFERENCE[r.gasType]?.gwp ?? 0;
       return sum + (r.quantityKg * gwp) / 1000;
     }, 0);
 
