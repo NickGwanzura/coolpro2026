@@ -12,12 +12,33 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Default corner radius for buttons across the app — most buttons are hand-styled inline
-   without a rounded-* utility, so this sets a sane baseline in one place. Any component that
-   explicitly sets rounded-none/rounded-full/etc. via a utility class still wins, since Tailwind
-   utility classes are higher specificity/later in the cascade than this base-layer rule. */
-button {
-  border-radius: 0.375rem;
+/* Default corner radius for buttons, card/panel/box containers, and CTA links styled as
+   buttons. There's no shared Button or Card component in this app — every element is
+   hand-styled inline, almost always via a plain <button> or one of these shadow/border
+   utilities — so this catches all of them in one place instead of editing hundreds of
+   individual className strings.
+   Deliberately placed inside Tailwind's `base` layer (matching its own cascade-layer order:
+   base < components < utilities) rather than left unlayered — CSS Cascade Layers give
+   ANY unlayered style priority over ANY layered style regardless of specificity, so an
+   unlayered rule here would have silently beaten explicit rounded-none/rounded-full utility
+   classes instead of losing to them as intended. Inside `base`, normal utilities (in
+   Tailwind's `utilities` layer) correctly win. */
+@layer base {
+  button {
+    border-radius: 0.375rem;
+  }
+
+  .shadow-sm,
+  .shadow-md,
+  .shadow-lg,
+  .border-dashed {
+    border-radius: 0.5rem;
+  }
+
+  .shadow-xl,
+  .shadow-2xl {
+    border-radius: 0.75rem;
+  }
 }
 
 /* Smooth scrolling */
