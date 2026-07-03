@@ -31,6 +31,7 @@ function toProfile(record: Refrigerant): WhatGasRefrigerantProfile {
     const classification = classifySafetyAlert(ashraeSafetyClass);
 
     return {
+        id: record.id,
         code,
         commonName: record.odsName ?? code,
         ashraeSafetyClass,

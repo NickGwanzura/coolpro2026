@@ -1,17 +1,23 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Camera, LoaderCircle, ScanText } from 'lucide-react';
+import { Camera, Clock, LoaderCircle, ScanText } from 'lucide-react';
 import { extractNameplateData } from '@/lib/refrigerantIntelligence';
-import { prependCollectionItem, STORAGE_KEYS } from '@/lib/platformStore';
+import { createOcrScan, useOcrScans } from '@/lib/api';
 import { RefrigerantRiskBadge } from '@/components/RefrigerantRiskBadge';
 import type { OcrScanRecord } from '@/types/index';
+
+function formatScanDate(iso: string) {
+    return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+}
 
 export function OcrNameplateScanner() {
     const [preview, setPreview] = useState<string>('');
     const [result, setResult] = useState<OcrScanRecord | null>(null);
     const [isScanning, setIsScanning] = useState(false);
     const [error, setError] = useState('');
+    const { data: historyData } = useOcrScans();
+    const history = historyData?.data ?? [];
 
     const risk = useMemo(() => {
         if (!result?.whatGasMatch) {
@@ -46,7 +52,17 @@ export function OcrNameplateScanner() {
 
             const parsed = await extractNameplateData(scan.data.text);
             setResult(parsed);
-            prependCollectionItem<OcrScanRecord>(STORAGE_KEYS.ocrScans, parsed);
+            await createOcrScan({
+                rawText: parsed.rawText,
+                refrigerantCode: parsed.refrigerantCode,
+                manufacturer: parsed.manufacturer,
+                model: parsed.model,
+                serialNumber: parsed.serialNumber,
+                matchConfidence: parsed.matchConfidence,
+                whatGasRefrigerantId: parsed.whatGasMatch?.id,
+            }).catch(() => {
+                // Scan result is still shown to the user even if persisting history fails.
+            });
         } catch (scanError) {
             console.error(scanError);
             setError('OCR scan failed. Try a clearer image or use a higher-contrast photo.');
@@ -134,6 +150,30 @@ export function OcrNameplateScanner() {
                     )}
                 </div>
             </div>
+
+            {history.length > 0 && (
+                <div className="mt-6 border-t border-gray-100 pt-5">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                        <Clock className="h-4 w-4" />
+                        Recent scans
+                    </div>
+                    <div className="mt-3 divide-y divide-gray-100 border border-gray-200">
+                        {history.map((scan) => (
+                            <div key={scan.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                                <div className="min-w-0">
+                                    <p className="truncate font-medium text-gray-900">
+                                        {scan.manufacturer || 'Unknown manufacturer'} {scan.model ? `· ${scan.model}` : ''}
+                                    </p>
+                                    <p className="text-xs text-gray-400">{formatScanDate(scan.createdAt)}</p>
+                                </div>
+                                <span className="shrink-0 text-xs font-semibold text-gray-500">
+                                    {scan.refrigerantCode || 'No refrigerant detected'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </section>
     );
 }

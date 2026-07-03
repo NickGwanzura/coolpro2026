@@ -696,6 +696,7 @@ export const SeverityCategories = {
 };
 
 export interface WhatGasRefrigerantProfile {
+  id: number;
   code: string;
   commonName: string;
   ashraeSafetyClass: string;

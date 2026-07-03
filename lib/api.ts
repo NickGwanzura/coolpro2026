@@ -32,6 +32,7 @@ import type {
   RefrigerantAnalytics,
   Invite,
   AdminUserRecord,
+  OcrScanRecord,
 } from '@/types/index';
 
 async function fetcher<T>(url: string): Promise<T> {
@@ -549,9 +550,12 @@ export function useRefrigerant(id: number | null | undefined) {
   return useSWR<Refrigerant>(id != null ? `/api/refrigerants/${id}` : null, fetcher);
 }
 
-export async function searchRefrigerantsOnce(params: RefrigerantFilterParams): Promise<RefrigerantListResponse> {
+export async function searchRefrigerantsOnce(
+  params: RefrigerantFilterParams,
+  basePath = '/api/refrigerants',
+): Promise<RefrigerantListResponse> {
   const qs = buildRefrigerantQuery(params);
-  return fetcher<RefrigerantListResponse>(`/api/refrigerants${qs ? `?${qs}` : ''}`);
+  return fetcher<RefrigerantListResponse>(`${basePath}${qs ? `?${qs}` : ''}`);
 }
 
 export function useWhatGasSyncStatus() {
@@ -693,5 +697,27 @@ export async function updateAdminUser(
 ): Promise<AdminUserRecord> {
   const result = await patch<AdminUserRecord>(`/api/admin/users/${id}`, body);
   await mutate((key) => typeof key === 'string' && key.startsWith('/api/admin/users'));
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// OCR nameplate scan history (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useOcrScans() {
+  return useSWR<{ data: OcrScanRecord[] }>('/api/ocr-scans', fetcher);
+}
+
+export async function createOcrScan(body: {
+  rawText: string;
+  refrigerantCode?: string;
+  manufacturer?: string;
+  model?: string;
+  serialNumber?: string;
+  matchConfidence?: number;
+  whatGasRefrigerantId?: number;
+}): Promise<OcrScanRecord> {
+  const result = await post<OcrScanRecord>('/api/ocr-scans', body);
+  await mutate('/api/ocr-scans');
   return result;
 }

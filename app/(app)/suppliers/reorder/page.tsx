@@ -6,9 +6,9 @@ import {
     useReorders,
     createReorder,
 } from '@/lib/api';
+import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 import type { SupplierReorder, ReorderStatus } from '@/lib/platformStore';
-
-const GAS_TYPES = ['R-410A', 'R-32', 'R-22', 'R-134a', 'R-404A', 'R-290', 'R-600a', 'R-744'] as const;
+import type { Refrigerant } from '@/types/index';
 
 const STATUS_LABEL: Record<ReorderStatus, string> = {
     pending_hevacraz: 'Pending HEVACRAZ',
@@ -32,7 +32,7 @@ export default function ReorderPage() {
     const { user: session, isLoading } = useAuth();
     const { data: reorders, error } = useReorders();
 
-    const [gasType, setGasType] = useState<string>(GAS_TYPES[0]);
+    const [refrigerant, setRefrigerant] = useState<Refrigerant | null>(null);
     const [quantityKg, setQuantityKg] = useState<string>('');
     const [purpose, setPurpose] = useState('');
     const [supplierNotes, setSupplierNotes] = useState('');
@@ -62,7 +62,7 @@ export default function ReorderPage() {
 
     function validate() {
         const next: Record<string, string> = {};
-        if (!gasType) next.gasType = 'Select a gas type.';
+        if (!refrigerant) next.gasType = 'Search and select a gas type.';
         const qty = parseFloat(quantityKg);
         if (!quantityKg || isNaN(qty) || qty <= 0) next.quantityKg = 'Enter a valid quantity greater than zero.';
         if (!purpose.trim()) next.purpose = 'Provide a purpose for this reorder.';
@@ -81,12 +81,12 @@ export default function ReorderPage() {
 
         try {
             await createReorder({
-                gasType,
+                gasType: refrigerant ? refrigerantLabel(refrigerant) : '',
                 quantityKg: parseFloat(quantityKg),
                 purpose: purpose.trim(),
                 supplierNotes: supplierNotes.trim(),
             });
-            setGasType(GAS_TYPES[0]);
+            setRefrigerant(null);
             setQuantityKg('');
             setPurpose('');
             setSupplierNotes('');
@@ -134,15 +134,13 @@ export default function ReorderPage() {
                         <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
                             Gas type
                         </label>
-                        <select
-                            value={gasType}
-                            onChange={e => setGasType(e.target.value)}
-                            className="mt-2 w-full border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        >
-                            {GAS_TYPES.map(g => (
-                                <option key={g} value={g}>{g}</option>
-                            ))}
-                        </select>
+                        <div className="mt-2">
+                            <RefrigerantAutocomplete
+                                value={refrigerant}
+                                onSelect={setRefrigerant}
+                                placeholder="Search refrigerant — e.g. R-410A, R-32…"
+                            />
+                        </div>
                         {errors.gasType && <p className="mt-1 text-xs text-rose-600">{errors.gasType}</p>}
                     </div>
 

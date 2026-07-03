@@ -6,6 +6,7 @@ import { ArrowRight, CheckCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import type { SupplierRegistration } from '@/types/index';
 import { createSupplierApplication } from '@/lib/api';
+import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 
 const ACCENT = '#D97706';
 const ACCENT_TINT = 'rgba(217,119,6,0.10)';
@@ -18,12 +19,6 @@ const SUPPLIER_TYPES: Array<SupplierRegistration['supplierType']> = [
   'distributor',
   'manufacturer',
   'service-partner',
-];
-
-const APPROVED_REFRIGERANTS = [
-  { code: 'R-290', safety: 'A3' },
-  { code: 'R-32', safety: 'A2L' },
-  { code: 'R-744', safety: 'A1' },
 ];
 
 type SupplierFormState = {
@@ -319,28 +314,31 @@ export default function SupplierRegistrationForm() {
               Choose at least one
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {APPROVED_REFRIGERANTS.map((item) => {
-              const active = form.refrigerantsSupplied.includes(item.code);
-              return (
+          <RefrigerantAutocomplete
+            value={null}
+            onSelect={(r) => {
+              if (!r) return;
+              const label = refrigerantLabel(r);
+              if (!form.refrigerantsSupplied.includes(label)) toggleRefrigerant(label);
+            }}
+            placeholder="Search and add a refrigerant your company supplies…"
+            apiPath="/api/public/refrigerants"
+          />
+          {form.refrigerantsSupplied.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {form.refrigerantsSupplied.map((code) => (
                 <button
-                  key={item.code}
+                  key={code}
                   type="button"
-                  onClick={() => toggleRefrigerant(item.code)}
-                  className="border px-4 py-4 text-left transition-colors"
-                  style={{
-                    borderColor: active ? ACCENT : BORDER,
-                    backgroundColor: active ? ACCENT_TINT : '#ffffff',
-                  }}
+                  onClick={() => toggleRefrigerant(code)}
+                  className="border px-3 py-1.5 text-xs font-semibold transition-colors"
+                  style={{ borderColor: ACCENT, backgroundColor: ACCENT_TINT, color: '#1C1917' }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: '#1C1917' }}>
-                    {item.code}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500">Safety class {item.safety}</p>
+                  {code} ×
                 </button>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </fieldset>
 
         <fieldset className="space-y-5 pt-5 border-t" style={{ borderColor: BORDER }}>

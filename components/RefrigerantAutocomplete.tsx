@@ -42,6 +42,9 @@ export interface RefrigerantAutocompleteProps {
   disabled?: boolean;
   className?: string;
   accentColor?: string;
+  /** Search endpoint — defaults to the authenticated catalogue; pass '/api/public/refrigerants'
+   * for unauthenticated pages (e.g. supplier signup) since /api/refrigerants requires a session. */
+  apiPath?: string;
 }
 
 export function RefrigerantAutocomplete({
@@ -52,6 +55,7 @@ export function RefrigerantAutocomplete({
   disabled,
   className = '',
   accentColor = '#D97706',
+  apiPath = '/api/refrigerants',
 }: RefrigerantAutocompleteProps) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -73,30 +77,38 @@ export function RefrigerantAutocomplete({
   }, []);
 
   useEffect(() => {
-    if (!open || debouncedQuery.trim().length < 2) {
-      setResults([]);
-      return;
-    }
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    searchRefrigerantsOnce({ q: debouncedQuery.trim(), pageSize: 20 })
-      .then((res) => {
-        if (!cancelled) {
-          setResults(res.data);
-          setHighlighted(0);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setError('Search failed. Try again.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+
+      if (!open || debouncedQuery.trim().length < 2) {
+        setResults([]);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      searchRefrigerantsOnce({ q: debouncedQuery.trim(), pageSize: 20 }, apiPath)
+        .then((res) => {
+          if (!cancelled) {
+            setResults(res.data);
+            setHighlighted(0);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setError('Search failed. Try again.');
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 0);
+
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [debouncedQuery, open]);
+  }, [debouncedQuery, open, apiPath]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, Refrigerant[]>();
