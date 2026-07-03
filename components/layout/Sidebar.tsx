@@ -113,6 +113,7 @@ const NAV_SECTIONS: NavSection[] = [
     {
         label: 'Admin',
         items: [
+            { name: 'System Users', href: '/admin/users', icon: Users, roles: ['org_admin'] },
             { name: 'Applications', href: '/admin/applications', icon: ShieldCheck, roles: ['org_admin'] },
             { name: 'Invites', href: '/admin/invites', icon: UserPlus, roles: ['org_admin'] },
             { name: 'NOU Dashboard', href: '/nou-dashboard', icon: AlertTriangle, roles: ['org_admin'] },

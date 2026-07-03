@@ -31,6 +31,7 @@ import type {
   RecyclingRecord,
   RefrigerantAnalytics,
   Invite,
+  AdminUserRecord,
 } from '@/types/index';
 
 async function fetcher<T>(url: string): Promise<T> {
@@ -674,5 +675,23 @@ export async function createInvite(body: {
 export async function revokeInvite(id: string): Promise<Invite> {
   const result = await post<Invite>(`/api/admin/invites/${id}/revoke`);
   await mutate('/api/admin/invites');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// System users (DB-backed, org_admin only)
+// ---------------------------------------------------------------------------
+
+export function useAdminUsers(q?: string) {
+  const url = q ? `/api/admin/users?q=${encodeURIComponent(q)}` : '/api/admin/users';
+  return useSWR<{ data: AdminUserRecord[] }>(url, fetcher);
+}
+
+export async function updateAdminUser(
+  id: string,
+  body: Partial<Pick<AdminUserRecord, 'role' | 'status' | 'region' | 'name'>>,
+): Promise<AdminUserRecord> {
+  const result = await patch<AdminUserRecord>(`/api/admin/users/${id}`, body);
+  await mutate((key) => typeof key === 'string' && key.startsWith('/api/admin/users'));
   return result;
 }

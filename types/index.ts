@@ -1080,6 +1080,18 @@ export interface RecyclingRecord {
 
 export type InviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
 
+export interface AdminUserRecord {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole | string;
+  region: string;
+  status: 'active' | 'inactive' | 'suspended' | 'pending';
+  isDemo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Invite {
   id: string;
   email: string;
