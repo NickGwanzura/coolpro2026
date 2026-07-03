@@ -4,10 +4,8 @@ import { db } from '@/db/client';
 import { users } from '@/db/schema/index';
 import { signSession, sessionCookie } from '@/lib/server/auth';
 import { verifyPassword } from '@/lib/server/password';
+import { VALID_ROLES, type ValidRole } from '@/lib/roles';
 import type { UserSession } from '@/lib/mock-users';
-
-const VALID_ROLES = ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] as const;
-type ValidRole = (typeof VALID_ROLES)[number];
 
 const DEMO_LOGIN_ENABLED = process.env.ENABLE_DEMO_LOGIN === 'true';
 

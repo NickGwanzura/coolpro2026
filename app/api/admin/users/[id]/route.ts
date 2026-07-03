@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { users } from '@/db/schema/index';
+import { users, userStatusEnum } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { VALID_ROLES } from '@/lib/roles';
 
-const VALID_ROLES = ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] as const;
-const VALID_STATUSES = ['active', 'inactive', 'suspended', 'pending'] as const;
+const VALID_STATUSES = userStatusEnum.enumValues;
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;

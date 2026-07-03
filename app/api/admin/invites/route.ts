@@ -5,9 +5,7 @@ import { db } from '@/db/client';
 import { invites, users } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { sendInviteEmail } from '@/lib/server/email';
-
-const VALID_ROLES = ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] as const;
-type ValidRole = (typeof VALID_ROLES)[number];
+import { VALID_ROLES, type ValidRole } from '@/lib/roles';
 
 const INVITE_TTL_DAYS = 7;
 

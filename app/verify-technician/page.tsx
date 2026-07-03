@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import useSWR from 'swr';
 import { CertificateQRCode } from '@/components/CertificateQRCode';
+import { SITE_URL } from '@/lib/site-url';
 import type { CertificateRecord, Technician } from '@/types/index';
 
 type SearchMode = 'registration' | 'name' | 'certificate';
@@ -451,7 +452,7 @@ export default function VerifyTechnicianPage() {
                     <CertificateQRCode
                       value={
                         certificate.verificationUrl ||
-                        `${typeof window === 'undefined' ? 'https://coolpro2026.vercel.app' : window.location.origin}/verify-technician?mode=certificate&q=${encodeURIComponent(certificate.certificateNumber)}&token=${certificate.verificationToken}`
+                        `${typeof window === 'undefined' ? SITE_URL : window.location.origin}/verify-technician?mode=certificate&q=${encodeURIComponent(certificate.certificateNumber)}&token=${certificate.verificationToken}`
                       }
                       title="Shareable Verification QR"
                     />

@@ -11,16 +11,21 @@ import {
     type PlannerSafetyChecklistItem, type RefrigerantSafetyClass,
     type Refrigerant,
 } from '@/types/index';
-import { MOCK_PLANNER_CLIENTS, MOCK_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
+import { MOCK_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
 import { useTechnicians, usePlannerJobs, createPlannerJob } from '@/lib/api';
 import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 
 interface PlannerFormState {
     clientId: string; clientName: string; location: string;
+    province: string; district: string;
     jobType: JobType; refrigerantClass: RefrigerantSafetyClass;
     refrigerant: Refrigerant | null; amount: number;
     scheduledDate: string; technicianId: string; technicianName: string;
     preJobChecklistComplete: boolean; notes: string;
+}
+
+function slugify(value: string): string {
+    return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'client';
 }
 
 const REF_CLASSES: RefrigerantSafetyClass[] = ['A1', 'A2L', 'A3'];
@@ -66,13 +71,11 @@ export default function JobPlanner() {
     const [submitting, setSubmitting] = useState(false);
     const [notice, setNotice] = useState('');
     const [formData, setFormData] = useState<PlannerFormState>({
-        clientId: MOCK_PLANNER_CLIENTS[0].id,
-        clientName: MOCK_PLANNER_CLIENTS[0].name,
-        location: MOCK_PLANNER_CLIENTS[0].location,
+        clientId: '', clientName: '', location: '', province: '', district: '',
         jobType: 'COLD_ROOM', refrigerantClass: 'A1',
         refrigerant: null, amount: 0,
-        scheduledDate: '2026-04-04', technicianId: 'tech-001',
-        technicianName: 'Demo Technician', preJobChecklistComplete: false, notes: '',
+        scheduledDate: '2026-04-04', technicianId: '',
+        technicianName: '', preJobChecklistComplete: false, notes: '',
     });
 
     const safetyRequired = formData.refrigerantClass === 'A2L' || formData.refrigerantClass === 'A3';
@@ -100,12 +103,13 @@ export default function JobPlanner() {
         { label: 'Follow-up',   value: jobs.filter(j => j.status === 'follow-up').length,  icon: ShieldAlert,   color: 'bg-rose-50 text-rose-600' },
     ];
 
-    const openClient = (clientId: string) => {
-        setFormData(prev => {
-            const c = MOCK_PLANNER_CLIENTS.find(x => x.id === clientId);
-            return c ? { ...prev, clientId: c.id, clientName: c.name, location: c.location } : prev;
-        });
-    };
+    // Client filter options are derived from real jobs (not a fixed list) so the picker
+    // reflects whatever clients actually exist in the DB, and grows as new ones are added.
+    const knownClients = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const job of jobs) map.set(job.clientId, job.clientName);
+        return Array.from(map.entries());
+    }, [jobs]);
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -113,12 +117,18 @@ export default function JobPlanner() {
             setNotice('A2L and A3 jobs require the pre-job safety checklist before scheduling.');
             return;
         }
-        const client = MOCK_PLANNER_CLIENTS.find(c => c.id === formData.clientId) ?? MOCK_PLANNER_CLIENTS[0];
+        if (!formData.clientName.trim() || !formData.location.trim() || !formData.province.trim()) {
+            setNotice('Client name, location, and province are required.');
+            return;
+        }
         setSubmitting(true);
         try {
             const created = await createPlannerJob({
-                clientId: formData.clientId, clientName: formData.clientName,
-                location: formData.location, province: client.province,
+                clientId: slugify(formData.clientName),
+                clientName: formData.clientName.trim(),
+                location: formData.location.trim(),
+                province: formData.province.trim(),
+                district: formData.district.trim() || undefined,
                 jobType: formData.jobType, refrigerantClass: formData.refrigerantClass,
                 refrigerantId: formData.refrigerant?.id,
                 refrigerantType: formData.refrigerant ? refrigerantLabel(formData.refrigerant) : undefined,
@@ -179,7 +189,7 @@ export default function JobPlanner() {
                     <select value={selectedClient} onChange={e => setSelectedClient(e.target.value)}
                         className="border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
                         <option value="">All clients</option>
-                        {MOCK_PLANNER_CLIENTS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        {knownClients.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
                     </select>
                     <select value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)}
                         className="border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
@@ -308,15 +318,26 @@ export default function JobPlanner() {
                         <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div>
-                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Client</label>
-                                    <select value={formData.clientId} onChange={e => openClient(e.target.value)}
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
-                                        {MOCK_PLANNER_CLIENTS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Client Name</label>
+                                    <input required value={formData.clientName} onChange={e => setFormData(p => ({ ...p, clientName: e.target.value }))}
+                                        placeholder="e.g. Meikles Hotel"
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">Location</label>
-                                    <input value={formData.location} onChange={e => setFormData(p => ({ ...p, location: e.target.value }))}
+                                    <input required value={formData.location} onChange={e => setFormData(p => ({ ...p, location: e.target.value }))}
+                                        placeholder="Street address"
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                                </div>
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">Province</label>
+                                    <input required value={formData.province} onChange={e => setFormData(p => ({ ...p, province: e.target.value }))}
+                                        placeholder="e.g. Harare"
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                                </div>
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-semibold text-gray-700">District (optional)</label>
+                                    <input value={formData.district} onChange={e => setFormData(p => ({ ...p, district: e.target.value }))}
                                         className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                                 </div>
                                 <div>
