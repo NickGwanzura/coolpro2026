@@ -12,6 +12,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Default corner radius for buttons across the app — most buttons are hand-styled inline
+   without a rounded-* utility, so this sets a sane baseline in one place. Any component that
+   explicitly sets rounded-none/rounded-full/etc. via a utility class still wins, since Tailwind
+   utility classes are higher specificity/later in the cascade than this base-layer rule. */
+button {
+  border-radius: 0.375rem;
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
