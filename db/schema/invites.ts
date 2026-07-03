@@ -1,4 +1,5 @@
-import { pgTable, pgEnum, uuid, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, uuid, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { userRoleEnum } from './users';
 
 export const inviteStatusEnum = pgEnum('invite_status', [
@@ -19,4 +20,8 @@ export const invites = pgTable('invites', {
   acceptedAt: timestamp('accepted_at', { withTimezone: true }),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  pendingEmailIdx: uniqueIndex('invites_pending_email_idx')
+    .on(table.email)
+    .where(sql`${table.status} = 'pending'`),
+}));

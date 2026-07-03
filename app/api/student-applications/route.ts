@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, or } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { studentApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
+import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
 import type { StudentApplication } from '@/types/index';
+
+const SIGNUP_RATE_LIMIT = 5;
+const SIGNUP_RATE_WINDOW_MS = 15 * 60 * 1000;
 
 function toStudentApplication(row: typeof studentApplications.$inferSelect): StudentApplication {
   return {
@@ -45,6 +49,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!checkRateLimit(`student-application:${getClientIp(req)}`, SIGNUP_RATE_LIMIT, SIGNUP_RATE_WINDOW_MS)) {
+    return NextResponse.json({ error: 'Too many applications from this address. Try again later.' }, { status: 429 });
+  }
+
   const body = (await req.json().catch(() => ({}))) as Partial<StudentApplication> & { password?: string };
 
   const required: Array<keyof StudentApplication> = [
@@ -75,7 +83,10 @@ export async function POST(req: Request) {
     .where(
       and(
         eq(studentApplications.email, email),
-        eq(studentApplications.status, 'submitted'),
+        or(
+          eq(studentApplications.status, 'submitted'),
+          eq(studentApplications.status, 'under-review'),
+        ),
       ),
     )
     .limit(1);

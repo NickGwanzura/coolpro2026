@@ -1,4 +1,5 @@
-import { boolean, jsonb, numeric, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const supplierApplicationStatusEnum = pgEnum('supplier_application_status', [
   'submitted',
@@ -68,7 +69,11 @@ export const supplierApplications = pgTable('supplier_applications', {
   reviewNote: text('review_note'),
   submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  activeEmailIdx: uniqueIndex('supplier_applications_active_email_idx')
+    .on(table.email)
+    .where(sql`${table.status} in ('submitted', 'under-review')`),
+}));
 
 // Matches SupplierComplianceApplication interface
 export const supplierComplianceApplications = pgTable('supplier_compliance_applications', {

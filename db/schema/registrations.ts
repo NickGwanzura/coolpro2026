@@ -1,4 +1,5 @@
-import { pgEnum, pgTable, text, timestamp, integer, uuid, jsonb } from 'drizzle-orm/pg-core';
+import { pgEnum, pgTable, text, timestamp, integer, uuid, jsonb, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const studentApplicationStatusEnum = pgEnum('student_application_status', [
   'submitted',
@@ -32,7 +33,13 @@ export const studentApplications = pgTable('student_applications', {
   reviewNote: text('review_note'),
   submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  // Only one active (non-terminal) application per email — blocks the race where two
+  // concurrent submissions both pass the app-level SELECT-then-INSERT dupe check.
+  activeEmailIdx: uniqueIndex('student_applications_active_email_idx')
+    .on(table.email)
+    .where(sql`${table.status} in ('submitted', 'under-review')`),
+}));
 
 export const technicianApplications = pgTable('technician_applications', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -58,4 +65,8 @@ export const technicianApplications = pgTable('technician_applications', {
   approvedTechnicianId: uuid('approved_technician_id'),
   submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  activeEmailIdx: uniqueIndex('technician_applications_active_email_idx')
+    .on(table.email)
+    .where(sql`${table.status} in ('submitted', 'under-review')`),
+}));

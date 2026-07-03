@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, or } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { technicianApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
+import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
 import type { TechnicianApplication } from '@/types/index';
+
+const SIGNUP_RATE_LIMIT = 5;
+const SIGNUP_RATE_WINDOW_MS = 15 * 60 * 1000;
 
 function toTechnicianApplication(
   row: typeof technicianApplications.$inferSelect,
@@ -51,6 +55,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!checkRateLimit(`technician-application:${getClientIp(req)}`, SIGNUP_RATE_LIMIT, SIGNUP_RATE_WINDOW_MS)) {
+    return NextResponse.json({ error: 'Too many applications from this address. Try again later.' }, { status: 429 });
+  }
+
   const body = (await req.json().catch(() => ({}))) as Partial<TechnicianApplication> & { password?: string };
 
   const required: Array<keyof TechnicianApplication> = [
@@ -82,15 +90,21 @@ export async function POST(req: Request) {
     .from(technicianApplications)
     .where(
       and(
-        eq(technicianApplications.registrationNumber, regNo),
-        eq(technicianApplications.status, 'submitted'),
+        or(
+          eq(technicianApplications.registrationNumber, regNo),
+          eq(technicianApplications.email, email),
+        ),
+        or(
+          eq(technicianApplications.status, 'submitted'),
+          eq(technicianApplications.status, 'under-review'),
+        ),
       ),
     )
     .limit(1);
 
   if (duplicate) {
     return NextResponse.json(
-      { error: 'An application with this registration number is already under review.' },
+      { error: 'An application with this email or registration number is already under review.' },
       { status: 409 },
     );
   }

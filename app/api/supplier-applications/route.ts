@@ -4,9 +4,12 @@ import { db } from '@/db/client';
 import { supplierApplications } from '@/db/schema/index';
 import { readSessionFromRequest } from '@/lib/server/auth';
 import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
+import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
 import type { SupplierRegistration } from '@/types/index';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SIGNUP_RATE_LIMIT = 5;
+const SIGNUP_RATE_WINDOW_MS = 15 * 60 * 1000;
 
 function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): SupplierRegistration & {
   reviewedAt?: string;
@@ -59,6 +62,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!checkRateLimit(`supplier-application:${getClientIp(req)}`, SIGNUP_RATE_LIMIT, SIGNUP_RATE_WINDOW_MS)) {
+    return NextResponse.json({ error: 'Too many applications from this address. Try again later.' }, { status: 429 });
+  }
+
   const body = await req.json() as Partial<SupplierRegistration> & { password?: string };
 
   if (!body.companyName || !body.contactName || !body.email) {

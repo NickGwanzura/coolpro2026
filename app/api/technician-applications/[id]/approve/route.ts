@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { technicianApplications, technicians } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
-import { provisionUserFromApplication } from '@/lib/server/provision-user';
+import { provisionUserFromApplication, ProvisionConflictError } from '@/lib/server/provision-user';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -27,6 +27,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       status: app.status,
       approvedTechnicianId: app.approvedTechnicianId,
     });
+  }
+
+  try {
+    await provisionUserFromApplication({
+      name: app.name,
+      email: app.email,
+      passwordHash: app.passwordHash,
+      role: 'technician',
+      region: app.region,
+    });
+  } catch (err) {
+    if (err instanceof ProvisionConflictError) {
+      return NextResponse.json({ error: err.message }, { status: 409 });
+    }
+    throw err;
   }
 
   const today = new Date();
@@ -66,14 +81,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     })
     .where(eq(technicianApplications.id, id))
     .returning();
-
-  await provisionUserFromApplication({
-    name: app.name,
-    email: app.email,
-    passwordHash: app.passwordHash,
-    role: 'technician',
-    region: app.region,
-  });
 
   return NextResponse.json({
     id: updated.id,

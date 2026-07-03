@@ -1,0 +1,4 @@
+CREATE UNIQUE INDEX "supplier_applications_active_email_idx" ON "supplier_applications" USING btree ("email") WHERE "supplier_applications"."status" in ('submitted', 'under-review');--> statement-breakpoint
+CREATE UNIQUE INDEX "student_applications_active_email_idx" ON "student_applications" USING btree ("email") WHERE "student_applications"."status" in ('submitted', 'under-review');--> statement-breakpoint
+CREATE UNIQUE INDEX "technician_applications_active_email_idx" ON "technician_applications" USING btree ("email") WHERE "technician_applications"."status" in ('submitted', 'under-review');--> statement-breakpoint
+CREATE UNIQUE INDEX "invites_pending_email_idx" ON "invites" USING btree ("email") WHERE "invites"."status" = 'pending';
