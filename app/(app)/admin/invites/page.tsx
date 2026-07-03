@@ -29,6 +29,7 @@ export default function AdminInvitesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
+  const [lastEmailSent, setLastEmailSent] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const invites = data?.data ?? [];
@@ -41,6 +42,7 @@ export default function AdminInvitesPage() {
     try {
       const result = await createInvite({ email: email.trim(), role, region: region.trim() });
       setLastInviteUrl(result.inviteUrl);
+      setLastEmailSent(result.emailSent);
       setEmail('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create invite');
@@ -69,8 +71,8 @@ export default function AdminInvitesPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Invites</h1>
         <p className="mt-1 text-gray-500">
-          Invite a new user by email and role. Email delivery isn&apos;t wired up yet — copy the
-          generated link and share it directly until Resend is connected.
+          Invite a new user by email and role. An email with the invite link is sent
+          automatically — the link is also shown below in case you need to share it directly.
         </p>
       </div>
 
@@ -120,7 +122,9 @@ export default function AdminInvitesPage() {
 
         {lastInviteUrl && (
           <div className="mt-4 border border-emerald-200 bg-emerald-50 p-4">
-            <p className="text-sm font-semibold text-emerald-800">Invite created. Share this link:</p>
+            <p className="text-sm font-semibold text-emerald-800">
+              Invite created. {lastEmailSent ? 'Email sent.' : 'Email could not be sent — share this link manually:'}
+            </p>
             <div className="mt-2 flex items-center gap-2">
               <code className="flex-1 truncate border border-emerald-200 bg-white px-3 py-2 text-xs text-gray-700">
                 {lastInviteUrl}
