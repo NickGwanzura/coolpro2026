@@ -9,7 +9,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-perfect-corporate)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-google-sans)', 'system-ui', 'sans-serif'],
       },
       colors: {
         // HEVACRAZ brand palette use hevac-* in components
