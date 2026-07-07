@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { supplierApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { provisionUserFromApplication, ProvisionConflictError } from '@/lib/server/provision-user';
+import { sendApprovalEmail } from '@/lib/server/email';
 import type { SupplierRegistration } from '@/types/index';
 
 function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): SupplierRegistration & {
@@ -68,6 +69,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .set({ status: 'approved', reviewedBy: session.name, reviewedAt: new Date() })
     .where(eq(supplierApplications.id, id))
     .returning();
+
+  // Notify the supplier — best-effort, never blocks approval
+  sendApprovalEmail({
+    email: row.email,
+    name: row.contactName,
+    role: 'vendor',
+  }).catch(() => {});
 
   return NextResponse.json(toSupplierRegistration(updated));
 }

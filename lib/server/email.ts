@@ -65,7 +65,7 @@ export async function sendInviteEmail(input: {
 }): Promise<{ sent: boolean }> {
   const resend = getResendClient();
   if (!resend) {
-    console.log(`[email] RESEND_API_KEY not set — invite email not sent: ${input.email} -> ${input.inviteUrl}`);
+    console.log('[email] RESEND_API_KEY not set — invite email not sent:', input.email, '->', input.inviteUrl);
     return { sent: false };
   }
 
@@ -73,7 +73,7 @@ export async function sendInviteEmail(input: {
     const { error } = await resend.emails.send({
       from: FROM_ADDRESS,
       to: input.email,
-      subject: 'You’ve been invited to HEVACRAZ / NOU Zimbabwe',
+      subject: "You've been invited to HEVACRAZ / NOU Zimbabwe",
       html: inviteEmailHtml(input),
     });
 
@@ -85,6 +85,71 @@ export async function sendInviteEmail(input: {
     return { sent: true };
   } catch (err) {
     console.error('[email] Failed to send invite email:', err instanceof Error ? err.message : err);
+    return { sent: false };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Approval notification email (application-based registrations)
+// ---------------------------------------------------------------------------
+
+function approvalEmailHtml(input: {
+  name: string;
+  role: string;
+  loginUrl: string;
+}): string {
+  return emailShell(`
+    <p style="color: #1C1917; font-size: 18px; font-weight: 700; margin: 0 0 12px;">Application approved</p>
+    <p style="color: #1C1917; font-size: 14px; line-height: 1.6; margin: 0;">
+      Hi ${input.name}, your application to join HEVACRAZ / National Ozone Unit Zimbabwe
+      as a <strong>${input.role.replace('_', ' ')}</strong> has been approved.
+    </p>
+    <p style="color: #1C1917; font-size: 14px; line-height: 1.6; margin: 12px 0 0;">
+      You can now log in using the email and password you submitted with your application.
+    </p>
+    <a href="${input.loginUrl}"
+       style="display: inline-block; margin-top: 16px; background: #D97706; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px 20px;">
+      Log in now
+    </a>
+    <p style="color: #78716C; font-size: 12px; margin-top: 20px;">
+      If you didn't apply for this account, you can ignore this email.
+    </p>
+  `);
+}
+
+/**
+ * Sends an approval notification email via Resend. Never throws — a failed send should never
+ * break the approval itself. The admin can always communicate with the applicant manually.
+ */
+export async function sendApprovalEmail(input: {
+  email: string;
+  name: string;
+  role: string;
+}): Promise<{ sent: boolean }> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set — approval email not sent:', input.email);
+    return { sent: false };
+  }
+
+  const loginUrl = `${SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/login`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: input.email,
+      subject: 'Your HEVACRAZ ' + input.role.replace('_', ' ') + ' application has been approved',
+      html: approvalEmailHtml({ ...input, loginUrl }),
+    });
+
+    if (error) {
+      console.error('[email] Resend rejected approval email:', error.message);
+      return { sent: false };
+    }
+
+    return { sent: true };
+  } catch (err) {
+    console.error('[email] Failed to send approval email:', err instanceof Error ? err.message : err);
     return { sent: false };
   }
 }

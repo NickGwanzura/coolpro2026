@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { technicianApplications, technicians } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { provisionUserFromApplication, ProvisionConflictError } from '@/lib/server/provision-user';
+import { sendApprovalEmail } from '@/lib/server/email';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -81,6 +82,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     })
     .where(eq(technicianApplications.id, id))
     .returning();
+
+  // Notify the technician — best-effort, never blocks approval
+  sendApprovalEmail({
+    email: app.email,
+    name: app.name,
+    role: 'technician',
+  }).catch(() => {});
 
   return NextResponse.json({
     id: updated.id,
