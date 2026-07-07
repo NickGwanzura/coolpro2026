@@ -39,6 +39,21 @@ type RecognitionConstructor = new () => BrowserSpeechRecognition;
 
 type ChatTurn = { role: 'user' | 'model'; text: string };
 
+// Higher-quality system voices ship with these markers in their names; the bare
+// browser default is often the most robotic one available.
+const PREFERRED_VOICE_MARKERS = ['natural', 'neural', 'premium', 'enhanced', 'google', 'siri'];
+
+function rankVoice(voice: SpeechSynthesisVoice): number {
+  const name = voice.name.toLowerCase();
+  const markerIndex = PREFERRED_VOICE_MARKERS.findIndex((marker) => name.includes(marker));
+  return markerIndex === -1 ? PREFERRED_VOICE_MARKERS.length : markerIndex;
+}
+
+function pickDefaultVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  if (voices.length === 0) return null;
+  return [...voices].sort((a, b) => rankVoice(a) - rankVoice(b))[0];
+}
+
 async function fetchGeminiResponse(message: string, history: ChatTurn[]): Promise<string | null> {
   try {
     const res = await fetch('/api/voice-assistant', {
@@ -131,6 +146,39 @@ export function FloatingVoiceButton() {
     readCollection<SafetySession>(STORAGE_KEYS.voiceSessions, [])
   );
   const [chatHistory, setChatHistory] = useState<ChatTurn[]>([]);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceName, setSelectedVoiceName] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return window.localStorage.getItem(STORAGE_KEYS.ttsVoice) ?? '';
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const loadVoices = () => {
+      const languageCode = speechLocale.split('-')[0].toLowerCase();
+      const matching = window.speechSynthesis
+        .getVoices()
+        .filter((voice) => voice.lang.toLowerCase().startsWith(languageCode));
+      setAvailableVoices(matching);
+    };
+
+    // Voice lists load asynchronously in Chrome; the event fires once ready.
+    loadVoices();
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+  }, [speechLocale]);
+
+  const activeVoice =
+    availableVoices.find((voice) => voice.name === selectedVoiceName) ??
+    pickDefaultVoice(availableVoices);
+
+  const selectVoice = (name: string) => {
+    setSelectedVoiceName(name);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEYS.ttsVoice, name);
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -206,6 +254,9 @@ export function FloatingVoiceButton() {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = speechLocale;
+    if (activeVoice) {
+      utterance.voice = activeVoice;
+    }
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
   };
@@ -411,6 +462,33 @@ export function FloatingVoiceButton() {
                   )}
                 </div>
               </div>
+
+              {availableVoices.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <Volume2 className="h-4 w-4 flex-shrink-0 text-gray-500" />
+                  <label className="text-sm font-semibold text-gray-700" htmlFor="voice-assistant-voice">
+                    Voice
+                  </label>
+                  <select
+                    id="voice-assistant-voice"
+                    value={activeVoice?.name ?? ''}
+                    onChange={(event) => selectVoice(event.target.value)}
+                    className="min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-blue-500"
+                  >
+                    {availableVoices.map((voice) => (
+                      <option key={voice.name} value={voice.name}>
+                        {voice.name} ({voice.lang})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => speakResponse(language === 'fr' ? 'Voici ma voix.' : 'This is how I sound.')}
+                    className="rounded-full bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-200"
+                  >
+                    Test
+                  </button>
+                </div>
+              )}
 
               <div className="space-y-3">
                 <label className="block text-sm font-semibold text-gray-700">Prompt</label>

@@ -216,7 +216,7 @@ function RequestCoCForm() {
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-gray-700">Installation Details & Safety Measures</label>
                         <textarea
-                            className="w-full px-4 py-3 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none min-h-[120px]"
+                            className="rounded-lg w-full px-4 py-3 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none min-h-[120px]"
                             value={formData.details}
                             onChange={e => setFormData({ ...formData, details: e.target.value })}
                             placeholder="Describe the installation, pressure tests performed, and leak checks conducted..."

@@ -238,7 +238,7 @@ export default function AdminRefrigerantsPage() {
               setPage(1);
             }}
             placeholder="Search synced refrigerants…"
-            className="w-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-300 focus:bg-white"
+            className="rounded-lg w-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-300 focus:bg-white"
           />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -309,14 +309,14 @@ export default function AdminRefrigerantsPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="border border-gray-200 px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(refrigerantsData.totalPages, p + 1))}
                 disabled={page >= refrigerantsData.totalPages}
-                className="border border-gray-200 px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Next
               </button>

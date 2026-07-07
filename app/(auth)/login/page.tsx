@@ -157,7 +157,7 @@ function LoginPageContent() {
                             type="button"
                             onClick={() => handleDemoAccess(role)}
                             disabled={isLoading}
-                            className="group inline-flex items-center gap-2 border border-[#E7E5E4] bg-white px-3 py-2.5 text-left text-sm hover:border-[#D97706] hover:bg-[#FFF7ED] disabled:opacity-50 transition-colors"
+                            className="rounded-lg group inline-flex items-center gap-2 border border-[#E7E5E4] bg-white px-3 py-2.5 text-left text-sm hover:border-[#D97706] hover:bg-[#FFF7ED] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           >
                             <span className="flex h-7 w-7 items-center justify-center bg-[#D97706]/10 text-[#D97706] flex-shrink-0">
                               <Icon className="h-3.5 w-3.5" />

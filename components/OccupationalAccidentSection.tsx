@@ -270,7 +270,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                     value={searchTerm}
                                     onChange={event => setSearchTerm(event.target.value)}
                                     placeholder="Search site, client, technician, region..."
-                                    className="w-full border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-purple-500"
+                                    className="w-full border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                         </div>
@@ -457,7 +457,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                                                     });
                                                     setShowInvestigation(true);
                                                 }}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
                                             >
                                                 <ClipboardCheck className="h-3 w-3" />
                                                 {accident.status ? 'View' : 'Investigate'}
@@ -517,7 +517,7 @@ const FilterSelect = ({
         <select
             value={value}
             onChange={event => onChange(event.target.value)}
-            className="w-full border border-gray-200 px-3 py-2.5 text-sm outline-none transition-all focus:ring-2 focus:ring-purple-500"
+            className="w-full border border-gray-200 px-3 py-2.5 text-sm outline-none transition-all focus:ring-2 focus:ring-blue-500"
         >
             {options.map(option => (
                 <option key={option} value={option}>
@@ -571,7 +571,7 @@ const InvestigationModal = ({
                                     onClick={() => setData({ ...data, rootCause: key as keyof typeof RootCauseCategories })}
                                     className={`p-3 border-2 text-left transition-all ${
                                         data.rootCause === key
-                                            ? 'border-purple-500 bg-purple-50'
+                                            ? 'border-blue-500 bg-blue-50'
                                             : 'border-gray-200 hover:border-gray-300'
                                     }`}
                                 >
@@ -590,7 +590,7 @@ const InvestigationModal = ({
                                 type="date"
                                 value={data.investigationDate}
                                 onChange={e => setData({ ...data, investigationDate: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                                className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -598,7 +598,7 @@ const InvestigationModal = ({
                             <select
                                 value={data.status}
                                 onChange={e => setData({ ...data, status: e.target.value as InvestigationData['status'] })}
-                                className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                                className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                             >
                                 <option value="Open">Open</option>
                                 <option value="Under Investigation">Under Investigation</option>
@@ -614,7 +614,7 @@ const InvestigationModal = ({
                             placeholder="e.g. Safety Manager"
                             value={data.investigatorName}
                             onChange={e => setData({ ...data, investigatorName: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                            className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                     </div>
 
@@ -625,7 +625,7 @@ const InvestigationModal = ({
                             rows={3}
                             value={data.correctiveActions}
                             onChange={e => setData({ ...data, correctiveActions: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                            className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                     </div>
 
@@ -636,13 +636,13 @@ const InvestigationModal = ({
                             rows={3}
                             value={data.preventiveMeasures}
                             onChange={e => setData({ ...data, preventiveMeasures: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                            className="w-full px-4 py-2 border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                     </div>
 
                     <button
                         type="submit"
-                        className="w-full py-3 bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200"
+                        className="w-full py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
                     >
                         Save Investigation Report
                     </button>

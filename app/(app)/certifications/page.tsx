@@ -324,7 +324,7 @@ export default function CertificationsPage() {
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Search technician, course, or trainer"
-                  className="w-full border border-gray-300 py-2.5 pl-10 pr-4 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                  className="rounded-lg w-full border border-gray-300 py-2.5 pl-10 pr-4 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -333,7 +333,7 @@ export default function CertificationsPage() {
               <select
                 value={selectedRegion}
                 onChange={(event) => setSelectedRegion(event.target.value)}
-                className="w-full border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                className="rounded-lg w-full border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Regions</option>
                 {ZIMBABWE_PROVINCES.map((province) => (
@@ -347,7 +347,7 @@ export default function CertificationsPage() {
                 type="month"
                 value={dateFilter}
                 onChange={(event) => setDateFilter(event.target.value)}
-                className="w-full border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                className="rounded-lg w-full border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -387,7 +387,7 @@ export default function CertificationsPage() {
                 <div className="mt-4 flex flex-wrap gap-3">
                   <button
                     onClick={() => handleReviewRequest(request.id, 'approve')}
-                    className="bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
                   >
                     Approve for Issuance
                   </button>
@@ -439,7 +439,7 @@ export default function CertificationsPage() {
               <select
                 value={trainerForm.technicianId}
                 onChange={(event) => setTrainerForm((current) => ({ ...current, technicianId: event.target.value }))}
-                className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                className="rounded-lg border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {(techniciansData ?? []).map((technician) => (
                   <option key={technician.id} value={technician.id}>
@@ -451,7 +451,7 @@ export default function CertificationsPage() {
               <select
                 value={trainerForm.courseTitle}
                 onChange={(event) => setTrainerForm((current) => ({ ...current, courseTitle: event.target.value }))}
-                className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                className="rounded-lg border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {AVAILABLE_EXAMS.map((exam) => (
                   <option key={exam.id} value={exam.title}>{exam.title}</option>
@@ -463,7 +463,7 @@ export default function CertificationsPage() {
                   type="date"
                   value={trainerForm.examDate}
                   onChange={(event) => setTrainerForm((current) => ({ ...current, examDate: event.target.value }))}
-                  className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="number"
@@ -472,7 +472,7 @@ export default function CertificationsPage() {
                   value={trainerForm.theoryScore}
                   onChange={(event) => setTrainerForm((current) => ({ ...current, theoryScore: event.target.value }))}
                   placeholder="Theory %"
-                  className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="number"
@@ -481,7 +481,7 @@ export default function CertificationsPage() {
                   value={trainerForm.practicalScore}
                   onChange={(event) => setTrainerForm((current) => ({ ...current, practicalScore: event.target.value }))}
                   placeholder="Practical %"
-                  className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -490,13 +490,13 @@ export default function CertificationsPage() {
                 value={trainerForm.notes}
                 onChange={(event) => setTrainerForm((current) => ({ ...current, notes: event.target.value }))}
                 placeholder="Trainer notes and practical observations"
-                className="border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                className="rounded-lg border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <button
               type="submit"
-              className="mt-5 inline-flex items-center gap-2 bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+              className="mt-5 rounded-lg inline-flex items-center gap-2 bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
             >
               <Send className="h-4 w-4" />
               Submit for Admin Approval
@@ -534,7 +534,7 @@ export default function CertificationsPage() {
                 {request.status === 'admin-approved' && (
                   <button
                     onClick={() => handleReviewRequest(request.id, 'issue')}
-                    className="mt-4 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    className="mt-4 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
                   >
                     Issue Certificate
                   </button>
@@ -713,7 +713,7 @@ export default function CertificationsPage() {
                   <button
                     onClick={() => handleStartExam(exam.id)}
                     disabled={examTaking !== null}
-                    className="flex items-center gap-2 bg-gray-900 text-white px-6 py-2.5 font-bold text-sm hover:bg-blue-600 transition-all disabled:opacity-50"
+                    className="rounded-lg flex items-center gap-2 bg-gray-900 text-white px-6 py-2.5 font-bold text-sm hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Start Exam
                     <ArrowRight className="h-4 w-4" />

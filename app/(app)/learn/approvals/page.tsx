@@ -134,7 +134,7 @@ function ReviewPanel({
                                     onChange={e => setRejectReason(e.target.value)}
                                     rows={3}
                                     placeholder="Explain why this course is being rejected so the lecturer can revise it."
-                                    className="w-full border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-400"
+                                    className="rounded-lg w-full border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-400"
                                 />
                                 <div className="flex flex-wrap gap-3">
                                     <button

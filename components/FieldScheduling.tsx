@@ -153,7 +153,7 @@ export default function FieldScheduling() {
                                         placeholder="Search client, ID, or province..."
                                         value={searchTerm}
                                         onChange={event => setSearchTerm(event.target.value)}
-                                        className="w-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
+                                        className="rounded-lg w-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white"
                                     />
                                 </div>
                             </div>

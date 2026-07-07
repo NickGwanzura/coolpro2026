@@ -486,7 +486,7 @@ export default function JoinTechnicianPage() {
                       type="checkbox"
                       checked={form.agree}
                       onChange={(e) => update('agree', e.target.checked)}
-                      className="mt-1"
+                      className="mt-1 h-4 w-4 cursor-pointer rounded border-gray-300 text-[#1E40AF] focus:ring-[#1E40AF]"
                       required
                     />
                     <span className="text-sm text-gray-600 leading-relaxed">

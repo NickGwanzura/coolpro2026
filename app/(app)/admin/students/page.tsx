@@ -75,7 +75,7 @@ export default function StudentDirectoryPage() {
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="Search by name, email, institution..."
-                                className="w-full border border-gray-300 py-2.5 pl-10 pr-4 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                                className="rounded-lg w-full border border-gray-300 py-2.5 pl-10 pr-4 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
                     </div>
@@ -84,7 +84,7 @@ export default function StudentDirectoryPage() {
                         <select
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
-                            className="w-full border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                            className="rounded-lg w-full border border-gray-300 px-3 py-2.5 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="">All Statuses</option>
                             <option value="submitted">Submitted</option>

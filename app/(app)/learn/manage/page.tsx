@@ -132,7 +132,7 @@ function ModuleRow({
                 value={mod.title}
                 onChange={e => onChange(index, 'title', e.target.value)}
                 placeholder="Module title"
-                className="w-full border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                className="w-full border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg"
             />
             <textarea
                 disabled={readOnly}
@@ -140,7 +140,7 @@ function ModuleRow({
                 onChange={e => onChange(index, 'content', e.target.value)}
                 placeholder="Module content"
                 rows={3}
-                className="w-full border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                className="w-full border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg"
             />
             <input
                 type="number"
@@ -149,7 +149,7 @@ function ModuleRow({
                 value={mod.minutes}
                 onChange={e => onChange(index, 'minutes', Number(e.target.value))}
                 placeholder="Estimated minutes"
-                className="w-40 border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                className="w-40 border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg"
             />
             <span className="ml-2 text-xs text-gray-400">min</span>
 
@@ -314,7 +314,7 @@ function CoursePanel({
                         disabled={readOnly}
                         value={title}
                         onChange={e => setTitle(e.target.value)}
-                        className="w-full border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                        className="w-full border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg"
                     />
                 </div>
 
@@ -325,7 +325,7 @@ function CoursePanel({
                         value={description}
                         onChange={e => setDescription(e.target.value)}
                         rows={3}
-                        className="w-full border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                        className="w-full border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg"
                     />
                 </div>
 
@@ -360,7 +360,7 @@ function CoursePanel({
                             type="button"
                             onClick={handleSaveDraft}
                             disabled={saving}
-                            className="border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+                            className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             Save Draft
                         </button>
@@ -368,7 +368,7 @@ function CoursePanel({
                             type="button"
                             onClick={handleSubmit}
                             disabled={saving}
-                            className="bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                            className="rounded-lg bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             Submit for NOU Approval
                         </button>
@@ -449,7 +449,7 @@ function GradePanel({
                             disabled={alreadyGraded}
                             value={score}
                             onChange={e => setScore(Number(e.target.value))}
-                            className="w-full border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                            className="w-full border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg"
                         />
                     </div>
                     <div className="space-y-2">
@@ -461,6 +461,7 @@ function GradePanel({
                                     disabled={alreadyGraded}
                                     checked={passed}
                                     onChange={() => setPassed(true)}
+                                    className="h-4 w-4 cursor-pointer text-blue-600"
                                 />
                                 Pass
                             </label>
@@ -470,6 +471,7 @@ function GradePanel({
                                     disabled={alreadyGraded}
                                     checked={!passed}
                                     onChange={() => setPassed(false)}
+                                    className="h-4 w-4 cursor-pointer text-blue-600"
                                 />
                                 Fail
                             </label>
@@ -485,7 +487,7 @@ function GradePanel({
                         onChange={e => setFeedback(e.target.value)}
                         rows={3}
                         placeholder="Comments for the student"
-                        className="w-full border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                        className="w-full border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg"
                     />
                 </div>
 
@@ -494,7 +496,7 @@ function GradePanel({
                         type="button"
                         onClick={handleSubmit}
                         disabled={saving}
-                        className="bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                        className="rounded-lg bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         Submit Grade
                     </button>
@@ -572,7 +574,7 @@ function CreateCourseForm({
                         value={title}
                         onChange={e => setTitle(e.target.value)}
                         placeholder="Course title"
-                        className="w-full border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                     />
                 </div>
                 <div className="space-y-2">
@@ -582,7 +584,7 @@ function CreateCourseForm({
                         onChange={e => setDescription(e.target.value)}
                         rows={3}
                         placeholder="Course objectives and overview"
-                        className="w-full border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                     />
                 </div>
                 <div className="space-y-3">
@@ -610,7 +612,7 @@ function CreateCourseForm({
                     type="button"
                     onClick={handleCreate}
                     disabled={saving}
-                    className="bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                    className="rounded-lg bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     Create Course
                 </button>
@@ -727,7 +729,7 @@ export default function LearnManagePage() {
                         <p className="text-sm text-gray-500">{courses.length} course{courses.length !== 1 ? 's' : ''} in your portfolio</p>
                         <button
                             onClick={() => { setShowCreate(true); setSelectedCourse(null); }}
-                            className="bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                            className="rounded-lg bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
                         >
                             Create Course
                         </button>

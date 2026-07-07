@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
     fieldToolkitPendingSync: 'field_toolkit_pending_sync',
     imageRecords: 'coolpro_image_records',
     voiceSessions: 'coolpro_voice_sessions',
+    ttsVoice: 'coolpro_tts_voice',
     language: 'coolpro_language',
     emergencyMode: 'coolpro_emergency_mode',
     certificateRecords: 'coolpro_certificate_records',

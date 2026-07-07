@@ -29,7 +29,7 @@ function CourseCard({ course }: { course: ManagedCourse }) {
   }
 
   return (
-    <div className="bg-white border border-gray-200 overflow-hidden flex flex-col">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col">
       <div className="p-5 flex-1 flex flex-col">
         <h4 className="font-semibold text-gray-900 mb-2 leading-tight">{course.title}</h4>
         <p className="text-gray-500 text-sm mb-4 flex-1">{course.description}</p>
@@ -47,7 +47,7 @@ function CourseCard({ course }: { course: ManagedCourse }) {
 
         <button
           onClick={() => setExpanded(prev => !prev)}
-          className="w-full py-2.5 font-semibold text-sm transition-colors flex items-center justify-center gap-2 bg-gray-900 text-white hover:bg-gray-800"
+          className="w-full py-2.5 font-semibold text-sm transition-colors flex items-center justify-center gap-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800"
         >
           {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           {expanded ? 'Hide modules' : 'View modules'}
@@ -56,7 +56,7 @@ function CourseCard({ course }: { course: ManagedCourse }) {
         {expanded && (
           <div className="mt-4 space-y-3">
             {course.modules.map((mod, i) => (
-              <div key={i} className="border border-gray-200 bg-gray-50 p-3">
+              <div key={i} className="border border-gray-200 bg-gray-50 rounded-lg p-3">
                 <p className="text-sm font-semibold text-gray-900">{mod.title}</p>
                 <p className="mt-1 text-xs text-gray-500">{mod.content}</p>
                 <p className="mt-1 text-xs text-gray-400">{mod.minutes} min</p>
@@ -66,7 +66,7 @@ function CourseCard({ course }: { course: ManagedCourse }) {
                       <button
                         key={attachment.id}
                         onClick={() => handleDownload(attachment.r2Key)}
-                        className="flex w-full items-center justify-between gap-2 border border-gray-200 bg-white px-2.5 py-1.5 text-left text-xs text-gray-700 hover:border-blue-300 hover:text-blue-600"
+                        className="flex w-full items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-left text-xs text-gray-700 hover:border-blue-300 hover:text-blue-600"
                       >
                         <span className="flex min-w-0 items-center gap-1.5">
                           <FileText className="h-3.5 w-3.5 shrink-0 text-gray-400" />

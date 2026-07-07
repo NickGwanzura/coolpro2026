@@ -142,7 +142,7 @@ export default function AdminUsersPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name or email…"
-              className="w-full border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-blue-300 focus:bg-white"
+              className="rounded-lg w-full border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-blue-300 focus:bg-white"
             />
           </div>
           <div className="flex gap-1 overflow-x-auto">

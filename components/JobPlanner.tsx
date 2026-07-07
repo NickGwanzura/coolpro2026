@@ -183,7 +183,7 @@ export default function JobPlanner() {
                         <input
                             type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                             placeholder="Search client, location, or technician…"
-                            className="w-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-300 focus:bg-white"
+                            className="rounded-lg w-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-300 focus:bg-white"
                         />
                     </div>
                     <select value={selectedClient} onChange={e => setSelectedClient(e.target.value)}
@@ -200,7 +200,7 @@ export default function JobPlanner() {
                         <option value="follow-up">Follow-up</option>
                     </select>
                     <button onClick={() => setShowModal(true)}
-                        className="flex items-center justify-center gap-2 bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#b45309]">
+                        className="rounded-lg flex items-center justify-center gap-2 bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#b45309]">
                         <Plus className="h-4 w-4" /> New Job
                     </button>
                 </div>
@@ -468,7 +468,7 @@ function MarkCompleteButton({ jobId }: { jobId: string }) {
 
     return (
         <button onClick={handleMarkComplete} disabled={marking}
-            className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition-colors">
+            className="mt-3 rounded-lg w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition-colors disabled:cursor-not-allowed">
             <ClipboardCheck className="h-3.5 w-3.5" />
             {marking ? 'Marking…' : 'Mark Complete'}
         </button>

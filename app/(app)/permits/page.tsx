@@ -75,7 +75,7 @@ export default function PermitsPage() {
           <p className="mt-1 text-gray-500">NOU-issued permits for controlled refrigerant trade under the Montreal Protocol.</p>
         </div>
         {!isAdmin && (
-          <button onClick={() => setShowModal(true)} className="inline-flex items-center gap-2 bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#b45309]">
+          <button onClick={() => setShowModal(true)} className="rounded-lg inline-flex items-center gap-2 bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#b45309]">
             <Plus className="h-4 w-4" /> New Permit Application
           </button>
         )}
@@ -173,7 +173,7 @@ export default function PermitsPage() {
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
-                <button type="submit" disabled={submitting} className="bg-[#D97706] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#b45309] disabled:opacity-50">
+                <button type="submit" disabled={submitting} className="rounded-lg bg-[#D97706] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#b45309] disabled:opacity-50 disabled:cursor-not-allowed">
                   {submitting ? 'Submitting…' : 'Submit'}
                 </button>
               </div>

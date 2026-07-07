@@ -284,7 +284,7 @@ export default function ManageTechniciansPage() {
 
               <select
                 aria-label="Filter by province"
-                className="w-full px-3 py-2.5 border border-gray-200 focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent outline-none transition-all"
+                className="rounded-lg w-full px-3 py-2.5 border border-gray-200 focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent outline-none transition-all"
                 value={selectedProvince}
                 onChange={(e) => setSelectedProvince(e.target.value)}
               >
@@ -296,7 +296,7 @@ export default function ManageTechniciansPage() {
 
               <select
                 aria-label="Filter by status"
-                className="w-full px-3 py-2.5 border border-gray-200 focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent outline-none transition-all"
+                className="rounded-lg w-full px-3 py-2.5 border border-gray-200 focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent outline-none transition-all"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
               >

@@ -160,7 +160,7 @@ export function RefrigerantAutocomplete({
           onClick={() => {
             if (!disabled) setOpen(true);
           }}
-          className="flex w-full items-center justify-between gap-2 border border-gray-200 bg-white px-3 py-2.5 text-left text-sm outline-none transition focus:border-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-lg flex w-full items-center justify-between gap-2 border border-gray-200 bg-white px-3 py-2.5 text-left text-sm outline-none transition focus:border-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span className="flex min-w-0 items-center gap-2">
             <FlaskConical className="h-4 w-4 shrink-0" style={{ color: accentColor }} />
@@ -193,7 +193,7 @@ export function RefrigerantAutocomplete({
               setOpen(true);
             }}
             onKeyDown={handleKeyDown}
-            className="w-full border border-gray-200 bg-white py-2.5 pl-9 pr-4 text-sm outline-none transition focus:border-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg w-full border border-gray-200 bg-white py-2.5 pl-9 pr-4 text-sm outline-none transition focus:border-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </div>
       )}

@@ -610,7 +610,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Client Name</label>
+                  <label className="block text-sm font-semibold text-gray-700">Client Name</label>
                   <input
                     value={installationForm.clientName}
                     onChange={(e) => setInstallationForm({ ...installationForm, clientName: e.target.value })}
@@ -619,7 +619,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Job Type</label>
+                  <label className="block text-sm font-semibold text-gray-700">Job Type</label>
                   <select
                     value={installationForm.jobType}
                     onChange={(e) => setInstallationForm({ ...installationForm, jobType: e.target.value as JobType })}
@@ -632,7 +632,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   </select>
                 </div>
                 <div className="space-y-2 col-span-full">
-                  <label className="text-sm font-semibold text-gray-700">Job Details</label>
+                  <label className="block text-sm font-semibold text-gray-700">Job Details</label>
                   <textarea
                     value={installationForm.jobDetails}
                     onChange={(e) => setInstallationForm({ ...installationForm, jobDetails: e.target.value })}
@@ -642,7 +642,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Floor Space (m²)</label>
+                  <label className="block text-sm font-semibold text-gray-700">Floor Space (m²)</label>
                   <input
                     value={installationForm.floorSpace}
                     onChange={(e) => setInstallationForm({ ...installationForm, floorSpace: e.target.value })}
@@ -653,7 +653,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                 
                 {/* Image Upload */}
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Upload Images</label>
+                  <label className="block text-sm font-semibold text-gray-700">Upload Images</label>
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -795,7 +795,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Client Name</label>
+                  <label className="block text-sm font-semibold text-gray-700">Client Name</label>
                   <input
                     value={formData.clientName}
                     onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
@@ -804,7 +804,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Work Location</label>
+                  <label className="block text-sm font-semibold text-gray-700">Work Location</label>
                   <input
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -813,7 +813,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Job Type</label>
+                  <label className="block text-sm font-semibold text-gray-700">Job Type</label>
                   <select
                     value={formData.jobType}
                     onChange={(e) => setFormData({ ...formData, jobType: e.target.value as JobType })}
@@ -826,7 +826,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Gas Usage (kg)</label>
+                  <label className="block text-sm font-semibold text-gray-700">Gas Usage (kg)</label>
                   <input
                     type="number"
                     value={formData.amount}
@@ -836,7 +836,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Refrigerant Type</label>
+                  <label className="block text-sm font-semibold text-gray-700">Refrigerant Type</label>
                   <RefrigerantAutocomplete
                     value={formData.refrigerant}
                     onSelect={(r) => {
@@ -849,7 +849,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   )}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Approved Supplier</label>
+                  <label className="block text-sm font-semibold text-gray-700">Approved Supplier</label>
                   <select
                     value={formData.approvedSupplierId}
                     onChange={(e) => setFormData({ ...formData, approvedSupplierId: e.target.value })}
@@ -870,7 +870,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   )}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label className="block text-sm font-semibold text-gray-700">
                     Pesepay Transaction ID
                     <span className="ml-2 text-xs font-medium text-amber-700">Required for rewards</span>
                   </label>                    <input
@@ -881,7 +881,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label className="block text-sm font-semibold text-gray-700">
                     Linked Planner Job ID
                     <span className="ml-2 text-xs font-medium text-gray-400">Optional</span>
                   </label>
@@ -893,7 +893,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   />
                 </div>
                 <div className="space-y-2 col-span-full">
-                  <label className="text-sm font-semibold text-gray-700">Action Type</label>
+                  <label className="block text-sm font-semibold text-gray-700">Action Type</label>
                   <div className="grid grid-cols-3 gap-3">
                     {['Charge', 'Recovery', 'Leak Repair'].map((type) => (
                       <button

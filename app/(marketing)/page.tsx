@@ -150,7 +150,7 @@ export default function HomePage() {
         </div>
 
         <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-28 sm:py-36 md:py-40">
-          <div className="max-w-3xl">
+          <div className="max-w-4xl">
             <div className="flex flex-wrap items-center gap-3 mb-5 sm:mb-6">
               <p className="inline-flex items-center gap-3 text-[#D97706] text-xs sm:text-sm font-semibold tracking-[0.18em] sm:tracking-[0.22em] uppercase">
                 <span className="inline-block w-6 h-px bg-[#D97706]" />
@@ -169,8 +169,7 @@ export default function HomePage() {
             </div>
 
             <h1 className="text-[2.5rem] leading-[1.08] sm:text-6xl md:text-7xl font-bold text-white mb-5 sm:mb-6 tracking-tight">
-              Zimbabwe’s National Platform for
-              <br />
+              Zimbabwe’s National Platform for{' '}
               <span className="bg-gradient-to-r from-white via-white to-[#f5b66b] bg-clip-text text-transparent">
                 Refrigerant Compliance
               </span>
@@ -200,6 +199,17 @@ export default function HomePage() {
             <p className="mt-5 text-xs sm:text-sm text-white/60 tracking-wide">
               Aligned with the Kigali Amendment · Montreal Protocol · SI 49 of 2023
             </p>
+          </div>
+        </div>
+
+        {/* Floating detail photo */}
+        <div className="hidden lg:block absolute bottom-28 right-8 xl:right-16 z-10 w-56 xl:w-64">
+          <div className="border-4 border-white/10 shadow-2xl shadow-black/40 overflow-hidden rotate-2 hover:rotate-0 transition-transform duration-300">
+            <img
+              src="https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=700&h=875&fit=crop&crop=top"
+              alt="Close-up of a certified technician servicing refrigeration equipment"
+              className="w-full h-72 xl:h-80 object-cover"
+            />
           </div>
         </div>
 
