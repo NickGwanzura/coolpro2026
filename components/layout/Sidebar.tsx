@@ -223,30 +223,32 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
                 ))}
             </nav>
 
-            {/* Emergency Mode */}
-            <div className="px-2 pb-2 flex-shrink-0">
-                <button
-                    type="button"
-                    onClick={toggleEmergencyMode}
-                    className={cn(
-                        'w-full flex items-center gap-3 px-3 py-3 text-sm font-semibold transition-colors border',
-                        emergencyMode
-                            ? 'bg-rose-600 border-rose-500 text-white hover:bg-rose-700'
-                            : 'bg-[#292524] border-white/10 text-[#A8A29E] hover:bg-white/5 hover:text-white'
-                    )}
-                >
-                    {emergencyMode
-                        ? <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                        : <WifiOff className="w-4 h-4 flex-shrink-0" />
-                    }
-                    <span className="truncate">
-                        {emergencyMode ? 'Emergency Active' : 'Emergency Mode'}
-                    </span>
-                    {emergencyMode && (
-                        <span className="ml-auto w-2 h-2 bg-white animate-pulse flex-shrink-0" />
-                    )}
-                </button>
-            </div>
+            {/* Emergency Mode — field-technician concept, not relevant to admin oversight roles */}
+            {role !== 'org_admin' && (
+                <div className="px-2 pb-2 flex-shrink-0">
+                    <button
+                        type="button"
+                        onClick={toggleEmergencyMode}
+                        className={cn(
+                            'w-full flex items-center gap-3 px-3 py-3 text-sm font-semibold transition-colors border',
+                            emergencyMode
+                                ? 'bg-rose-600 border-rose-500 text-white hover:bg-rose-700'
+                                : 'bg-[#292524] border-white/10 text-[#A8A29E] hover:bg-white/5 hover:text-white'
+                        )}
+                    >
+                        {emergencyMode
+                            ? <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                            : <WifiOff className="w-4 h-4 flex-shrink-0" />
+                        }
+                        <span className="truncate">
+                            {emergencyMode ? 'Emergency Active' : 'Emergency Mode'}
+                        </span>
+                        {emergencyMode && (
+                            <span className="ml-auto w-2 h-2 bg-white animate-pulse flex-shrink-0" />
+                        )}
+                    </button>
+                </div>
+            )}
 
             {/* User / Logout */}
             <div className="p-4 border-t border-white/10 flex-shrink-0">

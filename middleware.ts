@@ -25,6 +25,7 @@ const PROTECTED_ROUTE_PREFIXES = [
     '/permits',
     '/reclamation',
     '/recycling',
+    '/emergency-mode',
 ] as const;
 
 const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
@@ -50,6 +51,7 @@ const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
     { prefix: '/rewards', roles: ['technician', 'vendor', 'org_admin'] },
     { prefix: '/safety', roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
     { prefix: '/health-safety', roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
+    { prefix: '/emergency-mode', roles: ['technician', 'trainer', 'lecturer', 'student'] },
     { prefix: '/dashboard', roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] },
     { prefix: '/admin/lecturers', roles: ['org_admin'] },
     { prefix: '/admin/students', roles: ['org_admin'] },
