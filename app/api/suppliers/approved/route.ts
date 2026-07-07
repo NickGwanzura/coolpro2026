@@ -1,20 +1,44 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { eq, sql, and, desc, gte, lte } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { supplierApplications } from '@/db/schema/index';
+import { supplierApplications, supplierLedger } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { ApprovedSupplier } from '@/types/index';
 
-function toApprovedSupplier(row: typeof supplierApplications.$inferSelect): ApprovedSupplier {
+async function toApprovedSupplier(row: typeof supplierApplications.$inferSelect): Promise<ApprovedSupplier> {
   const refrigerants = (row.refrigerantsSupplied as string[]).length > 0 ? (row.refrigerantsSupplied as string[]) : ['R-290'];
+
+  // Compute total sales from the ledger (sum of sale-direction entries for this supplier)
+  const salesResult = await db
+    .select({ total: sql<number>`COALESCE(SUM(quantity_kg), 0)` })
+    .from(supplierLedger)
+    .where(
+      and(
+        eq(supplierLedger.supplierEmail, row.email),
+        eq(supplierLedger.direction, 'sale'),
+      )
+    );
+
+  const totalSalesKg = Number(salesResult[0]?.total ?? 0);
+
+  // Default import quota — in production this would come from NOU permit data.
+  // Using 1000 kg as a sensible default so NOU flags can fire for heavy users.
+  const importQuotaKg = 1000;
+
+  const usagePercent = importQuotaKg > 0 ? Math.round((totalSalesKg / importQuotaKg) * 100) : 0;
+  const quotaStatus: ApprovedSupplier['quotaStatus'] =
+    usagePercent >= 100 ? 'exceeded'
+    : usagePercent >= 80 ? 'near-limit'
+    : 'within-quota';
+
   return {
     id: row.id,
     name: row.tradingName || row.companyName,
     refrigerants,
-    totalSalesKg: 0,
-    importQuotaKg: 0,
-    usagePercent: 0,
-    quotaStatus: 'within-quota',
+    totalSalesKg,
+    importQuotaKg,
+    usagePercent,
+    quotaStatus,
     nouApproved: true,
     region: row.province,
   };
@@ -34,5 +58,6 @@ export async function GET(req: Request) {
     .from(supplierApplications)
     .where(eq(supplierApplications.status, 'approved'));
 
-  return NextResponse.json(rows.map(toApprovedSupplier));
+  const suppliers = await Promise.all(rows.map(toApprovedSupplier));
+  return NextResponse.json(suppliers);
 }

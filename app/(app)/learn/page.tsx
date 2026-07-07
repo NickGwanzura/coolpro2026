@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth';
 
 export default function LearnPage() {
     const { user: session, isLoading } = useAuth();
-    const isTrainer = session?.role === 'trainer';
+    const isTrainer = session?.role === 'trainer' || session?.role === 'lecturer';
 
     if (isLoading) {
         return (

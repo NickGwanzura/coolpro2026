@@ -8,7 +8,8 @@ export const STORAGE_KEYS = {
     supplierProfilesLegacy: 'coolpro_supplier_profiles',
     fieldToolkitInstallations: 'field_toolkit_installations',
     fieldToolkitLogs: 'refrigerant_logs',
-    ocrScans: 'coolpro_ocr_scans',
+    fieldToolkitChecklists: 'field_toolkit_checklists',
+    fieldToolkitPendingSync: 'field_toolkit_pending_sync',
     imageRecords: 'coolpro_image_records',
     voiceSessions: 'coolpro_voice_sessions',
     language: 'coolpro_language',
@@ -24,10 +25,20 @@ export const STORAGE_KEYS = {
 // Course & Exam types
 // ---------------------------------------------------------------------------
 
+export interface CourseAttachment {
+    id: string;
+    fileName: string;
+    fileType: string;
+    sizeBytes: number;
+    r2Key: string;
+    uploadedAt: string;
+}
+
 export interface CourseModule {
     title: string;
     content: string;
     minutes: number;
+    attachments?: CourseAttachment[];
 }
 
 export type CourseStatus = 'draft' | 'pending_nou' | 'approved' | 'rejected';
@@ -164,6 +175,8 @@ export {
     submitCourse as submitCourseForApproval,
     approveCourse,
     rejectCourse,
+    uploadCourseMaterial,
+    getCourseMaterialDownloadUrl,
 } from '@/lib/api';
 
 // ---------------------------------------------------------------------------

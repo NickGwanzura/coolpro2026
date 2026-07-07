@@ -290,7 +290,7 @@ export default function SupplierManagement() {
                                     </li>
                                     <li className="flex items-start gap-3">
                                         <Truck className="mt-0.5 h-4 w-4 text-amber-600" />
-                                        Supplier records stay local to this demo environment.
+                                        Supplier records are synced to the central HEVACRAZ database.
                                     </li>
                                 </ul>
                             </div>

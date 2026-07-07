@@ -205,9 +205,11 @@ export default function VerifyTechnicianPage() {
       <header className="border-b border-[#E7E5E4] bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex cursor-pointer items-center" onClick={() => router.push('/')}>
-            <div className="bg-[#1C1917] p-2.5">
-              <ShieldCheck className="h-6 w-6 text-white" />
-            </div>
+            <img
+              src="/logos/hevacraz-logo.jpeg"
+              alt="HEVACRAZ"
+              className="h-11 w-11 rounded-full object-cover"
+            />
             <div className="ml-3">
               <span className="text-xl font-bold text-slate-900">HEVACRAZ</span>
               <p className="text-xs text-slate-500">Public Certificate Verification Portal</p>
@@ -329,7 +331,7 @@ export default function VerifyTechnicianPage() {
           </form>
 
           <div className="mt-6 border-t border-slate-100 pt-6">
-            <p className="mb-3 text-sm text-slate-500">Demo {searchMode} queries:</p>
+            <p className="mb-3 text-sm text-slate-500">Try a {searchMode} search (from live registry):</p>
             <div className="flex flex-wrap gap-2">
               {demoQueries[searchMode].map((entry) => (
                 <button

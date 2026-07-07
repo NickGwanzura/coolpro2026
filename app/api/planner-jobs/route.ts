@@ -70,6 +70,11 @@ export async function POST(req: Request) {
     }
   }
 
+  // FK integrity: if refrigerantType is provided, refrigerantId must also be set
+  if (body.refrigerantType && !body.refrigerantId) {
+    return NextResponse.json({ error: 'refrigerantId is required when refrigerantType is provided' }, { status: 400 });
+  }
+
   // Technicians can only schedule jobs under their own identity.
   const technicianId = session.role === 'technician' ? session.id : (body.technicianId ?? session.id);
   const technicianName = session.role === 'technician' ? session.name : (body.technicianName ?? session.name);

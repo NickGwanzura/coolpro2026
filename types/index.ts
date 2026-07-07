@@ -1031,6 +1031,7 @@ export interface CocRequest {
 // ---------------------------------------------------------------------------
 
 export type ReclamationStatus = 'pending' | 'passed' | 'failed';
+export type RecyclingStatus = 'pending' | 'verified' | 'rejected';
 
 export interface ReclamationRecord {
   id: string;
@@ -1084,6 +1085,12 @@ export interface RefrigerantAnalytics {
   mostRecovered: RefrigerantUsageEntry[];
   classificationBreakdown: ClassificationBreakdown[];
   monthlyTrend: { month: string; totalKg: number }[];
+  complianceOverview: {
+    cylinders: { totalCylinders: number; totalFillKg: number; activeCount: number; expiredCount: number };
+    permits: { totalPermits: number; approvedCount: number; pendingCount: number; totalQuantityKg: number };
+    reclamation: { totalRecords: number; totalQuantityKg: number; passedCount: number; failedCount: number; pendingCount: number };
+    recycling: { totalRecords: number; totalQuantityKg: number };
+  };
 }
 
 export interface RecyclingRecord {
@@ -1098,6 +1105,7 @@ export interface RecyclingRecord {
   jobSite: string;
   recycledDate: string;
   notes?: string;
+  status?: RecyclingStatus;
   createdAt: string;
 }
 

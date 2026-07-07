@@ -6,6 +6,7 @@ import {
   getMostRecoveredRefrigerants,
   getClassificationBreakdown,
   getMonthlyUsageTrend,
+  getComplianceOverview,
 } from '@/lib/whatgas/analytics';
 
 export async function GET(req: Request) {
@@ -15,13 +16,22 @@ export async function GET(req: Request) {
     return e as Response;
   }
 
-  const [mostUsed, mostInstalled, mostRecovered, classificationBreakdown, monthlyTrend] = await Promise.all([
-    getMostUsedRefrigerants(10),
-    getMostInstalledRefrigerants(10),
-    getMostRecoveredRefrigerants(10),
-    getClassificationBreakdown(),
-    getMonthlyUsageTrend(),
-  ]);
+  const [mostUsed, mostInstalled, mostRecovered, classificationBreakdown, monthlyTrend, complianceOverview] =
+    await Promise.all([
+      getMostUsedRefrigerants(10),
+      getMostInstalledRefrigerants(10),
+      getMostRecoveredRefrigerants(10),
+      getClassificationBreakdown(),
+      getMonthlyUsageTrend(),
+      getComplianceOverview(),
+    ]);
 
-  return NextResponse.json({ mostUsed, mostInstalled, mostRecovered, classificationBreakdown, monthlyTrend });
+  return NextResponse.json({
+    mostUsed,
+    mostInstalled,
+    mostRecovered,
+    classificationBreakdown,
+    monthlyTrend,
+    complianceOverview,
+  });
 }

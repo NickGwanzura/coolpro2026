@@ -61,6 +61,8 @@ const NAV_SECTIONS: NavSection[] = [
         label: 'Operations',
         items: [
             { name: 'Learning Hub', href: '/learn', icon: BookOpen, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
+            { name: 'Manage Courses', href: '/learn/manage', icon: BookOpen, roles: ['trainer', 'lecturer'] },
+            { name: 'Safety', href: '/safety', icon: ShieldCheck, roles: ['technician', 'trainer', 'lecturer', 'student'] },
             { name: 'Field Scheduling', href: '/field-scheduling', icon: BellRing, roles: ['technician', 'org_admin'] },
         ],
     },
@@ -95,7 +97,7 @@ const NAV_SECTIONS: NavSection[] = [
         items: [
             { name: 'Certification', href: '/certifications', icon: Award, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
             { name: 'Rewards', href: '/rewards', icon: Award, roles: ['technician', 'vendor', 'org_admin'] },
-            { name: 'Supplier Registration', href: '/supplier-register', icon: Building2, roles: ['vendor'] },
+            { name: 'Supply Reports', href: '/suppliers', icon: Building2, roles: ['vendor'] },
             { name: 'Supplier Compliance', href: '/supplier-compliance', icon: ShieldCheck, roles: ['vendor'] },
             { name: 'Supply Reports', href: '/suppliers', icon: Factory, roles: ['vendor', 'org_admin'] },
             { name: 'Vendor Reorder', href: '/suppliers/reorder', icon: Factory, roles: ['vendor'] },
@@ -111,22 +113,30 @@ const NAV_SECTIONS: NavSection[] = [
         ],
     },
     {
-        label: 'Admin',
+        label: 'People',
         items: [
             { name: 'System Users', href: '/admin/users', icon: Users, roles: ['org_admin'] },
+            { name: 'Technician Registry', href: '/technician-registry', icon: Users, roles: ['org_admin'] },
             { name: 'Applications', href: '/admin/applications', icon: ShieldCheck, roles: ['org_admin'] },
-            { name: 'COC Requests', href: '/admin/coc-requests', icon: FileText, roles: ['org_admin'] },
             { name: 'Invites', href: '/admin/invites', icon: UserPlus, roles: ['org_admin'] },
+        ],
+    },
+    {
+        label: 'Compliance',
+        items: [
             { name: 'NOU Dashboard', href: '/nou-dashboard', icon: AlertTriangle, roles: ['org_admin'] },
             { name: 'Course Approvals', href: '/learn/approvals', icon: ShieldCheck, roles: ['org_admin'] },
-            { name: 'Lecturer Directory', href: '/admin/lecturers', icon: GraduationCap, roles: ['org_admin'] },
-            { name: 'Student Directory', href: '/admin/students', icon: Users, roles: ['org_admin'] },
-            { name: 'Technician Directory', href: '/admin/technicians', icon: Users, roles: ['org_admin'] },
-            { name: 'Certification Engine', href: '/admin/certification-engine', icon: Award, roles: ['org_admin'] },
+            { name: 'COC Requests', href: '/admin/coc-requests', icon: FileText, roles: ['org_admin'] },
             { name: 'Accidents Module', href: '/admin/accidents', icon: AlertTriangle, roles: ['org_admin'] },
+        ],
+    },
+    {
+        label: 'Reporting & Data',
+        items: [
             { name: 'Reporting', href: '/admin/reporting', icon: BarChart3, roles: ['org_admin'] },
-            { name: 'Refrigerants (WhatGas Sync)', href: '/admin/refrigerants', icon: Database, roles: ['org_admin'] },
             { name: 'Refrigerant Analytics', href: '/admin/refrigerant-analytics', icon: BarChart3, roles: ['org_admin'] },
+            { name: 'Refrigerants (WhatGas Sync)', href: '/admin/refrigerants', icon: Database, roles: ['org_admin'] },
+            { name: 'Certifications', href: '/certifications', icon: Award, roles: ['org_admin'] },
         ],
     },
 ];

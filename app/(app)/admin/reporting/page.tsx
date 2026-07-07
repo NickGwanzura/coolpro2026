@@ -10,6 +10,9 @@ import {
     useSupplierApplications,
     useReorders,
 } from '@/lib/api';
+// NOTE: Multiple admin pages (Dashboard, Reporting, NOU Dashboard) independently fetch
+// the same underlying datasets via SWR. SWR deduplicates requests with the same key,
+// so this is a maintenance/perf smell rather than a functional issue.
 import OccupationalAccidentSection from '@/components/OccupationalAccidentSection';
 import type { SupplierReorder } from '@/lib/platformStore';
 import type { StudentApplication, TechnicianApplication, SupplierRegistration } from '@/types/index';
@@ -137,7 +140,7 @@ function buildCourseActivity(items: ManagedCourse[] | undefined): ActivityEntry[
             : `Course rejected: ${c.title}`,
         description: `${c.modules.length} modules · by ${c.lecturerName}`,
         actor: c.lecturerName,
-        href: '/admin/certification-engine',
+        href: '/learn/approvals',
     }));
 }
 
@@ -440,7 +443,7 @@ export default function ReportingPage() {
                                 <p className="text-xs text-gray-500">Content development</p>
                             </div>
                         </div>
-                        <Link href="/admin/certification-engine" className="inline-flex items-center gap-1 text-xs font-semibold text-purple-600 hover:text-purple-700">
+                        <Link href="/learn/approvals" className="inline-flex items-center gap-1 text-xs font-semibold text-purple-600 hover:text-purple-700">
                             View <ChevronRight className="h-3 w-3" />
                         </Link>
                     </div>

@@ -161,7 +161,8 @@ export default function ApprovalsPage() {
         return <div className="p-8 text-sm text-slate-500">Loading...</div>;
     }
 
-    const isHevacraz = true;
+    // TODO: Add a distinct NOU reviewer role so HEVACRAZ and NOU stages
+    // can be performed by different administrators (currently both gate on org_admin).
 
     async function handleHevacrazApprove(id: string) {
         setActing(true);

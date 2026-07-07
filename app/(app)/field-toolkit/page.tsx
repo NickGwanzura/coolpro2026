@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, FlaskConical } from 'lucide-react';
 
@@ -8,6 +9,8 @@ import { ImageAnnotationWorkbench } from '@/components/ImageAnnotationWorkbench'
 import { OcrNameplateScanner } from '@/components/OcrNameplateScanner';
 
 export default function FieldToolkitPage() {
+    const [prefillRefrigerantCode, setPrefillRefrigerantCode] = useState<string | undefined>();
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -25,10 +28,13 @@ export default function FieldToolkitPage() {
                 </Link>
             </div>
             <div className="grid gap-6">
-                <OcrNameplateScanner />
+                <OcrNameplateScanner onUseRefrigerant={setPrefillRefrigerantCode} />
                 <ImageAnnotationWorkbench />
             </div>
-            <FieldToolkit />
+            <FieldToolkit
+                prefillRefrigerantCode={prefillRefrigerantCode}
+                onPrefillConsumed={() => setPrefillRefrigerantCode(undefined)}
+            />
         </div>
     );
 }

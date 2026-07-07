@@ -3,13 +3,13 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   CheckSquare,
   FileText,
-  AlertTriangle,
   Save,
   WifiOff,
+  Wifi,
+  RefreshCw,
   Download,
   History,
   PlusCircle,
-  Archive,
   Upload,
   FileCheck,
   ClipboardCheck,
@@ -18,20 +18,28 @@ import {
 import { useAuth } from '../lib/auth';
 import { RefrigerantLog, Installation, JobType, JobTypeLabels, Refrigerant } from '../types';
 import { jsPDF } from 'jspdf';
-import { readCollection, STORAGE_KEYS, writeCollection } from '@/lib/platformStore';
-import { createGasLogs, useApprovedSuppliers } from '@/lib/api';
+import { readCollection, STORAGE_KEYS } from '@/lib/platformStore';
+import { createGasLogs, searchRefrigerantsOnce, useApprovedSuppliers, useInstallations, createInstallation } from '@/lib/api';
 import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 
-const FieldToolkit: React.FC = () => {
+interface FieldToolkitProps {
+  /** A refrigerant code detected by the OCR nameplate scanner, to prefill the gas register form. */
+  prefillRefrigerantCode?: string;
+  /** Called once the prefill has been applied, so the parent can clear it. */
+  onPrefillConsumed?: () => void;
+}
+
+const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onPrefillConsumed }) => {
   const { user } = useAuth();
-  const { data: approvedSuppliersData } = useApprovedSuppliers();
+  const { data: approvedSuppliersData, error: approvedSuppliersError, isLoading: approvedSuppliersLoading } = useApprovedSuppliers();
   const approvedSuppliers = approvedSuppliersData ?? [];
+  const { data: dbInstallations = [], mutate: mutateInstallations } = useInstallations();
+  const installations = dbInstallations;
   const [activeTab, setActiveTab] = useState<'checklist' | 'installations' | 'leaks'>('checklist');
   const [checklistType, setChecklistType] = useState<'installation' | 'regassing'>('installation');
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
 
   // Installation State
-  const [installations, setInstallations] = useState<Installation[]>([]);
   const [installationForm, setInstallationForm] = useState({
     clientName: '',
     jobDetails: '',
@@ -41,38 +49,8 @@ const FieldToolkit: React.FC = () => {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Logbook State
-  const [logs, setLogs] = useState<RefrigerantLog[]>([
-    {
-      id: '1',
-      technicianId: 'tech-001',
-      technicianName: 'Demo Technician',
-      clientName: 'Shoprite Downtown',
-      location: 'Store 4, Aisle 2',
-      jobType: 'COLD_ROOM',
-      refrigerantType: 'R-290',
-      amount: 15.5,
-      actionType: 'Charge',
-      approvedSupplierId: 'sup-001',
-      approvedSupplierName: 'Zimbabwe Refrigeration Supplies',
-      supplierVerified: true,
-      pesepayTransactionId: 'MOCK-284001',
-      timestamp: new Date(Date.now() - 86400000).toISOString(),
-    },
-    {
-      id: '2',
-      technicianId: 'tech-001',
-      technicianName: 'Demo Technician',
-      clientName: 'Pick n Pay Highlands',
-      location: 'Cold Storage Room',
-      jobType: 'C40_FREEZER',
-      refrigerantType: 'R-744 (CO2)',
-      amount: 45.0,
-      actionType: 'Recovery',
-      supplierVerified: false,
-      timestamp: new Date(Date.now() - 172800000).toISOString(),
-    }
-  ]);
+  // Logbook State — starts empty; real entries come from the DB via createGasLogs
+  const [logs, setLogs] = useState<RefrigerantLog[]>([]);
 
   const [formData, setFormData] = useState({
     clientName: '',
@@ -87,19 +65,82 @@ const FieldToolkit: React.FC = () => {
     plannerJobId: '',
   });
 
+  const [pendingSyncIds, setPendingSyncIds] = useState<string[]>([]);
+  const [isOnline, setIsOnline] = useState(true);
+  const [checklistNotice, setChecklistNotice] = useState('');
+  const [prefillNotice, setPrefillNotice] = useState('');
+
   useEffect(() => {
-    setInstallations(readCollection<Installation>(STORAGE_KEYS.fieldToolkitInstallations, []));
-    setLogs(readCollection<RefrigerantLog>(STORAGE_KEYS.fieldToolkitLogs, logs));
+    setPendingSyncIds(readCollection<string>(STORAGE_KEYS.fieldToolkitPendingSync, []));
+    setIsOnline(navigator.onLine);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    writeCollection(STORAGE_KEYS.fieldToolkitInstallations, installations);
-  }, [installations]);
+  // Installations are DB-backed via useInstallations hook — no localStorage mirror needed
 
   useEffect(() => {
-    writeCollection(STORAGE_KEYS.fieldToolkitLogs, logs);
-  }, [logs]);
+    // Pending sync IDs persisted to localStorage for offline resilience
+    try { window.localStorage.setItem(STORAGE_KEYS.fieldToolkitPendingSync, JSON.stringify(pendingSyncIds)); } catch {}
+  }, [pendingSyncIds]);
+
+  const syncPendingLogs = React.useCallback(async (ids: string[], allLogs: RefrigerantLog[]) => {
+    const logsToSync = allLogs.filter(l => ids.includes(l.id));
+    if (logsToSync.length === 0) {
+      setPendingSyncIds(prev => prev.filter(id => !ids.includes(id)));
+      return;
+    }
+    try {
+      await createGasLogs(logsToSync);
+      setPendingSyncIds(prev => prev.filter(id => !ids.includes(id)));
+    } catch (err) {
+      console.error('Retry sync failed:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncPendingLogs(pendingSyncIds, logs);
+    };
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSyncIds, logs]);
+
+  useEffect(() => {
+    if (!prefillRefrigerantCode) return;
+    let cancelled = false;
+
+    (async () => {
+      let refrigerant: Refrigerant | null = null;
+      try {
+        const results = await searchRefrigerantsOnce({ q: prefillRefrigerantCode, pageSize: 1 });
+        refrigerant = results.data[0] ?? null;
+      } catch (err) {
+        console.error('Failed to look up scanned refrigerant:', err);
+      }
+      if (cancelled) return;
+
+      setFormData(prev => ({
+        ...prev,
+        refrigerant,
+        refrigerantType: refrigerant ? refrigerantLabel(refrigerant) : prefillRefrigerantCode,
+      }));
+      setActiveTab('leaks');
+      setPrefillNotice(`Filled from nameplate scan: ${prefillRefrigerantCode}`);
+      onPrefillConsumed?.();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillRefrigerantCode]);
 
   const toggleCheck = (index: string) => {
     setCheckedItems(prev =>
@@ -107,6 +148,24 @@ const FieldToolkit: React.FC = () => {
         ? prev.filter(i => i !== index)
         : [...prev, index]
     );
+  };
+
+  const handleSaveChecklist = () => {
+    const totalItems = (checklistType === 'installation' ? checklistItems : regassingChecklistItems)
+      .reduce((sum, category) => sum + category.items.length, 0);
+    const entry = {
+      id: Math.random().toString(36).substr(2, 9),
+      checklistType,
+      completedItems: checkedItems.length,
+      totalItems,
+      completedAt: new Date().toISOString(),
+    };
+    try {
+      const existing = JSON.parse(window.localStorage.getItem(STORAGE_KEYS.fieldToolkitChecklists) ?? '[]');
+      existing.unshift(entry);
+      window.localStorage.setItem(STORAGE_KEYS.fieldToolkitChecklists, JSON.stringify(existing));
+    } catch {}
+    setChecklistNotice(`Saved — ${checkedItems.length}/${totalItems} items checked.`);
   };
 
   const checklistItems = [
@@ -203,52 +262,60 @@ const FieldToolkit: React.FC = () => {
   };
 
   // Submit installation
-  const handleInstallationSubmit = (e: React.FormEvent) => {
+  const handleInstallationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!installationForm.clientName || !installationForm.jobDetails) return;
 
-    const newInstallation: Installation = {
-      id: Math.random().toString(36).substr(2, 9),
-      technicianId: user?.id || 'unknown',
-      technicianName: user?.name || 'Anonymous',
-      clientName: installationForm.clientName,
-      jobDetails: installationForm.jobDetails,
-      floorSpace: installationForm.floorSpace,
-      jobType: installationForm.jobType,
-      installationDate: new Date().toISOString(),
-      status: 'pending',
-      images: uploadedImages,
-      cocRequested: false,
-      cocApproved: false
-    };
-
-    setInstallations([newInstallation, ...installations]);
-    setInstallationForm({
-      clientName: '',
-      jobDetails: '',
-      floorSpace: '',
-      jobType: 'COLD_ROOM',
-    });
-    setUploadedImages([]);
+    try {
+      await createInstallation({
+        clientName: installationForm.clientName,
+        location: undefined,
+        jobDetails: installationForm.jobDetails,
+        floorSpace: installationForm.floorSpace,
+        jobType: installationForm.jobType,
+        images: uploadedImages,
+      });
+      await mutateInstallations();
+      setInstallationForm({
+        clientName: '',
+        jobDetails: '',
+        floorSpace: '',
+        jobType: 'COLD_ROOM',
+      });
+      setUploadedImages([]);
+    } catch (err) {
+      console.error('Failed to save installation:', err);
+    }
   };
 
   // Request COC
-  const requestCOC = (id: string) => {
-    setInstallations(prev => prev.map(inst => 
-      inst.id === id ? { ...inst, cocRequested: true } : inst
-    ));
+  const requestCOC = async (id: string) => {
+    try {
+      await fetch(`/api/installations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ cocRequested: true }),
+      });
+      await mutateInstallations();
+    } catch (err) {
+      console.error('Failed to request COC:', err);
+    }
   };
 
-  // Approve COC (simulated)
-  const approveCOC = (id: string) => {
-    setInstallations(prev => prev.map(inst => 
-      inst.id === id ? { 
-        ...inst, 
-        cocApproved: true, 
-        cocApprovalDate: new Date().toISOString(),
-        status: 'approved' as const
-      } : inst
-    ));
+  // Approve COC
+  const approveCOC = async (id: string) => {
+    try {
+      await fetch(`/api/installations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ cocApproved: true, cocApprovalDate: new Date().toISOString(), status: 'approved' }),
+      });
+      await mutateInstallations();
+    } catch (err) {
+      console.error('Failed to approve COC:', err);
+    }
   };
 
   // Generate COC Certificate PDF
@@ -355,11 +422,11 @@ const FieldToolkit: React.FC = () => {
     };
 
     setLogs([newLog, ...logs]);
+    setPendingSyncIds(prev => [...prev, newLog.id]);
 
-    // Persist to database
-    createGasLogs([newLog]).catch((err) =>
-      console.error('Failed to sync gas log to DB:', err)
-    );
+    createGasLogs([newLog])
+      .then(() => setPendingSyncIds(prev => prev.filter(id => id !== newLog.id)))
+      .catch((err) => console.error('Failed to sync gas log to DB:', err));
 
     setFormData({
       clientName: '',
@@ -419,8 +486,8 @@ const FieldToolkit: React.FC = () => {
       <div className="flex border-b border-gray-200 bg-gray-50/50">
         <button
           onClick={() => setActiveTab('checklist')}
-          className={`flex-1 px-4 py-3 text-xs font-semibold transition-colors flex items-center justify-center gap-2 ${activeTab === 'checklist'
-              ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+          className={`flex-1 px-4 py-4 text-xs font-semibold transition-colors flex items-center justify-center gap-2 ${activeTab === 'checklist'
+              ? 'bg-white text-[#D97706] border-b-2 border-[#D97706]'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
             }`}
         >
@@ -429,8 +496,8 @@ const FieldToolkit: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('installations')}
-          className={`flex-1 px-4 py-3 text-xs font-semibold transition-colors flex items-center justify-center gap-2 ${activeTab === 'installations'
-              ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+          className={`flex-1 px-4 py-4 text-xs font-semibold transition-colors flex items-center justify-center gap-2 ${activeTab === 'installations'
+              ? 'bg-white text-[#D97706] border-b-2 border-[#D97706]'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
             }`}
         >
@@ -439,8 +506,8 @@ const FieldToolkit: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('leaks')}
-          className={`flex-1 px-4 py-3 text-xs font-semibold transition-colors flex items-center justify-center gap-2 ${activeTab === 'leaks'
-              ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+          className={`flex-1 px-4 py-4 text-xs font-semibold transition-colors flex items-center justify-center gap-2 ${activeTab === 'leaks'
+              ? 'bg-white text-[#D97706] border-b-2 border-[#D97706]'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
             }`}
         >
@@ -455,16 +522,16 @@ const FieldToolkit: React.FC = () => {
             {/* Checklist Type Switcher */}
             <div className="flex gap-2 p-1 bg-gray-100 ">
               <button
-                onClick={() => { setChecklistType('installation'); setCheckedItems([]); }}
-                className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-all ${
+                onClick={() => { setChecklistType('installation'); setCheckedItems([]); setChecklistNotice(''); }}
+                className={`flex-1 px-4 py-3 text-sm font-semibold transition-all ${
                   checklistType === 'installation' ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 New Installation
               </button>
               <button
-                onClick={() => { setChecklistType('regassing'); setCheckedItems([]); }}
-                className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-all ${
+                onClick={() => { setChecklistType('regassing'); setCheckedItems([]); setChecklistNotice(''); }}
+                className={`flex-1 px-4 py-3 text-sm font-semibold transition-all ${
                   checklistType === 'regassing' ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -493,17 +560,17 @@ const FieldToolkit: React.FC = () => {
                           type="checkbox"
                           checked={checkedItems.includes(itemId)}
                           onChange={() => toggleCheck(itemId)}
-                          className="mt-0.5 w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className="mt-0.5 h-6 w-6 shrink-0 rounded border-gray-300 text-[#D97706] focus:ring-[#D97706]"
                         />
                         <div className="flex-1">
                           <span className="text-gray-700 font-medium">{item.text}</span>
                           {item.source && (
                             item.url ? (
-                              <a 
-                                href={item.url} 
-                                target="_blank" 
+                              <a
+                                href={item.url}
+                                target="_blank"
                                 rel="noopener noreferrer"
-                                className="block text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1"
+                                className="block text-xs text-[#D97706] hover:text-[#b45309] hover:underline mt-1"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 📄 Source: {item.source} ↗
@@ -519,18 +586,24 @@ const FieldToolkit: React.FC = () => {
                 </div>
               ))}
             </div>
-            <div className="pt-6">
-              <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 font-semibold hover:bg-gray-800 transition-colors">
+            <div className="pt-6 space-y-3">
+              <button
+                onClick={handleSaveChecklist}
+                className="flex items-center gap-2 bg-[#1C1917] text-white px-6 py-3 font-semibold hover:bg-[#292524] transition-colors"
+              >
                 <Save className="h-4 w-4" />
                 Complete & Save Locally
               </button>
+              {checklistNotice && (
+                <p className="text-sm font-medium text-emerald-700">{checklistNotice}</p>
+              )}
             </div>
           </div>
         ) : activeTab === 'installations' ? (
           <div className="space-y-8">
             {/* New Installation Form */}
             <div className="space-y-6 bg-gray-50/50 p-6 border border-gray-200">
-              <div className="flex items-center gap-2 text-blue-700 font-semibold mb-2">
+              <div className="flex items-center gap-2 text-[#D97706] font-semibold mb-2">
                 <PlusCircle className="h-5 w-5" />
                 New Installation
               </div>
@@ -541,7 +614,7 @@ const FieldToolkit: React.FC = () => {
                   <input
                     value={installationForm.clientName}
                     onChange={(e) => setInstallationForm({ ...installationForm, clientName: e.target.value })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. Shoprite Bulawayo"
                   />
                 </div>
@@ -550,7 +623,7 @@ const FieldToolkit: React.FC = () => {
                   <select
                     value={installationForm.jobType}
                     onChange={(e) => setInstallationForm({ ...installationForm, jobType: e.target.value as JobType })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
                   >
                     <option value="COLD_ROOM">Cold Room</option>
                     <option value="C40_FREEZER">C40 Freezer</option>
@@ -563,7 +636,7 @@ const FieldToolkit: React.FC = () => {
                   <textarea
                     value={installationForm.jobDetails}
                     onChange={(e) => setInstallationForm({ ...installationForm, jobDetails: e.target.value })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all bg-white"
                     placeholder="Describe the installation work performed..."
                     rows={3}
                   />
@@ -573,7 +646,7 @@ const FieldToolkit: React.FC = () => {
                   <input
                     value={installationForm.floorSpace}
                     onChange={(e) => setInstallationForm({ ...installationForm, floorSpace: e.target.value })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. 24"
                   />
                 </div>
@@ -592,7 +665,7 @@ const FieldToolkit: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-gray-300 p-4 flex flex-col items-center gap-2 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                    className="w-full border-2 border-dashed border-gray-300 p-4 flex flex-col items-center gap-2 text-gray-500 hover:border-[#D97706] hover:text-[#D97706] transition-colors"
                   >
                     <Upload className="h-6 w-6" />
                     <span className="text-sm font-medium">Click to upload images</span>
@@ -604,7 +677,7 @@ const FieldToolkit: React.FC = () => {
                           <img src={img} alt={`Upload ${i + 1}`} className="w-full h-20 object-cover " />
                           <button
                             onClick={() => removeImage(i)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 text-xs"
+                            className="absolute -top-2 -right-2 flex h-7 w-7 items-center justify-center bg-red-500 text-white rounded-full text-sm"
                           >
                             ×
                           </button>
@@ -617,7 +690,7 @@ const FieldToolkit: React.FC = () => {
 
               <button
                 onClick={handleInstallationSubmit}
-                className="flex items-center justify-center gap-2 bg-blue-600 text-white w-full py-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
+                className="flex items-center justify-center gap-2 bg-[#D97706] text-white w-full py-4 font-semibold hover:bg-[#b45309] transition-colors shadow-lg shadow-[#D97706]/20"
               >
                 <Save className="h-5 w-5" />
                 Submit Installation
@@ -629,7 +702,7 @@ const FieldToolkit: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-gray-900 font-bold">
                   <History className="h-5 w-5 text-gray-500" />
-                  Installations {user && <span className="text-blue-600 ml-1"> - {user.name}</span>}
+                  Installations {user && <span className="text-[#D97706] ml-1"> - {user.name}</span>}
                 </div>
               </div>
 
@@ -638,7 +711,7 @@ const FieldToolkit: React.FC = () => {
                   installations.map((inst) => (
                     <div
                       key={inst.id}
-                      className="p-4 border border-gray-200 bg-white hover:border-blue-200 transition-all"
+                      className="p-4 border border-gray-200 bg-white hover:border-[#D97706]/40 transition-all"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="space-y-1">
@@ -656,7 +729,7 @@ const FieldToolkit: React.FC = () => {
                           </div>
                           <h5 className="font-bold text-gray-900">{inst.clientName}</h5>
                           <p className="text-sm text-gray-500">
-                            {JobTypeLabels[inst.jobType]} | {inst.floorSpace && `${inst.floorSpace} m²`}
+                            {JobTypeLabels[inst.jobType as JobType]} | {inst.floorSpace && `${inst.floorSpace} m²`}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -681,7 +754,7 @@ const FieldToolkit: React.FC = () => {
                           {inst.cocApproved && (
                             <button
                               onClick={() => generateCOCCertificate(inst)}
-                              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:bg-blue-700 transition-colors"
+                              className="flex items-center gap-2 bg-[#D97706] text-white px-4 py-2 text-sm font-semibold hover:bg-[#b45309] transition-colors"
                             >
                               <Download className="h-4 w-4" />
                               Download COC
@@ -715,7 +788,7 @@ const FieldToolkit: React.FC = () => {
 
             {/* Form Section */}
             <div className="space-y-6 bg-gray-50/50 p-6 border border-gray-200">
-              <div className="flex items-center gap-2 text-blue-700 font-semibold mb-2">
+              <div className="flex items-center gap-2 text-[#D97706] font-semibold mb-2">
                 <PlusCircle className="h-5 w-5" />
                 New Log Entry
               </div>
@@ -726,7 +799,7 @@ const FieldToolkit: React.FC = () => {
                   <input
                     value={formData.clientName}
                     onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. Shoprite Bulawayo"
                   />
                 </div>
@@ -735,7 +808,7 @@ const FieldToolkit: React.FC = () => {
                   <input
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. Unit 3 Roof, Aisle 4 Freezer"
                   />
                 </div>
@@ -744,7 +817,7 @@ const FieldToolkit: React.FC = () => {
                   <select
                     value={formData.jobType}
                     onChange={(e) => setFormData({ ...formData, jobType: e.target.value as JobType })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
                   >
                     <option value="COLD_ROOM">Cold Room</option>
                     <option value="C40_FREEZER">C40 Freezer</option>
@@ -758,7 +831,7 @@ const FieldToolkit: React.FC = () => {
                     type="number"
                     value={formData.amount}
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all bg-white"
                     placeholder="0.00"
                   />
                 </div>
@@ -766,26 +839,35 @@ const FieldToolkit: React.FC = () => {
                   <label className="text-sm font-semibold text-gray-700">Refrigerant Type</label>
                   <RefrigerantAutocomplete
                     value={formData.refrigerant}
-                    onSelect={(r) =>
-                      setFormData({ ...formData, refrigerant: r, refrigerantType: r ? refrigerantLabel(r) : '' })
-                    }
-                    accentColor="#2563eb"
+                    onSelect={(r) => {
+                      setFormData({ ...formData, refrigerant: r, refrigerantType: r ? refrigerantLabel(r) : '' });
+                      setPrefillNotice('');
+                    }}
                   />
+                  {prefillNotice && (
+                    <p className="text-xs font-medium text-emerald-700">{prefillNotice}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">Approved Supplier</label>
                   <select
                     value={formData.approvedSupplierId}
                     onChange={(e) => setFormData({ ...formData, approvedSupplierId: e.target.value })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white"
+                    disabled={approvedSuppliersLoading}
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all appearance-none cursor-pointer bg-white disabled:bg-gray-100 disabled:text-gray-400"
                   >
-                    <option value="">Select approved supplier</option>
+                    <option value="">
+                      {approvedSuppliersLoading ? 'Loading suppliers…' : 'Select approved supplier'}
+                    </option>
                     {approvedSuppliers.map((supplier) => (
                       <option key={supplier.id} value={supplier.id}>
                         {supplier.name}
                       </option>
                     ))}
                   </select>
+                  {approvedSuppliersError && (
+                    <p className="text-xs text-red-600">Couldn't load approved suppliers. Check your connection and retry.</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">
@@ -794,7 +876,7 @@ const FieldToolkit: React.FC = () => {
                   </label>                    <input
                     value={formData.pesepayTransactionId}
                     onChange={(e) => setFormData({ ...formData, pesepayTransactionId: e.target.value })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. MOCK-20260331-001"
                   />
                 </div>
@@ -806,7 +888,7 @@ const FieldToolkit: React.FC = () => {
                   <input
                     value={formData.plannerJobId}
                     onChange={(e) => setFormData({ ...formData, plannerJobId: e.target.value })}
-                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                    className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all bg-white"
                     placeholder="e.g. job-abc123"
                   />
                 </div>
@@ -817,9 +899,9 @@ const FieldToolkit: React.FC = () => {
                       <button
                         key={type}
                         onClick={() => setFormData({ ...formData, actionType: type as 'Charge' | 'Recovery' | 'Leak Repair' })}
-                        className={`py-3 font-medium border transition-all ${formData.actionType === type
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'
+                        className={`py-3.5 font-medium border transition-all ${formData.actionType === type
+                            ? 'bg-[#D97706] text-white border-[#D97706] shadow-sm'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-[#D97706]'
                           }`}
                       >
                         {type}
@@ -837,7 +919,7 @@ const FieldToolkit: React.FC = () => {
 
               <button
                 onClick={handleLogSubmit}
-                className="flex items-center justify-center gap-2 bg-blue-600 text-white w-full py-4 font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
+                className="flex items-center justify-center gap-2 bg-[#D97706] text-white w-full py-4 font-semibold hover:bg-[#b45309] transition-colors shadow-lg shadow-[#D97706]/20"
               >
                 <Save className="h-5 w-5" />
                 Log Event & Ready for Sync
@@ -849,11 +931,11 @@ const FieldToolkit: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-gray-900 font-bold">
                   <History className="h-5 w-5 text-gray-500" />
-                  Recent Activity {user && <span className="text-blue-600 ml-1"> - {user.name}</span>}
+                  Recent Activity {user && <span className="text-[#D97706] ml-1"> - {user.name}</span>}
                 </div>
-                <div className="flex items-center gap-1 text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                  <Archive className="h-3 w-3" />
-                  Local Storage: {logs.length} entries
+                <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                  <RefreshCw className="h-3 w-3" />
+                  DB-backed: {logs.length} entries
                 </div>
               </div>
 
@@ -862,7 +944,7 @@ const FieldToolkit: React.FC = () => {
                   logs.map((log) => (
                     <div
                       key={log.id}
-                      className="p-4 border border-gray-200 bg-white hover:border-blue-200 transition-all group"
+                      className="p-4 border border-gray-200 bg-white hover:border-[#D97706]/40 transition-all group"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="space-y-1">
@@ -923,20 +1005,50 @@ const FieldToolkit: React.FC = () => {
               </div>
             </div>
 
-            {/* Offline Sync State */}
-            <div className="bg-amber-50 border border-amber-200 p-4 flex items-start gap-4">
-              <div className="bg-amber-100 p-2 ">
-                <WifiOff className="h-5 w-5 text-amber-600" />
+            {/* Sync State */}
+            {!isOnline ? (
+              <div className="bg-amber-50 border border-amber-200 p-4 flex items-start gap-4">
+                <div className="bg-amber-100 p-2">
+                  <WifiOff className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-amber-900 font-bold">You're offline</p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    {pendingSyncIds.length > 0
+                      ? `${pendingSyncIds.length} log${pendingSyncIds.length === 1 ? '' : 's'} saved on this device and will sync automatically once you're back online.`
+                      : 'New logs are saved on this device and will sync automatically once you\'re back online.'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-amber-900 font-bold">
-                  Offline Mode Active
-                </p>
-                <p className="text-xs text-amber-700 mt-0.5 mt-1">
-                  Logs are saved locally on your device and will automatically sync to the central HEVACRAZ database once you return to internet coverage.
-                </p>
+            ) : pendingSyncIds.length > 0 ? (
+              <div className="bg-amber-50 border border-amber-200 p-4 flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="bg-amber-100 p-2">
+                    <RefreshCw className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-amber-900 font-bold">
+                      {pendingSyncIds.length} log{pendingSyncIds.length === 1 ? '' : 's'} pending sync
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      These logs are saved on this device but haven't synced to the central database yet.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => syncPendingLogs(pendingSyncIds, logs)}
+                  className="shrink-0 inline-flex items-center gap-2 bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#b45309]"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Retry sync
+                </button>
               </div>
-            </div>
+            ) : (
+              <div className="bg-emerald-50 border border-emerald-200 p-4 flex items-center gap-3">
+                <Wifi className="h-5 w-5 text-emerald-600" />
+                <p className="text-sm text-emerald-800 font-medium">All logs are synced to the central database.</p>
+              </div>
+            )}
           </div>
         )}
       </div>

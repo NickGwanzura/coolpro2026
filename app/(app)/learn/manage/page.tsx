@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import {
@@ -10,11 +10,22 @@ import {
     updateCourse,
     submitCourseForApproval,
     gradeExamSubmission,
+    uploadCourseMaterial,
+    getCourseMaterialDownloadUrl,
     type ManagedCourse,
     type CourseModule,
+    type CourseAttachment,
     type ExamSubmission,
 } from '@/lib/platformStore';
+import { deleteCourseMaterial } from '@/lib/api';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Paperclip, Download, X, Loader2 } from 'lucide-react';
+
+function formatFileSize(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -45,16 +56,63 @@ const STATUS_BADGE_MAP: Record<string, string> = {
 function ModuleRow({
     mod,
     index,
+    courseId,
     onChange,
+    onAttachmentsChange,
     onRemove,
     readOnly,
 }: {
     mod: CourseModule;
     index: number;
+    courseId?: string;
     onChange: (index: number, field: keyof CourseModule, value: string | number) => void;
+    onAttachmentsChange: (index: number, attachments: CourseAttachment[]) => void;
     onRemove: (index: number) => void;
     readOnly: boolean;
 }) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+    const [error, setError] = useState('');
+    const attachments = mod.attachments ?? [];
+
+    async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file || !courseId) return;
+        setError('');
+        setUploadProgress(0);
+        try {
+            const attachment = await uploadCourseMaterial(courseId, file, setUploadProgress);
+            onAttachmentsChange(index, [...attachments, attachment]);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Upload failed');
+        } finally {
+            setUploadProgress(null);
+        }
+    }
+
+    async function handleDownload(attachment: CourseAttachment) {
+        if (!courseId) return;
+        try {
+            const url = await getCourseMaterialDownloadUrl(courseId, attachment.r2Key);
+            window.open(url, '_blank', 'noopener,noreferrer');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Could not open file');
+        }
+    }
+
+    function handleRemoveAttachment(attachmentId: string) {
+        const attachment = attachments.find(a => a.id === attachmentId);
+        if (attachment && courseId) {
+            // Remove from R2 storage — fire-and-forget; if it fails the file
+            // lingers in the bucket but the course is no longer referencing it.
+            deleteCourseMaterial(courseId, attachment.r2Key).catch(err =>
+                console.error('Failed to delete material from R2:', err)
+            );
+        }
+        onAttachmentsChange(index, attachments.filter(a => a.id !== attachmentId));
+    }
+
     return (
         <div className="border border-gray-200 bg-gray-50 p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
@@ -94,6 +152,55 @@ function ModuleRow({
                 className="w-40 border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
             />
             <span className="ml-2 text-xs text-gray-400">min</span>
+
+            <div className="space-y-2 pt-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Materials</p>
+                {attachments.length === 0 && <p className="text-xs text-gray-400">No files attached.</p>}
+                {attachments.map(attachment => (
+                    <div key={attachment.id} className="flex items-center justify-between gap-3 border border-gray-200 bg-white px-3 py-2">
+                        <span className="flex min-w-0 items-center gap-2 text-sm text-gray-700">
+                            <Paperclip className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                            <span className="truncate">{attachment.fileName}</span>
+                            <span className="shrink-0 text-xs text-gray-400">{formatFileSize(attachment.sizeBytes)}</span>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-2">
+                            <button type="button" onClick={() => handleDownload(attachment)} className="text-gray-400 hover:text-blue-600" aria-label="Download">
+                                <Download className="h-4 w-4" />
+                            </button>
+                            {!readOnly && (
+                                <button type="button" onClick={() => handleRemoveAttachment(attachment.id)} className="text-gray-400 hover:text-red-500" aria-label="Remove">
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </span>
+                    </div>
+                ))}
+                {!readOnly && courseId && (
+                    <div>
+                        <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadProgress !== null}
+                            className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:underline disabled:opacity-60"
+                        >
+                            {uploadProgress !== null ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Uploading {uploadProgress}%
+                                </>
+                            ) : (
+                                <>
+                                    <Paperclip className="h-3.5 w-3.5" /> Attach file
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
+                {!readOnly && !courseId && (
+                    <p className="text-xs text-gray-400">Save the course as a draft first to attach files.</p>
+                )}
+                {error && <p className="text-xs text-red-500">{error}</p>}
+            </div>
         </div>
     );
 }
@@ -125,6 +232,17 @@ function CoursePanel({
 
     function handleModuleChange(index: number, field: keyof CourseModule, value: string | number) {
         setModules(prev => prev.map((m, i) => i === index ? { ...m, [field]: value } : m));
+    }
+
+    async function handleAttachmentsChange(index: number, attachments: CourseAttachment[]) {
+        const updatedModules = modules.map((m, i) => i === index ? { ...m, attachments } : m);
+        setModules(updatedModules);
+        try {
+            const updated = await updateCourse(course.id, { modules: updatedModules });
+            onSaved(updated);
+        } catch (err) {
+            setNotice(err instanceof Error ? err.message : 'Failed to save attachment.');
+        }
     }
 
     function handleModuleRemove(index: number) {
@@ -218,7 +336,9 @@ function CoursePanel({
                             key={i}
                             mod={mod}
                             index={i}
+                            courseId={course.id}
                             onChange={handleModuleChange}
+                            onAttachmentsChange={handleAttachmentsChange}
                             onRemove={handleModuleRemove}
                             readOnly={readOnly}
                         />
@@ -413,6 +533,10 @@ function CreateCourseForm({
         setModules(prev => prev.map((m, i) => i === index ? { ...m, [field]: value } : m));
     }
 
+    function handleAttachmentsChange(index: number, attachments: CourseAttachment[]) {
+        setModules(prev => prev.map((m, i) => i === index ? { ...m, attachments } : m));
+    }
+
     function handleModuleRemove(index: number) {
         setModules(prev => prev.filter((_, i) => i !== index));
     }
@@ -469,6 +593,7 @@ function CreateCourseForm({
                             mod={mod}
                             index={i}
                             onChange={handleModuleChange}
+                            onAttachmentsChange={handleAttachmentsChange}
                             onRemove={handleModuleRemove}
                             readOnly={false}
                         />

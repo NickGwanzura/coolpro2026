@@ -29,6 +29,14 @@ const PROTECTED_ROUTE_PREFIXES = [
 ] as const;
 
 const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
+    // Specific admin sub-routes must come before generic /admin to avoid being masked
+    { prefix: '/admin/lecturers', roles: ['org_admin'] },
+    { prefix: '/admin/students', roles: ['org_admin'] },
+    { prefix: '/admin/technicians', roles: ['org_admin'] },
+    { prefix: '/admin/certification-engine', roles: ['org_admin'] },
+    { prefix: '/admin/accidents', roles: ['org_admin'] },
+    { prefix: '/admin/reporting', roles: ['org_admin'] },
+    { prefix: '/admin/refrigerants', roles: ['org_admin'] },
     { prefix: '/admin', roles: ['org_admin'] },
     { prefix: '/nou-dashboard', roles: ['org_admin'] },
     { prefix: '/suppliers/approvals', roles: ['org_admin'] },
@@ -40,7 +48,8 @@ const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
     { prefix: '/job-planner', roles: ['technician'] },
     { prefix: '/field-scheduling', roles: ['technician', 'org_admin'] },
     { prefix: '/jobs/request-coc', roles: ['technician'] },
-    { prefix: '/jobs', roles: ['technician'] },
+    { prefix: '/jobs', roles: ['technician', 'org_admin'] },
+    // Specific learn sub-routes before generic /learn
     { prefix: '/learn/approvals', roles: ['org_admin'] },
     { prefix: '/learn/manage', roles: ['trainer', 'lecturer'] },
     { prefix: '/learn', roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
@@ -53,13 +62,6 @@ const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
     { prefix: '/health-safety', roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
     { prefix: '/emergency-mode', roles: ['technician', 'trainer', 'lecturer', 'student'] },
     { prefix: '/dashboard', roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] },
-    { prefix: '/admin/lecturers', roles: ['org_admin'] },
-    { prefix: '/admin/students', roles: ['org_admin'] },
-    { prefix: '/admin/technicians', roles: ['org_admin'] },
-    { prefix: '/admin/certification-engine', roles: ['org_admin'] },
-    { prefix: '/admin/accidents', roles: ['org_admin'] },
-    { prefix: '/admin/reporting', roles: ['org_admin'] },
-    { prefix: '/admin/refrigerants', roles: ['org_admin'] },
     { prefix: '/refrigerants', roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] },
     { prefix: '/cylinders', roles: ['technician', 'vendor', 'org_admin'] },
     { prefix: '/permits', roles: ['vendor', 'org_admin'] },

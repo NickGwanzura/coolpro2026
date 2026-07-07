@@ -2,9 +2,8 @@
 
 import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import { getSession, UserSession } from '@/lib/auth';
-import { STORAGE_KEYS, readCollection } from '@/lib/platformStore';
 import { mutate } from 'swr';
-import { useSupplierApplications, useTechnicians, useReorders, useGasUsage } from '@/lib/api';
+import { useSupplierApplications, useTechnicians, useReorders, useGasUsage, usePlannerJobs, useGasLogs, useCocRequests } from '@/lib/api';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import {            ClipboardCheck,
     Award,
@@ -45,19 +44,19 @@ export default function DashboardPage() {
     const { data: supplierApplications = [] } = useSupplierApplications(isAdmin);
     const { data: technicians = [] } = useTechnicians(undefined, isAdmin);
     const { data: reorders = [] } = useReorders(isAdmin);
-    const [plannerJobs, setPlannerJobs] = useState<PlannerJob[]>([]);
-    const [refrigerantLogs, setRefrigerantLogs] = useState<RefrigerantLog[]>([]);
-    const [certificateRecords, setCertificateRecords] = useState<CertificateRecord[]>([]);
+    const { data: plannerJobs = [] } = usePlannerJobs();
+    const { data: gasLogsData } = useGasLogs(undefined, undefined, 50);
+    const { data: cocRequests = [] } = useCocRequests();
 
     useEffect(() => {
         setIsLoading(false);
     }, []);
 
-    useEffect(() => {
-        setPlannerJobs(readCollection<PlannerJob>(STORAGE_KEYS.plannerJobs, []));
-        setRefrigerantLogs(readCollection<RefrigerantLog>(STORAGE_KEYS.fieldToolkitLogs, []));
-        setCertificateRecords(readCollection<CertificateRecord>(STORAGE_KEYS.certificateRecords, []));
-    }, []);
+    // Derive refrigerant logs from Gas Logs API (DB-backed) rather than localStorage
+    const refrigerantLogs = useMemo(() => (gasLogsData ?? []) as RefrigerantLog[], [gasLogsData]);
+
+    // Derive certificate records from CoC request data (DB-backed)
+    const certificateRecords = useMemo(() => (cocRequests ?? []) as unknown as CertificateRecord[], [cocRequests]);
 
     // Role-based KPI cards
     const pendingSupplierApplications = supplierApplications.filter(
@@ -70,37 +69,58 @@ export default function DashboardPage() {
         latestApplications: pendingSupplierApplications.slice(0, 3),
     };
 
-    // Technician KPIs
-    const technicianStats = [
-        {
-            label: 'Jobs Completed',
-            value: dateRange === 'today' ? '3' : dateRange === 'week' ? '12' : '48',
-            icon: ClipboardCheck,
-            color: 'blue',
-            trend: dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : 'This month'
-        },
-        {
-            label: 'Pending COCs',
-            value: '2',
-            icon: Clock,
-            color: 'amber',
-            trend: '1 awaiting approval'
-        },
-        {
-            label: 'Rewards Points',
-            value: '450',
-            icon: Gift,
-            color: 'emerald',
-            trend: '+50 this month'
-        },
-        {
-            label: 'Certifications',
-            value: '5',
-            icon: Award,
-            color: 'purple',
-            trend: '2 expiring soon'
-        },
-    ];
+    // Technician KPIs — computed from real DB data
+    const technicianStats = useMemo(() => {
+        const completedJobs = plannerJobs.filter(j => j.status === 'completed').length;
+        const nowMs = Date.now();
+        const rangeMs = rangeMsFor(dateRange as SimpleDateRange);
+        const rangeStart = nowMs - rangeMs;
+        const jobsInRange = plannerJobs.filter(j => new Date(j.scheduledDate).getTime() >= rangeStart);
+        const jobsCompletedInRange = jobsInRange.filter(j => j.status === 'completed').length;
+
+        const pendingCocs = cocRequests.filter(c => c.status === 'submitted').length;
+        const approvedCocs = cocRequests.filter(c => c.status === 'approved').length;
+
+        const validCerts = certificateRecords.filter(c => {
+            const expiry = new Date(c.expiryDate).getTime();
+            return expiry > nowMs + 30 * 24 * 60 * 60 * 1000;
+        }).length;
+        const expiringCerts = certificateRecords.filter(c => {
+            const expiry = new Date(c.expiryDate).getTime();
+            return expiry > nowMs && expiry <= nowMs + 30 * 24 * 60 * 60 * 1000;
+        }).length;
+
+        return [
+            {
+                label: 'Jobs Completed',
+                value: String(jobsCompletedInRange || completedJobs),
+                icon: ClipboardCheck,
+                color: 'blue',
+                trend: dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : 'This month'
+            },
+            {
+                label: 'Pending COCs',
+                value: String(pendingCocs),
+                icon: Clock,
+                color: 'amber',
+                trend: `${approvedCocs} approved`
+            },
+            {
+                label: 'Rewards Points',
+                value: '—',
+                icon: Gift,
+                color: 'emerald',
+                trend: 'Coming soon'
+            },
+            {
+                label: 'Certifications',
+                value: String(validCerts + expiringCerts),
+                icon: Award,
+                color: 'purple',
+                trend: expiringCerts > 0 ? `${expiringCerts} expiring soon` : `${validCerts} active`
+            },
+        ];
+    }, [plannerJobs, cocRequests, certificateRecords, dateRange]);
 
     const adminMetrics = useMemo(() => {
         const now = Date.now();
@@ -263,8 +283,8 @@ export default function DashboardPage() {
         },
         {
             href: '/nou-dashboard',
-            title: 'Supplier Review',
-            detail: 'NOU queue and approvals',
+            title: 'NOU Dashboard',
+            detail: 'Reorder reviews, NOU queue, course approvals',
             icon: Building2,
             iconClassName: 'bg-orange-100 text-orange-600',
         },
@@ -278,12 +298,18 @@ export default function DashboardPage() {
     ];
     const technicianQuickActions: QuickAction[] = [
         {
-            href: '/sizing-tool',
-            title: 'Commercial Refrigeration System Sizing Tool',
-            detail: 'Calculate load and refrigerant controls',
-            icon: Thermometer,
-            iconClassName: '',
-            iconStyle: { backgroundColor: colors.secondary + '20', color: colors.secondary },
+            href: '/job-planner',
+            title: 'Job Planner',
+            detail: 'Schedule and manage service jobs',
+            icon: CalendarDays,
+            iconClassName: 'bg-teal-100 text-teal-600',
+        },
+        {
+            href: '/field-scheduling',
+            title: 'Field Scheduling',
+            detail: 'Manage your field appointments',
+            icon: Clock,
+            iconClassName: 'bg-cyan-100 text-cyan-600',
         },
         {
             href: '/field-toolkit',

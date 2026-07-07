@@ -105,33 +105,61 @@ function UserRow({ user, isSelf }: { user: AdminUserRecord; isSelf: boolean }) {
   );
 }
 
+const ROLE_FILTERS = [
+  { value: '', label: 'All Roles' },
+  { value: 'technician', label: 'Technicians' },
+  { value: 'trainer', label: 'Trainers' },
+  { value: 'lecturer', label: 'Lecturers' },
+  { value: 'vendor', label: 'Vendors' },
+  { value: 'student', label: 'Students' },
+  { value: 'org_admin', label: 'Org Admins' },
+];
+
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth();
   const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
   const { data, isLoading } = useAdminUsers(search || undefined);
 
-  const users = data?.data ?? [];
+  const users = (data?.data ?? []).filter(u => !roleFilter || u.role === roleFilter);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">System Users</h1>
         <p className="mt-1 text-gray-500">
-          Every account on the platform, across every role. Change a role or status here to take
-          effect immediately.
+          Every account on the platform, across every role. Use the tabs below to filter by role.
+          Change a role or status here to take effect immediately.
         </p>
       </div>
 
       <div className="border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email…"
-            className="w-full border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-blue-300 focus:bg-white"
-          />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or email…"
+              className="w-full border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-blue-300 focus:bg-white"
+            />
+          </div>
+          <div className="flex gap-1 overflow-x-auto">
+            {ROLE_FILTERS.map(f => (
+              <button
+                key={f.value}
+                onClick={() => setRoleFilter(f.value)}
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  roleFilter === f.value
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -148,7 +176,7 @@ export default function AdminUsersPage() {
         ) : users.length === 0 ? (
           <div className="p-8 text-center text-sm text-gray-400">
             <AlertCircle className="mx-auto mb-2 h-6 w-6 text-gray-300" />
-            No users match your search.
+            No users match your search or filter.
           </div>
         ) : (
           <div className="divide-y divide-gray-100">

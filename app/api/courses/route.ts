@@ -23,7 +23,7 @@ function toManagedCourse(row: typeof courses.$inferSelect): ManagedCourse {
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['lecturer', 'trainer', 'org_admin']);
+    session = requireRole(req, ['lecturer', 'trainer', 'org_admin', 'student']);
   } catch (e) {
     return e as Response;
   }
@@ -32,6 +32,8 @@ export async function GET(req: Request) {
 
   if (session.role === 'lecturer' || session.role === 'trainer') {
     rows = await db.select().from(courses).where(eq(courses.lecturerId, session.id));
+  } else if (session.role === 'student') {
+    rows = await db.select().from(courses).where(eq(courses.status, 'approved'));
   } else {
     rows = await db.select().from(courses);
   }

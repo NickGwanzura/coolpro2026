@@ -81,3 +81,105 @@ export async function getMonthlyUsageTrend(): Promise<{ month: string; totalKg: 
   `);
   return rows.rows.map((r) => ({ month: r.month, totalKg: Number(r.total_kg) }));
 }
+
+// ---------------------------------------------------------------------------
+// Compliance module analytics (cylinders, permits, reclamation, recycling)
+// ---------------------------------------------------------------------------
+
+export type CylinderStats = { totalCylinders: number; totalFillKg: number; activeCount: number; expiredCount: number };
+export type PermitStats = { totalPermits: number; approvedCount: number; pendingCount: number; totalQuantityKg: number };
+export type ReclamationStats = { totalRecords: number; totalQuantityKg: number; passedCount: number; failedCount: number; pendingCount: number };
+export type RecyclingStats = { totalRecords: number; totalQuantityKg: number };
+export type ComplianceOverview = {
+  cylinders: CylinderStats;
+  permits: PermitStats;
+  reclamation: ReclamationStats;
+  recycling: RecyclingStats;
+};
+
+export async function getCylinderStats(): Promise<CylinderStats> {
+  const rows = await db.execute<{
+    total: string; total_fill_kg: string; active: string; expired: string;
+  }>(sql`
+    SELECT
+      COUNT(*)::text AS total,
+      COALESCE(SUM(current_fill_kg), 0) AS total_fill_kg,
+      COUNT(*) FILTER (WHERE status = 'active')::text AS active,
+      COUNT(*) FILTER (WHERE status = 'expired' OR next_inspection_due < now())::text AS expired
+    FROM cylinders
+  `);
+  const r = rows.rows[0];
+  return {
+    totalCylinders: Number(r?.total ?? 0),
+    totalFillKg: Number(r?.total_fill_kg ?? 0),
+    activeCount: Number(r?.active ?? 0),
+    expiredCount: Number(r?.expired ?? 0),
+  };
+}
+
+export async function getPermitStats(): Promise<PermitStats> {
+  const rows = await db.execute<{
+    total: string; approved: string; pending: string; total_qty_kg: string;
+  }>(sql`
+    SELECT
+      COUNT(*)::text AS total,
+      COUNT(*) FILTER (WHERE status = 'approved')::text AS approved,
+      COUNT(*) FILTER (WHERE status = 'pending')::text AS pending,
+      COALESCE(SUM(quantity_kg), 0) AS total_qty_kg
+    FROM trade_permits
+  `);
+  const r = rows.rows[0];
+  return {
+    totalPermits: Number(r?.total ?? 0),
+    approvedCount: Number(r?.approved ?? 0),
+    pendingCount: Number(r?.pending ?? 0),
+    totalQuantityKg: Number(r?.total_qty_kg ?? 0),
+  };
+}
+
+export async function getReclamationStats(): Promise<ReclamationStats> {
+  const rows = await db.execute<{
+    total: string; total_qty_kg: string; passed: string; failed: string; pending: string;
+  }>(sql`
+    SELECT
+      COUNT(*)::text AS total,
+      COALESCE(SUM(quantity_kg), 0) AS total_qty_kg,
+      COUNT(*) FILTER (WHERE status = 'passed')::text AS passed,
+      COUNT(*) FILTER (WHERE status = 'failed')::text AS failed,
+      COUNT(*) FILTER (WHERE status = 'pending')::text AS pending
+    FROM reclamation_records
+  `);
+  const r = rows.rows[0];
+  return {
+    totalRecords: Number(r?.total ?? 0),
+    totalQuantityKg: Number(r?.total_qty_kg ?? 0),
+    passedCount: Number(r?.passed ?? 0),
+    failedCount: Number(r?.failed ?? 0),
+    pendingCount: Number(r?.pending ?? 0),
+  };
+}
+
+export async function getRecyclingStats(): Promise<RecyclingStats> {
+  const rows = await db.execute<{ total: string; total_qty_kg: string }>(sql`
+    SELECT
+      COUNT(*)::text AS total,
+      COALESCE(SUM(quantity_kg), 0) AS total_qty_kg
+    FROM recycling_records
+  `);
+  const r = rows.rows[0];
+  return {
+    totalRecords: Number(r?.total ?? 0),
+    totalQuantityKg: Number(r?.total_qty_kg ?? 0),
+  };
+}
+
+/** Aggregate all four compliance modules into a single overview object. */
+export async function getComplianceOverview(): Promise<ComplianceOverview> {
+  const [cylinders, permits, reclamation, recycling] = await Promise.all([
+    getCylinderStats(),
+    getPermitStats(),
+    getReclamationStats(),
+    getRecyclingStats(),
+  ]);
+  return { cylinders, permits, reclamation, recycling };
+}

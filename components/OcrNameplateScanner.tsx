@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Camera, Clock, LoaderCircle, ScanText } from 'lucide-react';
+import { Camera, Clock, LoaderCircle, ScanText, Wrench } from 'lucide-react';
 import { extractNameplateData } from '@/lib/refrigerantIntelligence';
 import { createOcrScan, useOcrScans } from '@/lib/api';
 import { RefrigerantRiskBadge } from '@/components/RefrigerantRiskBadge';
@@ -11,7 +11,12 @@ function formatScanDate(iso: string) {
     return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
 }
 
-export function OcrNameplateScanner() {
+interface OcrNameplateScannerProps {
+    /** Called when the technician chooses to carry a scanned refrigerant code into the Field Toolkit gas register. */
+    onUseRefrigerant?: (refrigerantCode: string) => void;
+}
+
+export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerProps = {}) {
     const [preview, setPreview] = useState<string>('');
     const [result, setResult] = useState<OcrScanRecord | null>(null);
     const [isScanning, setIsScanning] = useState(false);
@@ -81,7 +86,7 @@ export function OcrNameplateScanner() {
                         Capture a nameplate image, extract refrigerant details with Tesseract.js, and immediately classify safety risk.
                     </p>
                 </div>
-                <label className="inline-flex cursor-pointer items-center gap-2 bg-[#FF6B35] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90">
+                <label className="inline-flex cursor-pointer items-center gap-2 bg-[#D97706] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#b45309]">
                     <Camera className="h-4 w-4" />
                     Upload or use camera
                     <input
@@ -113,7 +118,7 @@ export function OcrNameplateScanner() {
                         </div>
                         <div className="mt-3">
                             {isScanning ? (
-                                <div className="flex items-center gap-2 text-sm text-blue-700">
+                                <div className="flex items-center gap-2 text-sm text-[#D97706]">
                                     <LoaderCircle className="h-4 w-4 animate-spin" />
                                     Extracting text from the uploaded image...
                                 </div>
@@ -125,6 +130,16 @@ export function OcrNameplateScanner() {
                                     <Detail label="Model" value={result.model || 'Not detected'} />
                                     <Detail label="Serial" value={result.serialNumber || 'Not detected'} />
                                     <Detail label="Refrigerant" value={result.refrigerantCode || 'Not detected'} />
+                                    {result.refrigerantCode && onUseRefrigerant && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onUseRefrigerant(result.refrigerantCode!)}
+                                            className="inline-flex items-center gap-2 bg-[#1C1917] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#292524]"
+                                        >
+                                            <Wrench className="h-4 w-4" />
+                                            Use in Field Toolkit
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <p className="text-sm text-gray-500">No scan has been processed yet.</p>

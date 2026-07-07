@@ -17,6 +17,7 @@ function toRecyclingRecord(row: typeof recyclingRecords.$inferSelect): Recycling
     technicianName: row.technicianName,
     jobSite: row.jobSite,
     recycledDate: row.recycledDate,
+    status: row.status as RecyclingRecord['status'],
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
   };

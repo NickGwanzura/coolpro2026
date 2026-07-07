@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { tradePermits } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
@@ -52,7 +52,12 @@ export async function GET(req: Request) {
       : await db
           .select()
           .from(tradePermits)
-          .where(eq(tradePermits.applicantEmail, session.email))
+          .where(
+            // Filter by email OR vendor id to handle email changes gracefully
+            sql`${tradePermits.applicantEmail} = ${session.email} OR ${tradePermits.applicantEmail} = ANY(
+              SELECT email FROM supplier_applications WHERE id = ${session.id}::uuid AND status = 'approved'
+            )`
+          )
           .orderBy(desc(tradePermits.submittedAt));
 
   return NextResponse.json(rows.map(toTradePermit));

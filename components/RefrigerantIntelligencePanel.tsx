@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Info, Search, ShieldAlert } from 'lucide-react';
+import { Info, Search, ShieldAlert, RefreshCw } from 'lucide-react';
 import { buildPreJobChecklist, getRiskSummary } from '@/lib/refrigerantIntelligence';
 import { RefrigerantRiskBadge } from '@/components/RefrigerantRiskBadge';
+import { useWhatGasSyncStatus } from '@/lib/api';
 import type { WhatGasRefrigerantProfile, SafetyAlertColor } from '@/types/index';
 
 type Summary = {
@@ -22,6 +23,11 @@ export function RefrigerantIntelligencePanel({
     const [summary, setSummary] = useState<Summary | null>(null);
     const [checklist, setChecklist] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const { data: syncStatus } = useWhatGasSyncStatus();
+    const lastSync = syncStatus?.lastSuccessfulSync?.finishedAt
+        ? new Date(syncStatus.lastSuccessfulSync.finishedAt)
+        : null;
+    const syncIsStale = lastSync && (Date.now() - lastSync.getTime() > 24 * 60 * 60 * 1000);
 
     useEffect(() => {
         let cancelled = false;
@@ -66,6 +72,25 @@ export function RefrigerantIntelligencePanel({
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
                         Look up refrigerant handling guidance, safety class, and the pre-job controls that should be loaded into the field pack.
                     </p>
+                    {/* Data freshness indicator */}
+                    {lastSync && (
+                        <div className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold ${
+                            syncIsStale
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                            <RefreshCw className={`h-3 w-3 ${syncIsStale ? '' : ''}`} />
+                            {syncIsStale
+                                ? `WhatGas data stale — last synced ${lastSync.toLocaleDateString('en-ZW')}`
+                                : `WhatGas data synced ${lastSync.toLocaleDateString('en-ZW')}`}
+                        </div>
+                    )}
+                    {!lastSync && !syncStatus && (
+                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
+                            <RefreshCw className="h-3 w-3" />
+                            WhatGas sync status unknown
+                        </div>
+                    )}
                 </div>
                 <label className="flex w-full items-center gap-2 border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 lg:max-w-xs" aria-label="Search refrigerants">
                     <Search className="h-4 w-4" aria-hidden="true" />

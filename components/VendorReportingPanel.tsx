@@ -13,7 +13,7 @@ import {
     Truck,
 } from 'lucide-react';
 import { useSupplierLedger, createLedgerEntry, useTechnicians } from '@/lib/api';
-import { STORAGE_KEYS, readCollection, writeCollection } from '@/lib/platformStore';
+import { STORAGE_KEYS, readCollection } from '@/lib/platformStore';
 import type { RefrigerantLog, SupplierLedgerDirection, SupplierLedgerEntry, SupplierRegistration } from '@/types/index';
 import type { UserSession } from '@/lib/auth';
 
@@ -229,10 +229,8 @@ export default function VendorReportingPanel({
             notes: saleForm.notes.trim() || `Sold to registered technician ${technician.registrationNumber}.`,
         });
 
-        writeCollection(
-            STORAGE_KEYS.fieldToolkitLogs,
-            [linkedRefrigerantLog, ...readCollection<RefrigerantLog>(STORAGE_KEYS.fieldToolkitLogs, [])]
-        );
+        // Note: No longer mirrors sale entries into fieldToolkitLogs localStorage.
+        // The canonical record is the ledger entry above (DB-backed).
         setFormMessage(`Sale logged for ${technician.name} (${technician.registrationNumber}).`);
         setSaleForm((current) => ({
             ...current,
@@ -488,6 +486,10 @@ export default function VendorReportingPanel({
                             Shared with technician/client
                         </label>
                     </div>
+                    <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2">
+                        These are self-attested without a counter-signature. A future phase should add
+                        NOU-side confirmation and client-facing acknowledgment for audit integrity.
+                    </p>
 
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                         <div className="text-sm text-gray-600">

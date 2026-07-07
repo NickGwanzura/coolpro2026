@@ -12,7 +12,7 @@ import {
     Search,
 } from 'lucide-react';
 import { getSession, type UserSession } from '@/lib/auth';
-import { STORAGE_KEYS, readCollection } from '@/lib/platformStore';
+import { usePlannerJobs, useGasLogs } from '@/lib/api';
 import { JobTypeLabels } from '@/types/index';
 import type { Installation, PlannerJob, RefrigerantLog } from '@/types/index';
 
@@ -84,9 +84,8 @@ export default function JobsPage() {
     const [selectedTechnician, setSelectedTechnician] = useState('');
     const [selectedRecordType, setSelectedRecordType] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
-    const [plannerJobs, setPlannerJobs] = useState<PlannerJob[]>([]);
-    const [installations, setInstallations] = useState<Installation[]>([]);
-    const [logs, setLogs] = useState<RefrigerantLog[]>([]);
+    const { data: plannerJobs = [] } = usePlannerJobs();
+    const { data: gasLogsData } = useGasLogs(undefined, undefined, 200);
 
     useEffect(() => {
         const userSession = getSession();
@@ -94,14 +93,10 @@ export default function JobsPage() {
         setSession(userSession);
     }, []);
 
-    // Hydrate localStorage-backed collections after mount (SSR-safe).
-    useEffect(() => {
-        /* eslint-disable react-hooks/set-state-in-effect */
-        setPlannerJobs(readCollection<PlannerJob>(STORAGE_KEYS.plannerJobs, []));
-        setInstallations(readCollection<Installation>(STORAGE_KEYS.fieldToolkitInstallations, []));
-        setLogs(readCollection<RefrigerantLog>(STORAGE_KEYS.fieldToolkitLogs, []));
-        /* eslint-enable react-hooks/set-state-in-effect */
-    }, []);
+    // Installations are still localStorage-only (no DB table yet — item 15 in refactor plan)
+    const installations: Installation[] = [];
+    // Logs from the DB-backed gas logs API
+    const logs: RefrigerantLog[] = (gasLogsData ?? []) as RefrigerantLog[];
 
     const isAdmin = session?.role === 'org_admin';
     const adminRecords = useMemo(

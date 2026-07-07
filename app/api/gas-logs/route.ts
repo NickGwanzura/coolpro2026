@@ -55,6 +55,16 @@ export async function POST(req: Request) {
   // Technicians can only ever log gas usage under their own identity — the client-supplied
   // technicianId/technicianName is ignored for that role to prevent misattribution. Reviewer
   // roles (trainer/lecturer/org_admin) are trusted to log on a technician's behalf.
+
+  // Validate FK integrity: refrigerantType requires a refrigerantId to prevent orphaned text refs
+  for (const log of logs) {
+    if (log.refrigerantType && !log.refrigerantId) {
+      return NextResponse.json({
+        error: `refrigerantId is required when refrigerantType is provided (log for "${log.clientName}")`,
+      }, { status: 400 });
+    }
+  }
+
   const inserted = await db
     .insert(gasUsageLogs)
     .values(

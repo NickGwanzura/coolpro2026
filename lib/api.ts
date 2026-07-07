@@ -3,6 +3,7 @@
 import useSWR, { mutate } from 'swr';
 import type {
   ManagedCourse,
+  CourseAttachment,
   ExamSubmission,
   SupplierReorder,
   TechnicianVerification,
@@ -29,11 +30,12 @@ import type {
   TradePermit,
   ReclamationRecord,
   RecyclingRecord,
-  RefrigerantAnalytics,
-  Invite,
-  AdminUserRecord,
-  OcrScanRecord,
-  CocRequest,
+	  RefrigerantAnalytics,
+	  Invite,
+	  AdminUserRecord,
+	  OcrScanRecord,
+	  CocRequest,
+	  Installation,
 } from '@/types/index';
 
 async function fetcher<T>(url: string): Promise<T> {
@@ -122,6 +124,47 @@ export async function rejectCourse(id: string, reason: string): Promise<ManagedC
   await mutate('/api/courses');
   await mutate(`/api/courses/${id}`);
   return result;
+}
+
+export async function uploadCourseMaterial(
+  courseId: string,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<CourseAttachment> {
+  const { uploadUrl, r2Key } = await post<{ uploadUrl: string; r2Key: string }>(
+    `/api/courses/${courseId}/materials/upload-url`,
+    { fileName: file.name, fileType: file.type || 'application/octet-stream', sizeBytes: file.size }
+  );
+
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
+    xhr.onerror = () => reject(new Error('Upload failed'));
+    xhr.send(file);
+  });
+
+  return {
+    id: crypto.randomUUID(),
+    fileName: file.name,
+    fileType: file.type || 'application/octet-stream',
+    sizeBytes: file.size,
+    r2Key,
+    uploadedAt: new Date().toISOString(),
+  };
+}
+
+export async function getCourseMaterialDownloadUrl(courseId: string, r2Key: string): Promise<string> {
+  const { downloadUrl } = await post<{ downloadUrl: string }>(`/api/courses/${courseId}/materials/download-url`, { r2Key });
+  return downloadUrl;
+}
+
+export async function deleteCourseMaterial(courseId: string, r2Key: string): Promise<void> {
+  await post(`/api/courses/${courseId}/materials/delete`, { r2Key });
 }
 
 // ---------------------------------------------------------------------------
@@ -421,7 +464,10 @@ export function useGasUsage(from?: string, to?: string) {
 
 /** Save gas usage logs to the DB */
 export async function createGasLogs(logs: RefrigerantLog[]): Promise<RefrigerantLog[]> {
-  return post<RefrigerantLog[]>('/api/gas-logs', { logs });
+  const result = await post<RefrigerantLog[]>('/api/gas-logs', { logs });
+  await mutate('/api/gas-logs');
+  await mutate((key) => typeof key === 'string' && key.startsWith('/api/jobs/gas-usage'));
+  return result;
 }
 
 /** Fetch raw refrigerant logs from the DB (for admin views) */
@@ -451,6 +497,19 @@ export async function createPlannerJob(
   const result = await post<PlannerJob>('/api/planner-jobs', body);
   await mutate('/api/planner-jobs');
   return result;
+}
+
+export async function updatePlannerJob(
+  id: string,
+  body: Partial<Pick<PlannerJob, 'status' | 'notes' | 'checklistItems' | 'preJobChecklistComplete'>>,
+): Promise<PlannerJob> {
+  const result = await patch<PlannerJob>(`/api/planner-jobs/${id}`, body);
+  await mutate('/api/planner-jobs');
+  return result;
+}
+
+export async function markJobComplete(id: string): Promise<PlannerJob> {
+  return updatePlannerJob(id, { status: 'completed' });
 }
 
 // ---------------------------------------------------------------------------
@@ -635,6 +694,19 @@ export async function createReclamationRecord(
   return result;
 }
 
+export async function reviewReclamationRecord(
+  id: string,
+  action: 'approve' | 'reject',
+  notes?: string,
+): Promise<ReclamationRecord> {
+  const result = await patch<ReclamationRecord>(`/api/reclamation/${id}`, {
+    status: action === 'approve' ? 'passed' : 'failed',
+    notes,
+  });
+  await mutate('/api/reclamation');
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Recycling (DB-backed)
 // ---------------------------------------------------------------------------
@@ -647,6 +719,19 @@ export async function createRecyclingRecord(
   body: Omit<RecyclingRecord, 'id' | 'technicianId' | 'technicianName' | 'createdAt'>,
 ): Promise<RecyclingRecord> {
   const result = await post<RecyclingRecord>('/api/recycling', body);
+  await mutate('/api/recycling');
+  return result;
+}
+
+export async function reviewRecyclingRecord(
+  id: string,
+  action: 'verify' | 'reject',
+  notes?: string,
+): Promise<RecyclingRecord> {
+  const result = await patch<RecyclingRecord>(`/api/recycling/${id}`, {
+    status: action === 'verify' ? 'verified' : 'rejected',
+    notes,
+  });
   await mutate('/api/recycling');
   return result;
 }
@@ -743,5 +828,30 @@ export async function createCocRequest(
 export async function reviewCocRequest(id: string, action: 'approve' | 'reject', notes?: string): Promise<CocRequest> {
   const result = await post<CocRequest>(`/api/coc-requests/${id}/${action}`, notes ? { notes } : undefined);
   await mutate('/api/coc-requests');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Installations (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useInstallations() {
+  return useSWR<Installation[]>('/api/installations', fetcher);
+}
+
+export async function createInstallation(
+  body: Omit<Installation, 'id' | 'technicianId' | 'technicianName' | 'installationDate' | 'status' | 'cocRequested' | 'cocApproved'>,
+): Promise<Installation> {
+  const result = await post<Installation>('/api/installations', body);
+  await mutate('/api/installations');
+  return result;
+}
+
+export async function updateInstallation(
+  id: string,
+  body: Partial<Pick<Installation, 'status' | 'cocRequested' | 'cocApproved' | 'cocApprovalDate'>>,
+): Promise<Installation> {
+  const result = await patch<Installation>(`/api/installations/${id}`, body);
+  await mutate('/api/installations');
   return result;
 }

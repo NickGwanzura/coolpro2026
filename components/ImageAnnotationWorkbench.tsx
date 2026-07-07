@@ -76,6 +76,15 @@ export function ImageAnnotationWorkbench() {
 
         prependCollectionItem<ImageRecord>(STORAGE_KEYS.imageRecords, record);
         setNotice(`Saved ${annotations.length} annotations for ${jobId}.`);
+
+        // Warn if localStorage is getting large (full base64 images consume quota quickly)
+        const estimatedBytes = imageDataUrl ? Math.round((imageDataUrl.length * 3) / 4) : 0;
+        if (estimatedBytes > 500_000) {
+            console.warn(
+                `ImageAnnotationWorkbench: saved image ~${(estimatedBytes / 1024 / 1024).toFixed(1)} MB. ` +
+                'Large base64 images can exceed localStorage quota. Consider migrating to DB-backed storage.'
+            );
+        }
     };
 
     return (
@@ -112,7 +121,7 @@ export function ImageAnnotationWorkbench() {
                                         event.stopPropagation();
                                         setAnnotations((current) => current.filter((item) => item.id !== annotation.id));
                                     }}
-                                    className="absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[#FF6B35] text-xs font-bold text-white shadow-lg"
+                                    className="absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[#D97706] text-xs font-bold text-white shadow-lg"
                                     style={{ left: `${annotation.x}%`, top: `${annotation.y}%` }}
                                 >
                                     {index + 1}
@@ -133,7 +142,7 @@ export function ImageAnnotationWorkbench() {
                             <input
                                 value={jobId}
                                 onChange={(event) => setJobId(event.target.value)}
-                                className="w-full border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#D97706]"
                             />
                         </label>
                         <label className="space-y-2 text-sm">
@@ -141,7 +150,7 @@ export function ImageAnnotationWorkbench() {
                             <select
                                 value={beforeAfter}
                                 onChange={(event) => setBeforeAfter(event.target.value as ImageRecord['beforeAfter'])}
-                                className="w-full border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#D97706]"
                             >
                                 <option value="before">Before</option>
                                 <option value="after">After</option>
@@ -159,7 +168,7 @@ export function ImageAnnotationWorkbench() {
                             value={gpsTag}
                             onChange={(event) => setGpsTag(event.target.value)}
                             placeholder="-17.8292, 31.0522"
-                            className="w-full border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#D97706]"
                         />
                     </label>
 
@@ -179,7 +188,7 @@ export function ImageAnnotationWorkbench() {
                     <button
                         type="button"
                         onClick={saveImageRecord}
-                        className="inline-flex items-center gap-2 bg-gray-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
+                        className="inline-flex items-center gap-2 bg-[#1C1917] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#292524]"
                     >
                         <Save className="h-4 w-4" />
                         Save annotated image
