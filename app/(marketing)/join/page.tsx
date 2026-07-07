@@ -129,11 +129,11 @@ export default function JoinPage() {
             {PATHS.map((p) => (
               <div
                 key={p.slug}
-                className="group relative flex flex-col h-full p-7 sm:p-8 border-2 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                className="group relative flex flex-col h-full p-7 sm:p-8 border-2 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl rounded-xl"
                 style={{ borderColor: '#E5E0DB' }}
               >
                 <div
-                  className="inline-flex items-center gap-2 self-start p-2 mb-5"
+                  className="inline-flex items-center gap-2 self-start p-2 mb-5 rounded-lg"
                   style={{ backgroundColor: p.accentBg, color: p.accent }}
                 >
                   {p.icon}
@@ -177,7 +177,7 @@ export default function JoinPage() {
 
                 <Link
                   href={p.href}
-                  className="group/btn mt-auto pt-8 inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 font-semibold whitespace-nowrap transition-all duration-200 text-white shadow-sm hover:shadow-md hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  className="group/btn mt-auto pt-8 inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 font-semibold whitespace-nowrap transition-all duration-200 text-white shadow-sm hover:shadow-md hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
                   style={{ backgroundColor: p.accent, outlineColor: p.accent }}
                 >
                   {p.cta}

@@ -133,9 +133,9 @@ export default function SupplierRegistrationForm() {
 
   if (submitted) {
     return (
-      <div className="bg-white border p-6 sm:p-8" style={{ borderColor: BORDER }}>
+      <div className="rounded-xl bg-white border p-6 sm:p-8" style={{ borderColor: BORDER }}>
         <div className="text-center py-10 sm:py-14">
-          <div className="inline-flex p-3 mb-4" style={{ backgroundColor: ACCENT_TINT }}>
+          <div className="inline-flex p-3 mb-4 rounded-xl" style={{ backgroundColor: ACCENT_TINT }}>
             <CheckCircle className="h-10 w-10" style={{ color: ACCENT }} />
           </div>
           <h2 className="text-2xl font-bold" style={{ color: '#1C1917' }}>
@@ -147,7 +147,7 @@ export default function SupplierRegistrationForm() {
             credentials.
           </p>
           <div
-            className="mt-5 inline-flex flex-col items-center gap-1 border px-4 py-3 text-xs"
+            className="mt-5 rounded-lg inline-flex flex-col items-center gap-1 border px-4 py-3 text-xs"
             style={{ borderColor: BORDER, backgroundColor: BG_INPUT }}
           >
             <span className="text-gray-500 uppercase tracking-[0.18em] font-semibold">
@@ -160,14 +160,14 @@ export default function SupplierRegistrationForm() {
           <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href="/dashboard"
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-white text-sm transition-colors"
+              className="rounded-lg inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-white text-sm transition-colors"
               style={{ backgroundColor: ACCENT }}
             >
               Go to Dashboard
             </Link>
             <Link
               href="/"
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-sm border transition-colors hover:bg-[#FAFAF9]"
+              className="rounded-lg inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-sm border transition-colors hover:bg-[#FAFAF9]"
               style={{ borderColor: BORDER, color: '#1C1917' }}
             >
               Return home
@@ -179,7 +179,7 @@ export default function SupplierRegistrationForm() {
   }
 
   return (
-    <div className="bg-white border p-6 sm:p-8" style={{ borderColor: BORDER }}>
+    <div className="rounded-xl bg-white border p-6 sm:p-8" style={{ borderColor: BORDER }}>
       <form onSubmit={handleSubmit} className="space-y-6">
         <fieldset className="space-y-5">
           <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 mb-3">
@@ -331,7 +331,7 @@ export default function SupplierRegistrationForm() {
                   key={code}
                   type="button"
                   onClick={() => toggleRefrigerant(code)}
-                  className="border px-3 py-1.5 text-xs font-semibold transition-colors"
+                  className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors"
                   style={{ borderColor: ACCENT, backgroundColor: ACCENT_TINT, color: '#1C1917' }}
                 >
                   {code} ×
@@ -390,7 +390,7 @@ export default function SupplierRegistrationForm() {
 
         {error && (
           <div
-            className="border px-4 py-3 text-sm"
+            className="rounded-lg border px-4 py-3 text-sm"
             style={{ borderColor: '#F87171', backgroundColor: '#FEF2F2', color: '#991B1B' }}
           >
             {error}
@@ -466,7 +466,7 @@ function Input({
       onChange={(e) => onChange(e.target.value)}
       required={required}
       placeholder={placeholder}
-      className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:border-transparent"
+      className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:border-transparent rounded-lg"
       style={{ borderColor: BORDER }}
     />
   );
@@ -488,7 +488,7 @@ function Select({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       required={required}
-      className="w-full px-4 py-3 border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:border-transparent"
+      className="w-full px-4 py-3 border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:border-transparent rounded-lg"
       style={{ borderColor: BORDER }}
     >
       {children}
@@ -516,7 +516,7 @@ function Textarea({
       required={required}
       rows={rows}
       placeholder={placeholder}
-      className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:border-transparent"
+      className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:border-transparent rounded-lg"
       style={{ borderColor: BORDER }}
     />
   );

@@ -97,7 +97,7 @@ export default function JoinStudentPage() {
           </Link>
           <div className="flex items-start gap-4">
             <div
-              className="shrink-0 p-2.5 mt-1"
+              className="shrink-0 p-2.5 mt-1 rounded-lg"
               style={{ backgroundColor: 'rgba(90,125,90,0.12)', color: '#5A7D5A' }}
             >
               <GraduationCap className="h-6 w-6" />
@@ -121,10 +121,10 @@ export default function JoinStudentPage() {
 
       <section className="pb-20 sm:pb-24">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white border p-6 sm:p-8" style={{ borderColor: '#E5E0DB' }}>
+          <div className="bg-white border p-6 sm:p-8 rounded-xl" style={{ borderColor: '#E5E0DB' }}>
             {application ? (
               <div className="text-center py-10 sm:py-14">
-                <div className="inline-flex p-3 mb-4" style={{ backgroundColor: 'rgba(90,125,90,0.12)' }}>
+                <div className="inline-flex p-3 mb-4 rounded-xl" style={{ backgroundColor: 'rgba(90,125,90,0.12)' }}>
                   <CheckCircle className="h-10 w-10" style={{ color: '#5A7D5A' }} />
                 </div>
                 <h2 className="text-2xl font-bold" style={{ color: '#1C1917' }}>
@@ -142,14 +142,14 @@ export default function JoinStudentPage() {
                 <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
                   <Link
                     href="/"
-                    className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-white text-sm"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-white text-sm rounded-lg"
                     style={{ backgroundColor: '#1C1917' }}
                   >
                     Return home
                   </Link>
                   <Link
                     href="/learn"
-                    className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-sm border transition-colors hover:bg-[#FAFAF9]"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-sm border transition-colors hover:bg-[#FAFAF9] rounded-lg"
                     style={{ borderColor: '#E5E0DB', color: '#1C1917' }}
                   >
                     Browse the Learning Hub
@@ -173,7 +173,7 @@ export default function JoinStudentPage() {
                         required
                         value={form.firstName}
                         onChange={(e) => update('firstName', e.target.value)}
-                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent rounded-lg"
                         style={{ borderColor: '#E5E0DB' }}
                       />
                     </div>
@@ -187,7 +187,7 @@ export default function JoinStudentPage() {
                         required
                         value={form.lastName}
                         onChange={(e) => update('lastName', e.target.value)}
-                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent rounded-lg"
                         style={{ borderColor: '#E5E0DB' }}
                       />
                     </div>
@@ -203,7 +203,7 @@ export default function JoinStudentPage() {
                         required
                         value={form.email}
                         onChange={(e) => update('email', e.target.value)}
-                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent rounded-lg"
                         style={{ borderColor: '#E5E0DB' }}
                       />
                     </div>
@@ -218,7 +218,7 @@ export default function JoinStudentPage() {
                         placeholder="+263..."
                         value={form.phone}
                         onChange={(e) => update('phone', e.target.value)}
-                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent rounded-lg"
                         style={{ borderColor: '#E5E0DB' }}
                       />
                     </div>
@@ -235,7 +235,7 @@ export default function JoinStudentPage() {
                         minLength={8}
                         value={form.password}
                         onChange={(e) => update('password', e.target.value)}
-                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent rounded-lg"
                         style={{ borderColor: '#E5E0DB' }}
                       />
                     </div>
@@ -250,7 +250,7 @@ export default function JoinStudentPage() {
                         minLength={8}
                         value={form.confirmPassword}
                         onChange={(e) => update('confirmPassword', e.target.value)}
-                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent rounded-lg"
                         style={{ borderColor: '#E5E0DB' }}
                       />
                     </div>
@@ -274,7 +274,7 @@ export default function JoinStudentPage() {
                         required
                         value={form.polytech}
                         onChange={(e) => update('polytech', e.target.value)}
-                        className="w-full px-4 py-3 border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        className="w-full px-4 py-3 border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent rounded-lg"
                         style={{ borderColor: '#E5E0DB' }}
                       >
                         <option value="">Select...</option>
@@ -292,7 +292,7 @@ export default function JoinStudentPage() {
                         required
                         value={form.fieldOfStudy}
                         onChange={(e) => update('fieldOfStudy', e.target.value)}
-                        className="w-full px-4 py-3 border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        className="w-full px-4 py-3 border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent rounded-lg"
                         style={{ borderColor: '#E5E0DB' }}
                       >
                         <option value="">Select...</option>
@@ -313,7 +313,7 @@ export default function JoinStudentPage() {
                         required
                         value={form.studentId}
                         onChange={(e) => update('studentId', e.target.value)}
-                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent rounded-lg"
                         style={{ borderColor: '#E5E0DB' }}
                       />
                     </div>
@@ -329,7 +329,7 @@ export default function JoinStudentPage() {
                         max={new Date().getFullYear() + 1}
                         value={form.enrolmentYear}
                         onChange={(e) => update('enrolmentYear', Number(e.target.value))}
-                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent"
+                        className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent rounded-lg"
                         style={{ borderColor: '#E5E0DB' }}
                       />
                     </div>
@@ -340,7 +340,7 @@ export default function JoinStudentPage() {
                     </label>
                     <label
                       htmlFor="idUpload"
-                      className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed cursor-pointer transition-colors hover:bg-white"
+                      className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed cursor-pointer transition-colors hover:bg-white rounded-lg"
                       style={{ borderColor: '#E5E0DB', backgroundColor: '#FAFAF9' }}
                     >
                       <Upload className="h-6 w-6 text-gray-400 mb-2" />
@@ -386,7 +386,7 @@ export default function JoinStudentPage() {
                   <button
                     type="submit"
                     disabled={!form.agree || submitting}
-                    className="group inline-flex items-center justify-center gap-2 font-semibold py-3.5 px-8 text-white text-sm transition-all duration-200 hover:brightness-110 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
+                    className="group inline-flex items-center justify-center gap-2 font-semibold py-3.5 px-8 text-white text-sm transition-all duration-200 hover:brightness-110 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100 rounded-lg"
                     style={{ backgroundColor: '#5A7D5A' }}
                   >
                     {submitting ? (

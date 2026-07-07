@@ -16,7 +16,7 @@ export default function SupplierRegisterPage() {
           </Link>
           <div className="flex items-start gap-4">
             <div
-              className="shrink-0 p-2.5 mt-1"
+              className="shrink-0 p-2.5 mt-1 rounded-lg"
               style={{ backgroundColor: 'rgba(217,119,6,0.10)', color: '#D97706' }}
             >
               <Factory className="h-6 w-6" />

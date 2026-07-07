@@ -159,7 +159,7 @@ export default function JoinTechnicianPage() {
           </Link>
           <div className="flex items-start gap-4">
             <div
-              className="shrink-0 p-2.5 mt-1"
+              className="shrink-0 p-2.5 mt-1 rounded-lg"
               style={{ backgroundColor: ACCENT_TINT, color: ACCENT }}
             >
               <Wrench className="h-6 w-6" />
@@ -190,11 +190,11 @@ export default function JoinTechnicianPage() {
 
       <section className="pb-20 sm:pb-24">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white border p-6 sm:p-8" style={{ borderColor: BORDER }}>
+          <div className="bg-white border p-6 sm:p-8 rounded-xl" style={{ borderColor: BORDER }}>
             {application ? (
               <div className="text-center py-10 sm:py-14">
                 <div
-                  className="inline-flex p-3 mb-4"
+                  className="inline-flex p-3 mb-4 rounded-xl"
                   style={{ backgroundColor: ACCENT_TINT }}
                 >
                   <CheckCircle className="h-10 w-10" style={{ color: ACCENT }} />
@@ -221,14 +221,14 @@ export default function JoinTechnicianPage() {
                 <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
                   <Link
                     href="/verify-technician"
-                    className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-white text-sm"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-white text-sm rounded-lg"
                     style={{ backgroundColor: ACCENT }}
                   >
                     See the public registry
                   </Link>
                   <Link
                     href="/"
-                    className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-sm border transition-colors hover:bg-[#FAFAF9]"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-sm border transition-colors hover:bg-[#FAFAF9] rounded-lg"
                     style={{ borderColor: BORDER, color: '#1C1917' }}
                   >
                     Return home
@@ -405,7 +405,7 @@ export default function JoinTechnicianPage() {
                             key={r}
                             type="button"
                             onClick={() => toggleRefrigerant(r)}
-                            className="px-3 py-2.5 text-sm font-semibold border transition-colors"
+                            className="px-3 py-2.5 text-sm font-semibold border transition-colors rounded-lg"
                             style={{
                               borderColor: active ? ACCENT : BORDER,
                               backgroundColor: active ? ACCENT_TINT : '#ffffff',
@@ -445,7 +445,7 @@ export default function JoinTechnicianPage() {
                       {form.certifications.map((cert, idx) => (
                         <div
                           key={idx}
-                          className="border p-4 grid grid-cols-1 sm:grid-cols-3 gap-3"
+                          className="border p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg"
                           style={{ borderColor: BORDER, backgroundColor: BG_INPUT }}
                         >
                           <Input
@@ -467,7 +467,7 @@ export default function JoinTechnicianPage() {
                             <button
                               type="button"
                               onClick={() => removeCertification(idx)}
-                              className="shrink-0 p-2 border text-rose-600 hover:bg-rose-50 transition-colors"
+                              className="shrink-0 p-2 border text-rose-600 hover:bg-rose-50 transition-colors rounded-lg"
                               style={{ borderColor: BORDER }}
                               aria-label="Remove certification"
                             >
@@ -510,7 +510,7 @@ export default function JoinTechnicianPage() {
                   <button
                     type="submit"
                     disabled={!form.agree || submitting}
-                    className="group inline-flex items-center justify-center gap-2 font-semibold py-3.5 px-8 text-white text-sm transition-all duration-200 hover:brightness-110 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
+                    className="group inline-flex items-center justify-center gap-2 font-semibold py-3.5 px-8 text-white text-sm transition-all duration-200 hover:brightness-110 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100 rounded-lg"
                     style={{ backgroundColor: ACCENT }}
                   >
                     {submitting ? (
@@ -585,7 +585,7 @@ function Input({
       placeholder={placeholder}
       min={min}
       max={max}
-      className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#1E40AF] focus:border-transparent"
+      className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#1E40AF] focus:border-transparent rounded-lg"
       style={{ borderColor: BORDER }}
     />
   );
@@ -610,7 +610,7 @@ function Select({
       onChange={(e) => onChange(e.target.value)}
       required={required}
       disabled={disabled}
-      className="w-full px-4 py-3 border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E40AF] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full px-4 py-3 border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E40AF] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
       style={{ borderColor: BORDER }}
     >
       {children}
