@@ -69,7 +69,7 @@ function ReviewPanel({
     }
 
     return (
-        <div className="border border-gray-200 bg-white shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Course Review</p>
@@ -92,7 +92,7 @@ function ReviewPanel({
                         Modules ({course.modules.length})
                     </p>
                     {course.modules.map((mod, i) => (
-                        <div key={i} className="border border-gray-200 bg-gray-50 p-4 space-y-2">
+                        <div key={i} className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
                             <div className="flex items-center justify-between gap-2">
                                 <p className="text-sm font-semibold text-gray-900">
                                     {i + 1}. {mod.title}
@@ -156,7 +156,7 @@ function ReviewPanel({
                             </div>
                         )}
                         {notice && (
-                            <div className="border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{notice}</div>
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{notice}</div>
                         )}
                     </div>
                 )}
@@ -232,7 +232,7 @@ export default function LearnApprovalsPage() {
                 />
             )}
 
-            <div className="border border-gray-200 bg-white shadow-sm overflow-x-auto">
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-x-auto">
                 <div className="border-b border-gray-200 bg-gray-50 px-5 py-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
                         Pending Review {courses.length} course{courses.length !== 1 ? 's' : ''}

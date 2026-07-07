@@ -50,7 +50,7 @@ export default function ReorderPage() {
 
     if (!session || session.role !== 'vendor') {
         return (
-            <div className="border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
                 Access restricted. This page is for vendors only.
             </div>
         );
@@ -103,7 +103,7 @@ export default function ReorderPage() {
 
     return (
         <div className="space-y-8">
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Vendor workspace</p>
                     <h1 className="text-2xl font-bold text-gray-900">Gas Reorder Requests</h1>
@@ -113,7 +113,7 @@ export default function ReorderPage() {
                 </div>
             </div>
 
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-gray-900">Submit reorder request</h2>
                 <p className="mt-1 text-sm text-gray-500">All fields except supplier notes are required.</p>
 
@@ -199,20 +199,20 @@ export default function ReorderPage() {
                 </form>
             </div>
 
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-gray-900">Your reorder history</h2>
                 <p className="mt-1 text-sm text-gray-500">{myReorders.length} request{myReorders.length !== 1 ? 's' : ''} linked to your account.</p>
 
                 {myReorders === undefined ? (
                     <div className="p-8 text-sm text-slate-500">Loading...</div>
                 ) : myReorders.length === 0 ? (
-                    <div className="mt-6 border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+                    <div className="mt-6 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
                         No reorder requests yet. Submit your first request above.
                     </div>
                 ) : (
                     <div className="mt-6 space-y-4">
                         {myReorders.map(reorder => (
-                            <div key={reorder.id} className="border border-gray-200 bg-gray-50 p-5">
+                            <div key={reorder.id} className="rounded-lg border border-gray-200 bg-gray-50 p-5">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div className="space-y-1">
                                         <div className="flex flex-wrap items-center gap-3">

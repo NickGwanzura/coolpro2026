@@ -164,7 +164,7 @@ export default function JobPlanner() {
                 {stats.map(s => {
                     const Icon = s.icon;
                     return (
-                        <div key={s.label} className="border border-gray-200 bg-white p-5 shadow-sm">
+                        <div key={s.label} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                             <div className="flex items-center justify-between">
                                 <p className="text-sm font-semibold text-gray-500">{s.label}</p>
                                 <span className={`p-2 ${s.color}`}><Icon className="h-4 w-4" /></span>
@@ -176,7 +176,7 @@ export default function JobPlanner() {
             </div>
 
             {/* Filter Bar */}
-            <div className="border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                     <div className="relative xl:col-span-2">
                         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -187,12 +187,12 @@ export default function JobPlanner() {
                         />
                     </div>
                     <select value={selectedClient} onChange={e => setSelectedClient(e.target.value)}
-                        className="border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                        className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
                         <option value="">All clients</option>
                         {knownClients.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
                     </select>
                     <select value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)}
-                        className="border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                        className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
                         <option value="">All statuses</option>
                         <option value="scheduled">Scheduled</option>
                         <option value="in-progress">In Progress</option>
@@ -208,12 +208,12 @@ export default function JobPlanner() {
                     <div>
                         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-400">From</label>
                         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                            className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                     </div>
                     <div>
                         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-400">To</label>
                         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                            className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                     </div>
                 </div>
                 <p className="mt-3 text-xs text-gray-400">{filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} across {sortedDates.length} date{sortedDates.length !== 1 ? 's' : ''}</p>
@@ -236,7 +236,7 @@ export default function JobPlanner() {
                     <div key={date}>
                         {/* Date header */}
                         <div className="mb-3 flex items-center gap-3">
-                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center border border-gray-200 bg-white shadow-sm">
+                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm">
                                 <CalendarDays className="h-4 w-4 text-[#D97706]" />
                             </div>
                             <div>
@@ -249,7 +249,7 @@ export default function JobPlanner() {
                         {/* Job cards */}
                         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                             {jobsByDate[date].map(job => (
-                                <div key={job.id} className="border border-gray-200 bg-white p-5 shadow-sm hover:border-gray-300 hover:shadow-md transition-all">
+                                <div key={job.id} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm hover:border-gray-300 hover:shadow-md transition-all">
                                     <div className="flex items-start justify-between gap-2 mb-3">
                                         <div className="min-w-0">
                                             <p className="font-bold text-gray-900 truncate">{job.clientName}</p>
@@ -308,7 +308,7 @@ export default function JobPlanner() {
             {/* Modal */}
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm">
-                    <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-gray-200 bg-white shadow-2xl">
+                    <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-gray-200 bg-white rounded-xl shadow-2xl">
                         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900">Schedule New Job</h2>
@@ -325,29 +325,29 @@ export default function JobPlanner() {
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">Client Name</label>
                                     <input required value={formData.clientName} onChange={e => setFormData(p => ({ ...p, clientName: e.target.value }))}
                                         placeholder="e.g. Meikles Hotel"
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">Location</label>
                                     <input required value={formData.location} onChange={e => setFormData(p => ({ ...p, location: e.target.value }))}
                                         placeholder="Street address"
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">Province</label>
                                     <input required value={formData.province} onChange={e => setFormData(p => ({ ...p, province: e.target.value }))}
                                         placeholder="e.g. Harare"
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">District (optional)</label>
                                     <input value={formData.district} onChange={e => setFormData(p => ({ ...p, district: e.target.value }))}
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">Job Type</label>
                                     <select value={formData.jobType} onChange={e => setFormData(p => ({ ...p, jobType: e.target.value as JobType }))}
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
                                         {Object.keys(JobTypeLabels).map(t => <option key={t} value={t}>{JobTypeLabels[t as JobType]}</option>)}
                                     </select>
                                     <p className="mt-1 text-xs text-gray-400">{JobTypeDescriptions[formData.jobType]}</p>
@@ -356,7 +356,7 @@ export default function JobPlanner() {
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">Refrigerant Class</label>
                                     <select value={formData.refrigerantClass}
                                         onChange={e => setFormData(p => ({ ...p, refrigerantClass: e.target.value as RefrigerantSafetyClass, preJobChecklistComplete: e.target.value === 'A1' ? p.preJobChecklistComplete : false }))}
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
                                         {REF_CLASSES.map(r => <option key={r} value={r}>{r}</option>)}
                                     </select>
                                 </div>
@@ -373,24 +373,24 @@ export default function JobPlanner() {
                                     <input type="number" min="0" step="0.1" value={formData.amount || ''}
                                         onChange={e => setFormData(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))}
                                         placeholder="e.g. 12.5"
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">Scheduled Date</label>
                                     <input type="date" value={formData.scheduledDate} onChange={e => setFormData(p => ({ ...p, scheduledDate: e.target.value }))}
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">Technician</label>
                                     <select value={formData.technicianName} onChange={e => setFormData(p => ({ ...p, technicianName: e.target.value }))}
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
                                         {technicians.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                                     </select>
                                 </div>
                             </div>
 
                             {safetyRequired && (
-                                <div className="border border-amber-200 bg-amber-50 p-4">
+                                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                                     <div className="flex items-start gap-3">
                                         <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-700" />
                                         <div className="space-y-3">
@@ -413,7 +413,7 @@ export default function JobPlanner() {
                                 <label className="mb-1.5 block text-sm font-semibold text-gray-700">Notes</label>
                                 <textarea value={formData.notes} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))}
                                     rows={3} placeholder="Scope, parts required, or follow-up notes…"
-                                    className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                             </div>
 
                             {safetyRequired && !formData.preJobChecklistComplete && (
@@ -424,7 +424,7 @@ export default function JobPlanner() {
 
                             <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
                                 <button type="button" onClick={() => setShowModal(false)}
-                                    className="border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                                    className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                                     Cancel
                                 </button>
                                 <button type="submit" disabled={submitting || (safetyRequired && !formData.preJobChecklistComplete)}

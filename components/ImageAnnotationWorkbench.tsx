@@ -88,7 +88,7 @@ export function ImageAnnotationWorkbench() {
     };
 
     return (
-        <section className="border border-gray-200 bg-white p-6 shadow-sm">
+        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Image capture and annotation</p>
@@ -97,7 +97,7 @@ export function ImageAnnotationWorkbench() {
                         Tag before/after evidence, drop issue markers, and link each image to a job record with optional GPS metadata.
                     </p>
                 </div>
-                <label className="inline-flex cursor-pointer items-center gap-2 border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
                     <ImagePlus className="h-4 w-4" />
                     Upload image
                     <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
@@ -178,7 +178,7 @@ export function ImageAnnotationWorkbench() {
                             {annotations.length === 0 ? (
                                 <p className="text-sm text-gray-500">No annotations yet.</p>
                             ) : annotations.map((annotation, index) => (
-                                <div key={annotation.id} className="border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+                                <div key={annotation.id} className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
                                     Marker {index + 1}: {annotation.label} at {annotation.x}% / {annotation.y}%
                                 </div>
                             ))}
@@ -195,7 +195,7 @@ export function ImageAnnotationWorkbench() {
                     </button>
 
                     {notice && (
-                        <div className="border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
                             {notice}
                         </div>
                     )}

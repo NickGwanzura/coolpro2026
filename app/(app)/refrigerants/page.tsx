@@ -65,7 +65,7 @@ export default function RefrigerantCataloguePage() {
         </p>
       </div>
 
-      <div className="border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="relative mb-4">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -112,7 +112,7 @@ export default function RefrigerantCataloguePage() {
           <Link
             key={r.id}
             href={`/refrigerants/${r.id}`}
-            className="border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-gray-300 hover:shadow-md"
+            className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-gray-300 hover:shadow-md"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -150,7 +150,7 @@ export default function RefrigerantCataloguePage() {
           <button
             onClick={() => setLoadedPages((p) => p + 1)}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 border border-gray-200 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-lg inline-flex items-center gap-2 border border-gray-200 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Load more ({refrigerants.length} of {data?.total})

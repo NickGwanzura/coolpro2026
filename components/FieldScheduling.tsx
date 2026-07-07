@@ -133,7 +133,7 @@ export default function FieldScheduling() {
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 {stats.map(stat => (
-                    <div key={stat.label} className="border border-gray-200 bg-white p-5 shadow-sm">
+                    <div key={stat.label} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                         <p className="text-sm font-semibold text-gray-500">{stat.label}</p>
                         <p className="mt-3 text-3xl font-bold text-gray-900">{stat.value}</p>
                     </div>
@@ -142,7 +142,7 @@ export default function FieldScheduling() {
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
                 <div className="space-y-6 xl:col-span-8">
-                    <div className="border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                             <div className="md:col-span-2">
                                 <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</label>
@@ -217,7 +217,7 @@ export default function FieldScheduling() {
                         </div>
                     </div>
 
-                    <div className="overflow-hidden border border-gray-200 bg-white shadow-sm">
+                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                         <div className="border-b border-gray-100 px-5 py-4">
                             <h2 className="text-lg font-bold text-gray-900">Equipment Register</h2>
                             <p className="text-sm text-gray-500">Mock maintenance view with predictive actions.</p>
@@ -289,7 +289,7 @@ export default function FieldScheduling() {
                 </div>
 
                 <div className="space-y-6 xl:col-span-4">
-                    <div className="border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                         <div className="flex items-center gap-2">
                             <BellRing className="h-5 w-5 text-blue-600" />
                             <div>
@@ -334,7 +334,7 @@ export default function FieldScheduling() {
                     </div>
 
                     {selectedRecord && (
-                        <div className="border border-gray-200 bg-white p-5 shadow-sm">
+                        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                             <h2 className="text-lg font-bold text-gray-900">Service History</h2>
                             <p className="text-sm text-gray-500">{selectedRecord.equipmentId}</p>
                             <div className="mt-4 space-y-3">

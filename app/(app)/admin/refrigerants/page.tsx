@@ -103,7 +103,7 @@ export default function AdminRefrigerantsPage() {
         <div className="flex gap-3">
           <a
             href="/admin/refrigerant-analytics"
-            className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            className="rounded-lg inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
           >
             View Analytics
           </a>
@@ -126,14 +126,14 @@ export default function AdminRefrigerantsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-500">Total Refrigerants</p>
             <span className="bg-blue-50 p-2 text-blue-600"><Database className="h-4 w-4" /></span>
           </div>
           <p className="mt-3 text-3xl font-bold text-gray-900">{syncStatus?.totalRefrigerants ?? '—'}</p>
         </div>
-        <div className="border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-500">Last Successful Sync</p>
             <span className="bg-emerald-50 p-2 text-emerald-600"><CheckCircle2 className="h-4 w-4" /></span>
@@ -141,7 +141,7 @@ export default function AdminRefrigerantsPage() {
           <p className="mt-3 text-base font-bold text-gray-900">{formatDateTime(lastSync?.finishedAt ?? null)}</p>
           <p className="text-xs text-gray-400">{lastSync?.syncType ?? 'No sync yet'}</p>
         </div>
-        <div className="border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-500">Last Sync Created / Updated</p>
             <span className="bg-amber-50 p-2 text-amber-600"><RefreshCcw className="h-4 w-4" /></span>
@@ -150,7 +150,7 @@ export default function AdminRefrigerantsPage() {
             {lastSync ? `${lastSync.createdRecords} new / ${lastSync.updatedRecords} updated` : '—'}
           </p>
         </div>
-        <div className="border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-500">Failed Imports (last sync)</p>
             <span className="bg-rose-50 p-2 text-rose-600"><AlertTriangle className="h-4 w-4" /></span>
@@ -160,7 +160,7 @@ export default function AdminRefrigerantsPage() {
       </div>
 
       {/* Sync history */}
-      <div className="border border-gray-200 bg-white shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="border-b border-gray-100 px-5 py-4">
           <h2 className="text-lg font-bold text-gray-900">Sync History</h2>
           <p className="text-sm text-gray-500">Manual, daily-incremental, and weekly-full sync runs.</p>
@@ -227,7 +227,7 @@ export default function AdminRefrigerantsPage() {
       )}
 
       {/* Search & filter registry */}
-      <div className="border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="relative mb-4">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -259,7 +259,7 @@ export default function AdminRefrigerantsPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

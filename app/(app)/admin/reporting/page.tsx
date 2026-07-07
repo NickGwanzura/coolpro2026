@@ -299,7 +299,7 @@ export default function ReportingPage() {
 
     if (!user || user.role !== 'org_admin') {
         return (
-            <div className="border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
                 Access restricted to org admins only.
             </div>
         );
@@ -317,7 +317,7 @@ export default function ReportingPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     {/* Date filter for timeline */}
-                    <div className="flex items-center border border-gray-200 bg-white divide-x divide-gray-200">
+                    <div className="rounded-lg flex items-center border border-gray-200 bg-white divide-x divide-gray-200">
                         {(['all', 'today', 'week', 'month'] as const).map((range) => (
                             <button
                                 key={range}
@@ -384,7 +384,7 @@ export default function ReportingPage() {
             {/* ── Detailed Bar Chart Sections ── */}
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* Student Pipeline */}
-                <section className="border border-gray-200 bg-white p-5 shadow-sm">
+                <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-emerald-50">
@@ -408,7 +408,7 @@ export default function ReportingPage() {
                 </section>
 
                 {/* Technician Pipeline */}
-                <section className="border border-gray-200 bg-white p-5 shadow-sm">
+                <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-blue-50">
@@ -432,7 +432,7 @@ export default function ReportingPage() {
                 </section>
 
                 {/* Course Pipeline */}
-                <section className="border border-gray-200 bg-white p-5 shadow-sm">
+                <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-purple-50">
@@ -458,7 +458,7 @@ export default function ReportingPage() {
 
             {/* ── Second row: Supplier + Reorder + Accident mini-cards ── */}
             <div className="grid gap-6 sm:grid-cols-2">
-                <div className="border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-amber-50">
@@ -479,7 +479,7 @@ export default function ReportingPage() {
                         <BarRow label="Pending" value={reports.suppliers.pending} max={Math.max(reports.suppliers.total, 1)} color="bg-gray-400" />
                     </div>
                 </div>
-                <div className="border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-cyan-50">
@@ -502,7 +502,7 @@ export default function ReportingPage() {
             </div>
 
             {/* ── System-Wide Activity Timeline ── */}
-            <section className="border border-gray-200 bg-white shadow-sm">
+            <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-gray-100">
@@ -603,7 +603,7 @@ function ReportCard({
     color: string;
 }) {
     return (
-        <div className="border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-3 mb-3">
                 <div className={`p-2 ${color}`}>
                     <Icon className="h-5 w-5" />

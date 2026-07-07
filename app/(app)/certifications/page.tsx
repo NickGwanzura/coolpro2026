@@ -99,7 +99,7 @@ type TrainerFormState = {
 
 function SummaryStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <p className="text-sm font-semibold text-gray-500">{label}</p>
       <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
     </div>
@@ -314,7 +314,7 @@ export default function CertificationsPage() {
           <SummaryStat label="Rejected" value={adminSummary.rejected} />
         </div>
 
-        <div className="border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
               <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">Search</label>
@@ -355,7 +355,7 @@ export default function CertificationsPage() {
 
         <div className="space-y-4">
           {filteredAdminRequests.map((request) => (
-            <div key={request.id} className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div key={request.id} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="font-semibold text-gray-900">{request.technicianName}</p>
@@ -429,7 +429,7 @@ export default function CertificationsPage() {
         </div>
 
         <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <form onSubmit={handleTrainerSubmit} className="border border-gray-200 bg-white p-6 shadow-sm">
+          <form onSubmit={handleTrainerSubmit} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900">Mark Exam and Submit Certificate Request</h2>
             <p className="mt-2 text-sm leading-6 text-gray-600">
               Choose a registered technician, record their theory and practical marks, then send the certificate request to admin for approval.
@@ -503,7 +503,7 @@ export default function CertificationsPage() {
             </button>
 
             {notice && (
-              <div className="mt-4 border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
                 {notice}
               </div>
             )}
@@ -511,7 +511,7 @@ export default function CertificationsPage() {
 
           <div className="space-y-4">
             {trainerRequests.map((request) => (
-              <div key={request.id} className="border border-gray-200 bg-white p-6 shadow-sm">
+              <div key={request.id} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-gray-900">{request.technicianName}</p>
@@ -639,7 +639,7 @@ export default function CertificationsPage() {
             <p className="text-sm text-gray-400">No completed training records found.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto bg-white border border-gray-200 shadow-sm">
+          <div className="rounded-lg overflow-x-auto bg-white border border-gray-200 shadow-sm">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
@@ -727,7 +727,7 @@ export default function CertificationsPage() {
         {/* Exam Modal */}
         {examModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
-            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-gray-200 bg-white shadow-2xl">
+            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-gray-200 bg-white rounded-xl shadow-2xl">
               <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">{examModal.title}</h2>
@@ -782,7 +782,7 @@ export default function CertificationsPage() {
         )}
 
         {notice && (
-          <div className="mt-4 border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+          <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
             {notice}
           </div>
         )}

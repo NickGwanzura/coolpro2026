@@ -12,7 +12,7 @@ export default function JobPlannerPage() {
 
     if (!session || !ALLOWED_ROLES.includes(session.role)) {
         return (
-            <div className="mx-auto max-w-2xl border border-gray-200 bg-white p-8 shadow-sm">
+            <div className="rounded-xl mx-auto max-w-2xl border border-gray-200 bg-white p-8 shadow-sm">
                 <div className="flex items-start gap-4">
                     <div className="bg-red-50 p-3 text-red-600">
                         <ShieldCheck className="h-6 w-6" />

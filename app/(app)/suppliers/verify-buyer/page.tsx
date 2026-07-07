@@ -15,17 +15,17 @@ function ResultPanel({ data }: { data: VerifyTechnicianResult }) {
     return (
         <div className="mt-6 space-y-4">
             {isClear ? (
-                <div className="border border-emerald-300 bg-emerald-600 px-5 py-4 text-base font-bold text-white">
+                <div className="rounded-lg border border-emerald-300 bg-emerald-600 px-5 py-4 text-base font-bold text-white">
                     Registered Sale authorized
                 </div>
             ) : (
-                <div className="border border-rose-300 bg-rose-600 px-5 py-4 text-base font-bold text-white">
+                <div className="rounded-lg border border-rose-300 bg-rose-600 px-5 py-4 text-base font-bold text-white">
                     DO NOT SELL {result === 'not_found' ? 'Technician not found' : result === 'expired' ? 'Registration expired' : 'Registration revoked'}
                 </div>
             )}
 
             {tech ? (
-                <div className="border border-gray-200 bg-gray-50 p-5 space-y-4">
+                <div className="rounded-lg rounded-lg border border-gray-200 bg-gray-50 p-5 space-y-4">
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 text-sm">
                         <InfoRow label="Name" value={tech.name} />
                         <InfoRow label="Registration no." value={tech.registrationNumber} />
@@ -42,7 +42,7 @@ function ResultPanel({ data }: { data: VerifyTechnicianResult }) {
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-2">Certifications</p>
                             <div className="space-y-2">
                                 {tech.certifications.map(cert => (
-                                    <div key={cert.id} className="border border-gray-200 bg-white px-4 py-3 text-sm">
+                                    <div key={cert.id} className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm">
                                         <div className="flex items-start justify-between gap-3">
                                             <div>
                                                 <p className="font-semibold text-gray-900">{cert.name}</p>
@@ -107,7 +107,7 @@ export default function VerifyBuyerPage() {
 
     if (!session || session.role !== 'vendor') {
         return (
-            <div className="border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
                 Access restricted. This page is for vendors only.
             </div>
         );
@@ -162,7 +162,7 @@ export default function VerifyBuyerPage() {
 
     return (
         <div className="space-y-8">
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Vendor workspace</p>
                     <h1 className="text-2xl font-bold text-gray-900">Verify Technician Before Sale</h1>
@@ -172,7 +172,7 @@ export default function VerifyBuyerPage() {
                 </div>
             </div>
 
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="flex border-b border-gray-200">
                     {TABS.map(tab => (
                         <button
@@ -307,7 +307,7 @@ export default function VerifyBuyerPage() {
                 </div>
             </div>
 
-            <div className="border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Demo registry</p>
                 <p className="mt-2 text-sm text-gray-600">
                     Available registration numbers in the demo: <span className="font-mono text-xs">TEC-2024-001</span>, <span className="font-mono text-xs">TEC-2024-002</span>, <span className="font-mono text-xs">TEC-2024-003</span>. QR tokens: <span className="font-mono text-xs">qr-tendai-moyo-2024</span>, <span className="font-mono text-xs">qr-chiedza-nhamo-2024</span>.

@@ -70,7 +70,7 @@ export default function ReclamationPage() {
         </button>
       </div>
 
-      <div className="overflow-hidden border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -107,7 +107,7 @@ export default function ReclamationPage() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm">
-          <div className="w-full max-w-lg border border-gray-200 bg-white shadow-2xl">
+          <div className="w-full max-w-lg border border-gray-200 bg-white rounded-xl shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
                 <Recycle className="h-5 w-5 text-[#D97706]" /> Log Reclamation Batch
@@ -123,27 +123,27 @@ export default function ReclamationPage() {
                 <label className="mb-1.5 block text-sm font-semibold text-gray-700">Source</label>
                 <input value={form.sourceDescription} onChange={(e) => setForm({ ...form, sourceDescription: e.target.value })}
                   placeholder="e.g. Recovered from cold room retrofit — Meikles Hotel"
-                  className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-gray-700">Quantity (kg)</label>
                   <input type="number" min="0" step="0.1" value={form.quantityKg} onChange={(e) => setForm({ ...form, quantityKg: e.target.value })}
-                    className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-gray-700">Purity (%)</label>
                   <input type="number" min="0" max="100" step="0.1" value={form.purityPercent} onChange={(e) => setForm({ ...form, purityPercent: e.target.value })}
-                    className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                 </div>
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-gray-700">Facility</label>
                 <input value={form.facilityName} onChange={(e) => setForm({ ...form, facilityName: e.target.value })}
-                  className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="button" onClick={() => setShowModal(false)} className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button type="submit" disabled={submitting} className="bg-[#D97706] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#b45309] disabled:opacity-50">
                   {submitting ? 'Saving…' : 'Log Batch'}
                 </button>

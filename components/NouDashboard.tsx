@@ -32,7 +32,7 @@ function AccessDenied() {
   const router = useRouter();
 
   return (
-    <div className="border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-start gap-4">
         <div className="bg-rose-50 p-3 text-rose-600">
           <ShieldAlert className="h-6 w-6" />
@@ -328,7 +328,7 @@ export default function NouDashboard() {
 
   if (!session) {
     return (
-      <div className="border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <div className="animate-pulse space-y-3">
           <div className="h-5 w-48 rounded bg-gray-100" />
           <div className="h-4 w-80 rounded bg-gray-100" />
@@ -348,7 +348,7 @@ export default function NouDashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
@@ -432,7 +432,7 @@ export default function NouDashboard() {
                 doc.save(`UNEP-compliance-report-${new Date().toISOString().split('T')[0]}.pdf`);
                 success('UNEP compliance report downloaded');
               }}
-              className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+              className="rounded-lg inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
             >
               <FileDown className="h-4 w-4" />
               Generate UNEP Report
@@ -456,7 +456,7 @@ export default function NouDashboard() {
         {kpis.map((item) => {
           const Icon = item.icon;
           return (
-            <article key={item.label} className="border border-gray-200 bg-white p-5 shadow-sm">
+            <article key={item.label} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-500">{item.label}</p>
@@ -476,7 +476,7 @@ export default function NouDashboard() {
 
       {/* Regulator-focused KPI row */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="border border-gray-200 bg-white p-5 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <p className="text-sm font-medium text-gray-500">Active Certifications</p>
@@ -489,7 +489,7 @@ export default function NouDashboard() {
           <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-gray-400">Valid certs in registry</p>
         </article>
 
-        <article className="border border-gray-200 bg-white p-5 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <p className="text-sm font-medium text-gray-500">Pending Course Approvals</p>
@@ -502,7 +502,7 @@ export default function NouDashboard() {
           <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-gray-400">Awaiting NOU sign-off</p>
         </article>
 
-        <article className="border border-gray-200 bg-white p-5 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <p className="text-sm font-medium text-gray-500">Reorders Awaiting NOU</p>
@@ -515,7 +515,7 @@ export default function NouDashboard() {
           <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-gray-400">Gas reorders pending</p>
         </article>
 
-        <article className="border border-gray-200 bg-white p-5 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <p className="text-sm font-medium text-gray-500">Verifications This Month</p>
@@ -531,7 +531,7 @@ export default function NouDashboard() {
 
       {/* Pending NOU Actions + Recent Activity */}
       <section className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
-        <article className="border border-gray-200 bg-white p-6 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center gap-3">
             <Activity className="h-5 w-5 text-purple-600" />
             <div>
@@ -590,7 +590,7 @@ export default function NouDashboard() {
           </div>
         </article>
 
-        <article className="border border-gray-200 bg-white p-6 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center gap-3">
             <Users className="h-5 w-5 text-slate-600" />
             <div>
@@ -638,7 +638,7 @@ export default function NouDashboard() {
 
       {/* Refrigerant volumes approved YTD by gas type */}
       {approvedReordersByGas.length > 0 && (
-        <section className="border border-gray-200 bg-white p-6 shadow-sm">
+        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center gap-3">
             <BarChart3 className="h-5 w-5 text-slate-600" />
             <div>
@@ -670,7 +670,7 @@ export default function NouDashboard() {
       )}
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <article className="border border-gray-200 bg-white p-6 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Refrigerant Breakdown</h2>
@@ -705,7 +705,7 @@ export default function NouDashboard() {
           </div>
         </article>
 
-        <article className="border border-gray-200 bg-white p-6 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5">
             <h2 className="text-lg font-semibold text-gray-900">Monthly Purchase vs Usage</h2>
             <p className="text-sm text-gray-500">Last 6 months of approved reorders and vendor sales</p>
@@ -755,7 +755,7 @@ export default function NouDashboard() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <article className="border border-gray-200 bg-white p-6 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-3">
             <Building2 className="h-5 w-5 text-slate-600" />
             <div>
@@ -892,7 +892,7 @@ export default function NouDashboard() {
           </div>
         </article>
 
-        <article id="discrepancy-flags" className="border border-gray-200 bg-white p-6 shadow-sm">
+        <article id="discrepancy-flags" className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 text-amber-600" />
             <div>
@@ -908,7 +908,7 @@ export default function NouDashboard() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <article className="border border-gray-200 bg-white p-6 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-3">
             <FileDown className="h-5 w-5 text-sky-600" />
             <div>
@@ -969,7 +969,7 @@ export default function NouDashboard() {
           </div>
         </article>
 
-        <article className="border border-gray-200 bg-white p-6 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-3">
             <ShieldCheck className="h-5 w-5 text-emerald-600" />
             <div>
@@ -1011,7 +1011,7 @@ export default function NouDashboard() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <article className="border border-gray-200 bg-white p-6 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-3">
             <ShieldAlert className="h-5 w-5 text-rose-600" />
             <div>
@@ -1025,7 +1025,7 @@ export default function NouDashboard() {
           </div>
         </article>
 
-        <article className="border border-gray-200 bg-white p-6 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-3">
             <CheckCircle2 className="h-5 w-5 text-emerald-600" />
             <div>

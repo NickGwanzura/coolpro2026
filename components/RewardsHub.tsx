@@ -113,7 +113,7 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-          <article className="border border-gray-200 bg-white p-6 shadow-sm">
+          <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Reward catalog overview</h3>
               <p className="text-sm text-gray-500">All live rewards currently available across the network</p>
@@ -134,7 +134,7 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
             </div>
           </article>
 
-          <article className="border border-gray-200 bg-white p-6 shadow-sm">
+          <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center gap-3">
               <Building2 className="h-5 w-5 text-slate-600" />
               <div>
@@ -207,7 +207,7 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
             { action: 'Log a low-leak installation', points: '+100 pts', color: 'bg-emerald-50 text-emerald-700' },
             { action: 'Submit a field safety report', points: '+75 pts', color: 'bg-amber-50 text-amber-700' },
           ].map(item => (
-            <article key={item.action} className="border border-gray-200 bg-white p-4 shadow-sm flex items-center gap-3">
+            <article key={item.action} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm flex items-center gap-3">
               <span className={`shrink-0 rounded px-2 py-1 text-xs font-bold ${item.color}`}>{item.points}</span>
               <p className="text-sm font-medium text-gray-700">{item.action}</p>
             </article>
@@ -274,7 +274,7 @@ function OverviewCard({
   compact?: boolean;
 }) {
   return (
-    <article className={`border border-gray-200 bg-white shadow-sm ${compact ? 'p-4' : 'p-5'}`}>
+    <article className={`rounded-lg border border-gray-200 bg-white shadow-sm ${compact ? 'p-4' : 'p-5'}`}>
       <p className="text-sm font-medium text-gray-500">{label}</p>
       <p className={`${compact ? 'mt-1 text-2xl' : 'mt-2 text-3xl'} font-bold tracking-tight text-gray-900`}>{value}</p>
     </article>

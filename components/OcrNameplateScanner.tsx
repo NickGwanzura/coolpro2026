@@ -77,7 +77,7 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
     };
 
     return (
-        <section className="border border-gray-200 bg-white p-6 shadow-sm">
+        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">OCR nameplate scanning</p>
@@ -111,7 +111,7 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
                 </div>
 
                 <div className="space-y-4">
-                    <div className="border border-gray-200 bg-gray-50 p-5">
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-5">
                         <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                             <ScanText className="h-4 w-4" />
                             OCR status
@@ -148,7 +148,7 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
                     </div>
 
                     {result?.whatGasMatch && risk && (
-                        <div className="border border-gray-200 bg-white p-5 shadow-sm">
+                        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                             <div className="flex items-center justify-between gap-3">
                                 <div>
                                     <p className="text-sm font-semibold text-gray-500">Matched refrigerant</p>

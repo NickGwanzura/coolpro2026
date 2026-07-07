@@ -14,7 +14,7 @@ export default function WhatGasPage() {
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <div className="border border-[#E5E0DB] bg-white p-6 sm:p-8">
+      <div className="rounded-lg border border-[#E5E0DB] bg-white p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex items-start gap-4">
             <div
@@ -59,7 +59,7 @@ export default function WhatGasPage() {
       </div>
 
       {/* Quick lookup chips */}
-      <div className="border border-[#E5E0DB] bg-white p-5">
+      <div className="rounded-lg border border-[#E5E0DB] bg-white p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 mb-3">
           Quick lookups
         </p>
@@ -96,7 +96,7 @@ export default function WhatGasPage() {
 
 function Tile({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div className="border border-[#E5E0DB] bg-[#FAFAF9] p-4">
+    <div className="rounded-lg border border-[#E5E0DB] bg-[#FAFAF9] p-4">
       <div className="flex items-center gap-2 text-[#D97706]">
         {icon}
         <p className="text-xs font-semibold uppercase tracking-[0.18em]">{title}</p>

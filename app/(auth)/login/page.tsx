@@ -20,7 +20,7 @@ const DEMO_ROLES: Array<{
   { role: 'vendor',     label: 'Vendor',      description: 'Supplier-facing demo workspace.', icon: PackageSearch },
 ];
 
-const inputCls = 'block w-full px-3 py-2.5 bg-white border border-[#E7E5E4] text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#D97706] focus:ring-1 focus:ring-[#D97706] transition-colors text-sm';
+const inputCls = 'block w-full px-3 py-2.5 rounded-lg bg-white border border-[#E7E5E4] text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#D97706] focus:ring-1 focus:ring-[#D97706] transition-colors text-sm';
 const REGIONS = ["Harare", "Bulawayo", "Mutare", "Gweru", "Masvingo", "Other"];
 const DEMO_LOGIN_ENABLED = process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === 'true';
 
@@ -96,7 +96,7 @@ function LoginPageContent() {
         </div>
 
         {/* Card */}
-        <div className="bg-white border border-[#E7E5E4] shadow-sm">
+        <div className="rounded-lg bg-white border border-[#E7E5E4] shadow-sm">
 
           {/* Tabs */}
           <div className="flex border-b border-[#E7E5E4]">

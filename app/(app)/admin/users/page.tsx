@@ -83,7 +83,7 @@ function UserRow({ user, isSelf }: { user: AdminUserRecord; isSelf: boolean }) {
           value={user.role}
           disabled={savingField === 'role'}
           onChange={(e) => handleRoleChange(e.target.value)}
-          className="border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:border-blue-300 disabled:opacity-50"
+          className="rounded border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:border-blue-300 disabled:opacity-50"
         >
           {ROLES.map((r) => (
             <option key={r.value} value={r.value}>{r.label}</option>
@@ -133,7 +133,7 @@ export default function AdminUsersPage() {
         </p>
       </div>
 
-      <div className="border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -163,7 +163,7 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      <div className="border border-gray-200 bg-white shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
           <Users2 className="h-4 w-4 text-gray-400" />
           <h2 className="text-sm font-semibold text-gray-900">

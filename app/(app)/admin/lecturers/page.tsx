@@ -26,7 +26,7 @@ export default function LecturerDirectoryPage() {
 
     if (!user || user.role !== 'org_admin') {
         return (
-            <div className="border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
                 Access restricted to org admins only.
             </div>
         );
@@ -54,7 +54,7 @@ export default function LecturerDirectoryPage() {
                 <SummaryCard label="Regions" value={new Set(lecturers.map(u => u.region)).size} />
             </div>
 
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">Search</label>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -72,7 +72,7 @@ export default function LecturerDirectoryPage() {
                 {lecturers.map((lecturer) => (
                     <div
                         key={lecturer.id}
-                        className="border border-gray-200 bg-white p-5 shadow-sm hover:border-blue-300 transition-colors"
+                        className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm hover:border-blue-300 transition-colors"
                     >
                         <div className="flex items-start justify-between gap-4">
                             <div className="flex items-start gap-4">
@@ -123,7 +123,7 @@ export default function LecturerDirectoryPage() {
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
     return (
-        <div className="border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold text-gray-500">{label}</p>
             <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
         </div>

@@ -58,7 +58,7 @@ export function Topbar({ onMenuClick, title }: { onMenuClick: () => void; title?
                                     className="fixed inset-0 z-40"
                                     onClick={() => setShowUserMenu(false)}
                                 />
-                                <div className="absolute right-0 mt-1 w-56 bg-white border border-[#E7E5E4] shadow-sm py-1 z-50">
+                                <div className="absolute right-0 mt-1 w-56 rounded-lg bg-white border border-[#E7E5E4] shadow-sm py-1 z-50">
                                     <div className="px-4 py-3 border-b border-[#E7E5E4]">
                                         <p className="text-sm font-semibold text-[#1C1917]">{session.name}</p>
                                         <p className="text-xs text-[#78716C]">{session.email}</p>

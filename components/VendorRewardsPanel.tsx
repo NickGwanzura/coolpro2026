@@ -125,7 +125,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-                <article className="border border-gray-200 bg-white p-6 shadow-sm">
+                <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900">Available vendor rewards</h3>
@@ -152,7 +152,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
                     </div>
                 </article>
 
-                <article className="border border-gray-200 bg-white p-6 shadow-sm">
+                <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900">Compliance milestones</h3>
@@ -160,7 +160,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
                         </div>
                         <Link
                             href="/supplier-compliance"
-                            className="inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                            className="rounded-lg inline-flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
                         >
                             Open compliance module
                             <ArrowRight className="h-4 w-4" />
@@ -208,7 +208,7 @@ function MetricCard({
     icon: typeof ShieldCheck;
 }) {
     return (
-        <article className="border border-gray-200 bg-white p-5 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <p className="text-sm text-gray-500">{label}</p>

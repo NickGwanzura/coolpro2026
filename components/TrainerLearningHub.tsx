@@ -107,7 +107,7 @@ export default function TrainerLearningHub({ session }: { session: UserSession }
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <article className="border border-gray-200 bg-white p-6 shadow-sm">
+        <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Training calendar</p>
             <h2 className="mt-2 text-2xl font-bold text-gray-900">Upcoming sessions with venue and fees</h2>
@@ -143,7 +143,7 @@ export default function TrainerLearningHub({ session }: { session: UserSession }
           </div>
         </article>
 
-        <form onSubmit={handleSubmit} className="border border-gray-200 bg-white p-6 shadow-sm">
+        <form onSubmit={handleSubmit} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Add training</p>
             <h2 className="mt-2 text-2xl font-bold text-gray-900">Create a new training course</h2>
@@ -222,7 +222,7 @@ export default function TrainerLearningHub({ session }: { session: UserSession }
           </button>
 
           {notice && (
-            <div className="mt-4 border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+            <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
               {notice}
             </div>
           )}
@@ -244,7 +244,7 @@ function MetricCard({
   icon: typeof CalendarDays;
 }) {
   return (
-    <article className="border border-gray-200 bg-white p-5 shadow-sm">
+    <article className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-gray-500">{label}</p>

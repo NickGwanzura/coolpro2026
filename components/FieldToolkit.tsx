@@ -912,7 +912,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
               </div>
 
               {!formData.approvedSupplierId && (
-                <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <div className="rounded-lg rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   Purchases from unapproved suppliers are not eligible for rewards points and will be flagged in the NOU compliance report.
                 </div>
               )}

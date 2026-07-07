@@ -170,7 +170,7 @@ export function SiteNav() {
                 {solutionsOpen && (
                   <div
                     role="menu"
-                    className="absolute top-full left-0 mt-2 w-80 bg-white border border-[#E7E5E4] shadow-lg py-2 animate-[slideDown_180ms_ease-out]"
+                    className="absolute top-full left-0 mt-2 w-80 rounded-lg bg-white border border-[#E7E5E4] shadow-lg py-2 animate-[slideDown_180ms_ease-out]"
                   >
                     {SOLUTIONS.map((s) => {
                       const active = pathname === s.href;

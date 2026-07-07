@@ -12,7 +12,7 @@ export default function AccidentsModulePage() {
 
     if (!user || user.role !== 'org_admin') {
         return (
-            <div className="border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
                 Access restricted to org admins only.
             </div>
         );

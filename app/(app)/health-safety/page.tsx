@@ -476,7 +476,7 @@ export default function HealthSafetyPage() {
             <div className="grid gap-6 lg:grid-cols-12">
                 {/* Left Column: Checklist */}
                 <div className="lg:col-span-5 space-y-6">
-                    <div className="border border-gray-200 bg-white shadow-sm">
+                    <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
                         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
                             <div className="bg-rose-50 p-2 text-rose-600">
                                 <Stethoscope className="h-5 w-5" />
@@ -589,7 +589,7 @@ export default function HealthSafetyPage() {
 
                 {/* Right Column: Wellness Article Library */}
                 <div className="lg:col-span-7 space-y-6">
-                    <div className="border border-gray-200 bg-white shadow-sm">
+                    <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
                         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
                             <div className="bg-blue-50 p-2 text-blue-600">
                                 <BookOpen className="h-5 w-5" />

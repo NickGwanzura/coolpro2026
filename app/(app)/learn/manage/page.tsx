@@ -114,7 +114,7 @@ function ModuleRow({
     }
 
     return (
-        <div className="border border-gray-200 bg-gray-50 p-4 space-y-3">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Module {index + 1}</p>
                 {!readOnly && (
@@ -157,7 +157,7 @@ function ModuleRow({
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Materials</p>
                 {attachments.length === 0 && <p className="text-xs text-gray-400">No files attached.</p>}
                 {attachments.map(attachment => (
-                    <div key={attachment.id} className="flex items-center justify-between gap-3 border border-gray-200 bg-white px-3 py-2">
+                    <div key={attachment.id} className="rounded-lg flex items-center justify-between gap-3 border border-gray-200 bg-white px-3 py-2">
                         <span className="flex min-w-0 items-center gap-2 text-sm text-gray-700">
                             <Paperclip className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                             <span className="truncate">{attachment.fileName}</span>
@@ -285,7 +285,7 @@ function CoursePanel({
     }
 
     return (
-        <div className="border border-gray-200 bg-white shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
@@ -300,7 +300,7 @@ function CoursePanel({
 
             <div className="p-6 space-y-5">
                 {isLocked && (
-                    <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <div className="rounded-lg rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                         This course is <strong>{STATUS_LABEL[course.status]}</strong> and cannot be edited.
                         {course.status === 'rejected' && course.rejectionReason && (
                             <span> Rejection reason: {course.rejectionReason}</span>
@@ -376,7 +376,7 @@ function CoursePanel({
                 )}
 
                 {notice && (
-                    <div className="border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{notice}</div>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{notice}</div>
                 )}
             </div>
         </div>
@@ -418,7 +418,7 @@ function GradePanel({
     }
 
     return (
-        <div className="border border-gray-200 bg-white shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Exam Submission</p>
@@ -432,7 +432,7 @@ function GradePanel({
                 <div className="space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Student Answers</p>
                     {submission.answers.map((a, i) => (
-                        <div key={i} className="border border-gray-200 bg-gray-50 p-4 space-y-1">
+                        <div key={i} className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-1">
                             <p className="text-sm font-semibold text-gray-700">{a.question}</p>
                             <p className="text-sm text-gray-600">{a.answer}</p>
                         </div>
@@ -501,7 +501,7 @@ function GradePanel({
                 )}
 
                 {notice && (
-                    <div className="border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{notice}</div>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{notice}</div>
                 )}
             </div>
         </div>
@@ -556,7 +556,7 @@ function CreateCourseForm({
     }
 
     return (
-        <div className="border border-gray-200 bg-white shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">New Course</p>
@@ -615,7 +615,7 @@ function CreateCourseForm({
                     Create Course
                 </button>
                 {notice && (
-                    <div className="border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{notice}</div>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{notice}</div>
                 )}
             </div>
         </div>
@@ -750,7 +750,7 @@ export default function LearnManagePage() {
                         />
                     )}
 
-                    <div className="border border-gray-200 bg-white shadow-sm overflow-x-auto">
+                    <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-gray-200 bg-gray-50">
@@ -811,7 +811,7 @@ export default function LearnManagePage() {
                         />
                     )}
 
-                    <div className="border border-gray-200 bg-white shadow-sm overflow-x-auto">
+                    <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-gray-200 bg-gray-50">

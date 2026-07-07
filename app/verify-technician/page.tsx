@@ -273,7 +273,7 @@ export default function VerifyTechnicianPage() {
           </p>
         </div>
 
-        <div className="mb-8 border border-[#E7E5E4] bg-white p-8 shadow-sm">
+        <div className="rounded-xl mb-8 border border-[#E7E5E4] bg-white p-8 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
             <User className="h-5 w-5 text-blue-600" />
             <span className="font-semibold text-slate-900">VERIFY A TECHNICIAN OR CERTIFICATE</span>
@@ -419,19 +419,19 @@ export default function VerifyTechnicianPage() {
                   <div className="space-y-4">
                     <h4 className="border-b pb-2 text-lg font-semibold text-slate-900">Certificate Details</h4>
                     <div className="grid gap-3 md:grid-cols-2">
-                      <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                      <div className="rounded-lg border border-[#E7E5E4] bg-[#FAFAF9] p-4">
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Certificate</p>
                         <p className="mt-2 font-semibold text-slate-900">{certificate.certificateType}</p>
                       </div>
-                      <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                      <div className="rounded-lg border border-[#E7E5E4] bg-[#FAFAF9] p-4">
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Issuing Body</p>
                         <p className="mt-2 font-semibold text-slate-900">{certificate.issuingBody}</p>
                       </div>
-                      <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                      <div className="rounded-lg border border-[#E7E5E4] bg-[#FAFAF9] p-4">
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Issued</p>
                         <p className="mt-2 font-semibold text-slate-900">{formatDate(certificate.issueDate)}</p>
                       </div>
-                      <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                      <div className="rounded-lg border border-[#E7E5E4] bg-[#FAFAF9] p-4">
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Expiry</p>
                         <p className="mt-2 font-semibold text-slate-900">{formatDate(certificate.expiryDate)}</p>
                       </div>

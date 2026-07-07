@@ -453,7 +453,7 @@ export function FloatingVoiceButton() {
               </div>
 
               {response && (
-                <div className="border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">Assistant response</p>
                   <p className="mt-3 text-sm leading-6 text-gray-700">{response}</p>
                   {latestRisk && (

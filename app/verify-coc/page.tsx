@@ -157,7 +157,7 @@ function VerifyCocContent() {
           )}
 
           {!searched && (
-            <div className="border border-dashed border-gray-200 p-10 text-center">
+            <div className="rounded-lg border border-dashed border-gray-200 p-10 text-center">
               <FileText className="mx-auto mb-3 h-8 w-8 text-gray-200" />
               <p className="text-sm text-gray-400">Enter a certificate number above to verify it.</p>
             </div>

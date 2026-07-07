@@ -64,7 +64,7 @@ export function RefrigerantIntelligencePanel({
     const profile = summary?.profile ?? null;
 
     return (
-        <section className="border border-gray-200 bg-white p-6 shadow-sm">
+        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">WhatGas + risk engine</p>
@@ -114,7 +114,7 @@ export function RefrigerantIntelligencePanel({
                 </div>
             ) : (
                 <div className="mt-5 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-                    <article className="border border-gray-200 bg-gray-50 p-5">
+                    <article className="rounded-lg border border-gray-200 bg-gray-50 p-5">
                         <div className="flex items-start justify-between gap-4">
                             <div>
                                 <p className="text-sm font-semibold text-gray-500">{profile.code}</p>
@@ -130,7 +130,7 @@ export function RefrigerantIntelligencePanel({
                             <Metric label="GWP" value={String(profile.gwp)} />
                         </div>
 
-                        <div className="mt-5 border border-gray-200 bg-white p-4">
+                        <div className="mt-5 rounded-lg border border-gray-200 bg-white p-4">
                             <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                                 <Info className="h-4 w-4" />
                                 WhatGas match
@@ -161,7 +161,7 @@ export function RefrigerantIntelligencePanel({
 
 function Metric({ label, value }: { label: string; value: string }) {
     return (
-        <div className="border border-gray-200 bg-white p-4">
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">{label}</p>
             <p className="mt-2 text-xl font-bold text-gray-900">{value}</p>
         </div>

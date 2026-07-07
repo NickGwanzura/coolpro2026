@@ -34,7 +34,7 @@ export function EmergencyModePanel() {
 
             <div className="mt-5 grid gap-4 xl:grid-cols-3">
                 {scripts.map((script) => (
-                    <article key={script.id} className="border border-gray-200 bg-white p-5 shadow-sm">
+                    <article key={script.id} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
                             <div>
                                 <p className="text-sm font-semibold text-gray-500">{script.refrigerantCode}</p>
@@ -44,7 +44,7 @@ export function EmergencyModePanel() {
                         </div>
                         <div className="mt-4 space-y-2">
                             {script.steps.map((step) => (
-                                <div key={step} className="border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                                <div key={step} className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
                                     {step}
                                 </div>
                             ))}

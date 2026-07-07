@@ -15,7 +15,7 @@ const PIE_COLORS = ['#D97706', '#2563eb', '#7c3aed', '#dc2626', '#059669', '#089
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
       <h2 className="mb-4 text-lg font-bold text-gray-900">{title}</h2>
       {children}
     </div>
@@ -36,7 +36,7 @@ function StatCard({
     cyan: 'bg-cyan-50 text-cyan-600',
   };
   return (
-    <div className="border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between mb-2">
         <span className={`p-2 ${colors[color] ?? colors.blue}`}>
           <Icon className="h-4 w-4" />
@@ -51,11 +51,11 @@ function StatCard({
 
 function ComplianceSection({ data }: { data: RefrigerantAnalytics['complianceOverview'] }) {
   return (
-    <div className="border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
       <h2 className="mb-4 text-lg font-bold text-gray-900">Compliance Module Overview</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Cylinders */}
-        <div className="border border-gray-200 bg-gray-50 p-4 space-y-2">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
           <div className="flex items-center gap-2">
             <Cylinder className="h-4 w-4 text-blue-600" />
             <span className="text-sm font-semibold text-gray-900">Cylinders</span>
@@ -73,7 +73,7 @@ function ComplianceSection({ data }: { data: RefrigerantAnalytics['complianceOve
         </div>
 
         {/* Permits */}
-        <div className="border border-gray-200 bg-gray-50 p-4 space-y-2">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-purple-600" />
             <span className="text-sm font-semibold text-gray-900">Trade Permits</span>
@@ -91,7 +91,7 @@ function ComplianceSection({ data }: { data: RefrigerantAnalytics['complianceOve
         </div>
 
         {/* Reclamation */}
-        <div className="border border-gray-200 bg-gray-50 p-4 space-y-2">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
           <div className="flex items-center gap-2">
             <Recycle className="h-4 w-4 text-amber-600" />
             <span className="text-sm font-semibold text-gray-900">Reclamation</span>
@@ -114,7 +114,7 @@ function ComplianceSection({ data }: { data: RefrigerantAnalytics['complianceOve
         </div>
 
         {/* Recycling */}
-        <div className="border border-gray-200 bg-gray-50 p-4 space-y-2">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
           <div className="flex items-center gap-2">
             <RefreshCw className="h-4 w-4 text-cyan-600" />
             <span className="text-sm font-semibold text-gray-900">Recycling</span>

@@ -32,7 +32,7 @@ export function UserProfileModal({ user, onClose, onLogout }: UserProfileModalPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md bg-white border border-[#E7E5E4] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full max-w-md rounded-lg bg-white border border-[#E7E5E4] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between bg-[#1C1917] px-6 py-4">
           <h2 className="text-lg font-semibold text-white">Profile Details</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">

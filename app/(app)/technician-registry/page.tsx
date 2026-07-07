@@ -195,7 +195,7 @@ function TechnicianRegistryContent() {
         <SummaryCard label="Valid Certs" value={registrySummary.validCertificates} />
       </div>
 
-      <div className="border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="xl:col-span-2">
             <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-500">Search</label>
@@ -252,7 +252,7 @@ function TechnicianRegistryContent() {
         </div>
       </div>
 
-      <div className="border border-gray-200 bg-white shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="divide-y divide-gray-200">
           {filteredTechnicians.map(technician => (
             <div key={technician.id} className="p-6 transition-colors hover:bg-gray-50">
@@ -326,7 +326,7 @@ function TechnicianRegistryContent() {
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <p className="text-sm font-semibold text-gray-500">{label}</p>
       <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
     </div>

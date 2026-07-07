@@ -95,14 +95,14 @@ export default function CylindersPage() {
           { label: 'In Service', value: stats.inService },
           { label: 'Scrapped', value: stats.scrapped },
         ].map((s) => (
-          <div key={s.label} className="border border-gray-200 bg-white p-5 shadow-sm">
+          <div key={s.label} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold text-gray-500">{s.label}</p>
             <p className="mt-3 text-3xl font-bold text-gray-900">{s.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="overflow-hidden border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -143,7 +143,7 @@ export default function CylindersPage() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm">
-          <div className="w-full max-w-lg border border-gray-200 bg-white shadow-2xl">
+          <div className="w-full max-w-lg border border-gray-200 bg-white rounded-xl shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
                 <CylinderIcon className="h-5 w-5 text-[#D97706]" /> Register Cylinder
@@ -154,7 +154,7 @@ export default function CylindersPage() {
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-gray-700">Cylinder Code</label>
                 <input value={form.cylinderCode} onChange={(e) => setForm({ ...form, cylinderCode: e.target.value })}
-                  className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" placeholder="CYL-0001" />
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" placeholder="CYL-0001" />
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-gray-700">Refrigerant</label>
@@ -164,16 +164,16 @@ export default function CylindersPage() {
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-gray-700">Capacity (kg)</label>
                   <input type="number" min="0" step="0.1" value={form.capacityKg} onChange={(e) => setForm({ ...form, capacityKg: e.target.value })}
-                    className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-gray-700">Province</label>
                   <input value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })}
-                    className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="button" onClick={() => setShowModal(false)} className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button type="submit" disabled={submitting} className="bg-[#D97706] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#b45309] disabled:opacity-50">
                   {submitting ? 'Saving…' : 'Register'}
                 </button>

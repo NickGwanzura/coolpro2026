@@ -49,7 +49,7 @@ function RejectModal({
     const [reason, setReason] = useState('');
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md border border-gray-200 bg-white p-6 shadow-xl">
+            <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
                 <h3 className="text-base font-semibold text-gray-900">Reject reorder: {reorderGas}</h3>
                 <p className="mt-2 text-sm text-gray-500">Provide a reason. This will be visible to the vendor.</p>
                 <textarea
@@ -91,7 +91,7 @@ function ReorderRow({
     actions?: React.ReactNode;
 }) {
     return (
-        <div className="border border-gray-200 bg-gray-50 p-5">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
@@ -147,7 +147,7 @@ export default function ApprovalsPage() {
 
     if (!session || session.role !== 'org_admin') {
         return (
-            <div className="border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
                 Access restricted. This page is for admin reviewers only.
             </div>
         );
@@ -203,7 +203,7 @@ export default function ApprovalsPage() {
 
     return (
         <div className="space-y-8">
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
                         Supplier Approvals
@@ -215,7 +215,7 @@ export default function ApprovalsPage() {
                 </div>
             </div>
 
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                     <div>
                         <h2 className="text-base font-semibold text-gray-900">Pending HEVACRAZ review</h2>
@@ -227,7 +227,7 @@ export default function ApprovalsPage() {
                 </div>
 
                 {pendingHevacraz.length === 0 ? (
-                    <div className="mt-6 border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+                    <div className="mt-6 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
                         No pending requests at this stage.
                     </div>
                 ) : (
@@ -262,7 +262,7 @@ export default function ApprovalsPage() {
                 )}
             </div>
 
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                     <div>
                         <h2 className="text-base font-semibold text-gray-900">Pending NOU review</h2>
@@ -274,7 +274,7 @@ export default function ApprovalsPage() {
                 </div>
 
                 {pendingNou.length === 0 ? (
-                    <div className="mt-6 border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+                    <div className="mt-6 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
                         No requests awaiting NOU review at this time.
                     </div>
                 ) : (
@@ -309,12 +309,12 @@ export default function ApprovalsPage() {
                 )}
             </div>
 
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-gray-900">Completed reorders</h2>
                 <p className="mt-1 text-sm text-gray-500">{history.length} completed (approved + rejected) across all vendors</p>
 
                 {history.length === 0 ? (
-                    <div className="mt-6 border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+                    <div className="mt-6 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
                         No completed reorders yet.
                     </div>
                 ) : (

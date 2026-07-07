@@ -426,7 +426,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     {/* Date Filter */}
-                    <div className="flex items-center border border-[#E7E5E4] bg-white divide-x divide-[#E7E5E4]">
+                    <div className="rounded-lg flex items-center border border-[#E7E5E4] bg-white divide-x divide-[#E7E5E4]">
                         {(['today', 'week', 'month'] as const).map((range) => (
                             <button
                                 key={range}
@@ -458,7 +458,7 @@ export default function DashboardPage() {
                     {isAdmin && (
                         <button
                             onClick={exportAdminCsv}
-                            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-[#44403C] bg-white border border-[#E7E5E4] hover:bg-[#FAFAF9] transition-colors"
+                            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-[#44403C] rounded-lg bg-white border border-[#E7E5E4] hover:bg-[#FAFAF9] transition-colors"
                         >
                             <Download className="h-4 w-4" />
                             CSV
@@ -467,7 +467,7 @@ export default function DashboardPage() {
                     {isAdmin && (
                         <button
                             onClick={exportAdminPdf}
-                            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-[#44403C] bg-white border border-[#E7E5E4] hover:bg-[#FAFAF9] transition-colors"
+                            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-[#44403C] rounded-lg bg-white border border-[#E7E5E4] hover:bg-[#FAFAF9] transition-colors"
                         >
                             <Download className="h-4 w-4" />
                             PDF
@@ -523,7 +523,7 @@ export default function DashboardPage() {
 
             {/* Supplier Review - Admin */}
             {isAdmin && (
-                <div className="bg-white border border-[#E7E5E4] p-6">
+                <div className="rounded-lg bg-white border border-[#E7E5E4] p-6">
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                         <div>
                             <h2 className="text-lg font-semibold text-[#1C1917]">
@@ -552,15 +552,15 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
-                        <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                        <div className="rounded-lg border border-[#E7E5E4] bg-[#FAFAF9] p-4">
                             <p className="text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Pending</p>
                             <p className="mt-2 text-3xl font-bold text-[#1C1917]">{supplierSummary.pendingApplications}</p>
                         </div>
-                        <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                        <div className="rounded-lg border border-[#E7E5E4] bg-[#FAFAF9] p-4">
                             <p className="text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Approved</p>
                             <p className="mt-2 text-3xl font-bold text-[#1C1917]">{supplierSummary.approvedApplications}</p>
                         </div>
-                        <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                        <div className="rounded-lg border border-[#E7E5E4] bg-[#FAFAF9] p-4">
                             <p className="text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Rejected</p>
                             <p className="mt-2 text-3xl font-bold text-[#1C1917]">{supplierSummary.rejectedApplications}</p>
                         </div>
@@ -573,7 +573,7 @@ export default function DashboardPage() {
                             </div>
                         ) : (
                             supplierSummary.latestApplications.map((application) => (
-                                <div key={application.id} className="border border-[#E7E5E4] bg-[#FAFAF9] p-4">
+                                <div key={application.id} className="rounded-lg border border-[#E7E5E4] bg-[#FAFAF9] p-4">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
                                             <p className="font-semibold text-[#1C1917]">{application.companyName}</p>
@@ -593,7 +593,7 @@ export default function DashboardPage() {
             )}
 
             {/* Quick Actions - Role-based */}
-            <div className="bg-white border border-[#E7E5E4] p-6">
+            <div className="rounded-lg bg-white border border-[#E7E5E4] p-6">
                 <h2 className="text-lg font-semibold mb-4 text-[#1C1917]">
                     {isAdmin ? 'Admin Quick Actions' : 'Quick Actions'}
                 </h2>
@@ -622,7 +622,7 @@ export default function DashboardPage() {
                         );
                     })}
                     {!isAdmin && (
-                        <div className="flex items-center gap-3 p-4 border border-red-200 bg-red-50 hover:bg-red-100 transition-colors group cursor-pointer">
+                        <div className="rounded-lg flex items-center gap-3 p-4 border border-red-200 bg-red-50 hover:bg-red-100 transition-colors group cursor-pointer">
                             <div className="p-2 bg-red-100 text-red-600">
                                 <ShieldAlert className="h-5 w-5" />
                             </div>
@@ -640,7 +640,7 @@ export default function DashboardPage() {
             {!isAdmin && (
                 <>
                     {/* Recent Jobs */}
-                    <div className="bg-white border border-[#E7E5E4]">
+                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                             <div>
                                 <h2 className="text-base font-semibold text-[#1C1917]">Recent Jobs</h2>
@@ -730,7 +730,7 @@ export default function DashboardPage() {
                                                     )}
                                                     <Link
                                                         href="/job-planner"
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#44403C] bg-white border border-[#E7E5E4] hover:bg-[#FAFAF9] transition-colors opacity-0 group-hover:opacity-100"
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#44403C] rounded-lg bg-white border border-[#E7E5E4] hover:bg-[#FAFAF9] transition-colors opacity-0 group-hover:opacity-100"
                                                     >
                                                         <ExternalLink className="h-3.5 w-3.5" />
                                                         View
@@ -747,7 +747,7 @@ export default function DashboardPage() {
                     {/* Upcoming Schedule + Certifications */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Upcoming Scheduled Jobs */}
-                        <div className="bg-white border border-[#E7E5E4]">
+                        <div className="rounded-lg bg-white border border-[#E7E5E4]">
                             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                                 <div>
                                     <h2 className="text-base font-semibold text-[#1C1917]">Upcoming Schedule</h2>
@@ -815,7 +815,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Certification Status */}
-                        <div className="bg-white border border-[#E7E5E4]">
+                        <div className="rounded-lg bg-white border border-[#E7E5E4]">
                             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                                 <div>
                                     <h2 className="text-base font-semibold text-[#1C1917]">Certifications</h2>
@@ -871,7 +871,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Refrigerant Activity */}
-                    <div className="bg-white border border-[#E7E5E4]">
+                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                             <div>
                                 <h2 className="text-base font-semibold text-[#1C1917]">Refrigerant Activity</h2>
@@ -929,7 +929,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Gas Usage by Job Type */}
-                    <div className="bg-white border border-[#E7E5E4]">
+                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                             <div>
                                 <h2 className="text-base font-semibold text-[#1C1917]">Gas Usage by Job Type</h2>
@@ -959,7 +959,7 @@ export default function DashboardPage() {
                         {gasUsageLoading && !gasUsageData && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
                                 {[1, 2, 3].map((i) => (
-                                    <div key={i} className="border border-[#E7E5E4] bg-[#FAFAF9] p-4 animate-pulse">
+                                    <div key={i} className="rounded-lg border border-[#E7E5E4] bg-[#FAFAF9] p-4 animate-pulse">
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="h-4 w-24 bg-gray-100 rounded" />
                                             <div className="h-3 w-16 bg-gray-100 rounded" />
@@ -1001,7 +1001,7 @@ export default function DashboardPage() {
                                     };
                                     const barColor = colorMap[entry.jobType] ?? 'from-gray-500 to-gray-400';
                                     return (
-                                        <div key={entry.jobType} className="border border-[#E7E5E4] bg-[#FAFAF9] p-4 hover:bg-white transition-colors">
+                                        <div key={entry.jobType} className="rounded-lg border border-[#E7E5E4] bg-[#FAFAF9] p-4 hover:bg-white transition-colors">
                                             <div className="flex items-center justify-between mb-3">
                                                 <h3 className="text-sm font-bold text-[#1C1917]">{entry.label}</h3>
                                                 <span className="text-xs text-[#A8A29E] font-semibold">{entry.count} entries</span>
@@ -1058,7 +1058,7 @@ export default function DashboardPage() {
 
             {/* Admin-only: Technician Performance Table */}
             {isAdmin && (
-                <div className="bg-white border border-[#E7E5E4] p-6">
+                <div className="rounded-lg bg-white border border-[#E7E5E4] p-6">
                     <h2 className="text-lg font-semibold text-[#1C1917] mb-4">Top Performers {dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This Week' : 'This Month'}</h2>
                     <div className="overflow-x-auto">
                         <table className="w-full">

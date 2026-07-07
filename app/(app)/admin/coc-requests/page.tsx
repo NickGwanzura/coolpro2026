@@ -46,13 +46,13 @@ export default function AdminCocRequestsPage() {
             </div>
 
             {error && (
-                <div className="flex items-center gap-2 border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <div className="rounded-lg flex items-center gap-2 border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     {error}
                 </div>
             )}
 
-            <div className="border border-gray-200 bg-white shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
                 <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
                     <Clock className="h-4 w-4 text-amber-500" />
                     <h2 className="text-sm font-semibold text-gray-900">Pending review ({pending.length})</h2>
@@ -102,7 +102,7 @@ export default function AdminCocRequestsPage() {
                 )}
             </div>
 
-            <div className="border border-gray-200 bg-white shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
                 <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
                     <FileText className="h-4 w-4 text-gray-400" />
                     <h2 className="text-sm font-semibold text-gray-900">Reviewed ({reviewed.length})</h2>

@@ -76,7 +76,7 @@ export default function AdminInvitesPage() {
         </p>
       </div>
 
-      <form onSubmit={handleCreate} className="border border-gray-200 bg-white p-5 shadow-sm">
+      <form onSubmit={handleCreate} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Email</label>
@@ -86,7 +86,7 @@ export default function AdminInvitesPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@example.com"
-              className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
+              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
             />
           </div>
           <div>
@@ -94,7 +94,7 @@ export default function AdminInvitesPage() {
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
+              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
             >
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>{r.label}</option>
@@ -108,13 +108,13 @@ export default function AdminInvitesPage() {
               required
               value={region}
               onChange={(e) => setRegion(e.target.value)}
-              className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
+              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
             />
           </div>
         </div>
 
         {error && (
-          <div className="mt-4 flex items-center gap-2 border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="mt-4 rounded-lg flex items-center gap-2 border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
           </div>
@@ -152,7 +152,7 @@ export default function AdminInvitesPage() {
         </div>
       </form>
 
-      <div className="border border-gray-200 bg-white shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="border-b border-gray-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-gray-900">All invites</h2>
         </div>

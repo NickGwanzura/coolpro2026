@@ -72,7 +72,7 @@ function RejectModal({
   const [reason, setReason] = useState('');
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md border border-gray-200 bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
         <h3 className="text-base font-semibold text-gray-900">Reject: {title}</h3>
         <p className="mt-2 text-sm text-gray-500">Provide a reason. The applicant will see this note.</p>
         <textarea
@@ -137,7 +137,7 @@ export default function ApplicationsAdminPage() {
 
   if (!user || user.role !== 'org_admin') {
     return (
-      <div className="border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+      <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
         Access restricted. This page is for HEVACRAZ admins only.
       </div>
     );
@@ -170,7 +170,7 @@ export default function ApplicationsAdminPage() {
 
   return (
     <div className="space-y-8">
-      <div className="border border-gray-200 bg-white p-6 shadow-sm">          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
+      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">
             HEVACRAZ admin
           </p>
         <h1 className="mt-2 text-2xl font-bold text-gray-900">Registration Applications</h1>
@@ -303,7 +303,7 @@ function LaneSection({
   if (error) {
     const message = error instanceof Error ? error.message : 'Failed to load.';
     return (
-      <div className="border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+      <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
         {message}
       </div>
     );
@@ -311,7 +311,7 @@ function LaneSection({
   const arr = (children as React.ReactNode[]) ?? [];
   if (Array.isArray(arr) && arr.length === 0) {
     return (
-      <div className="border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-500">
+      <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-500">
         {empty}
       </div>
     );
@@ -376,7 +376,7 @@ function StudentRow({
   onReject: () => void;
 }) {
   return (
-    <div className="border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2 min-w-0">
           <div className="flex flex-wrap items-center gap-3">
@@ -421,7 +421,7 @@ function TechnicianRow({
   onReject: () => void;
 }) {
   return (
-    <div className="border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2 min-w-0">
           <div className="flex flex-wrap items-center gap-3">
@@ -481,7 +481,7 @@ function SupplierRow({
   onReject: () => void;
 }) {
   return (
-    <div className="border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2 min-w-0">
           <div className="flex flex-wrap items-center gap-3">

@@ -80,7 +80,7 @@ function AcceptInviteContent() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9] px-4">
-      <div className="w-full max-w-md border border-[#E5E0DB] bg-white p-8 shadow-sm">
+      <div className="w-full rounded-xl max-w-md border border-[#E5E0DB] bg-white p-8 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
           <div className="p-2.5" style={{ backgroundColor: 'rgba(217,119,6,0.10)', color: '#D97706' }}>
             <UserPlus className="h-5 w-5" />
@@ -127,7 +127,7 @@ function AcceptInviteContent() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
                 />
               </div>
               <div>
@@ -138,7 +138,7 @@ function AcceptInviteContent() {
                   minLength={MIN_PASSWORD_LENGTH}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
                 />
                 <p className="mt-1 text-xs text-gray-400">At least {MIN_PASSWORD_LENGTH} characters.</p>
               </div>
@@ -150,7 +150,7 @@ function AcceptInviteContent() {
                   minLength={MIN_PASSWORD_LENGTH}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white"
                 />
               </div>
 

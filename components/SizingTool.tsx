@@ -1469,7 +1469,7 @@ const SizingTool: React.FC = () => {
         </>
       ) : activeCalculator === 'superheat' ? (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.35fr_0.95fr]">
-          <div className="border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-6">
             <div>
               <h3 className="text-xl font-bold text-gray-900">Superheat & Subcooling Calculator</h3>
               <p className="mt-1 text-sm text-gray-500">
@@ -1499,12 +1499,12 @@ const SizingTool: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="border border-gray-200 bg-gray-50 p-5">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-5">
                 <p className="text-sm font-semibold text-gray-500">Evaporator Saturation Temp</p>
                 <p className="mt-3 text-3xl font-bold text-gray-900">{saturationTempLow.toFixed(1)}°C</p>
                 <p className="mt-2 text-xs text-gray-500">Interpolated from suction pressure</p>
               </div>
-              <div className="border border-gray-200 bg-gray-50 p-5">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-5">
                 <p className="text-sm font-semibold text-gray-500">Condensing Saturation Temp</p>
                 <p className="mt-3 text-3xl font-bold text-gray-900">{saturationTempHigh.toFixed(1)}°C</p>
                 <p className="mt-2 text-xs text-gray-500">Interpolated from liquid pressure</p>
@@ -1518,7 +1518,7 @@ const SizingTool: React.FC = () => {
               <p className="mt-3 text-4xl font-bold text-blue-400">{superheatValue.toFixed(1)}°C</p>
               <p className="mt-2 text-sm text-gray-300">Status: {superheatStatus}</p>
             </div>
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-gray-500">Subcooling</p>
               <p className="mt-3 text-4xl font-bold text-gray-900">{subcoolingValue.toFixed(1)}°C</p>
               <p className="mt-2 text-sm text-gray-500">Status: {subcoolingStatus}</p>
@@ -1534,7 +1534,7 @@ const SizingTool: React.FC = () => {
           </div>
         </div>
       ) : activeCalculator === 'pt-chart' ? (
-        <div className="border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 className="text-xl font-bold text-gray-900">Pressure-Temperature Chart</h3>
@@ -1624,11 +1624,11 @@ const SizingTool: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="border border-gray-200 bg-gray-50 p-5">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-5">
               <p className="text-sm font-semibold text-gray-500">Selected Curve</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{selectedRefrigerant}</p>
             </div>
-            <div className="border border-gray-200 bg-gray-50 p-5">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-5">
               <p className="text-sm font-semibold text-gray-500">Safety Class</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{REFRIGERANT_REFERENCE[selectedRefrigerant].ashraeSafetyClass}</p>
             </div>
@@ -1640,7 +1640,7 @@ const SizingTool: React.FC = () => {
         </div>
       ) : activeCalculator === 'leak-rate' ? (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-6">
             <div>
               <h3 className="text-xl font-bold text-gray-900">Leak Rate & CO2-eq Calculator</h3>
               <p className="mt-1 text-sm text-gray-500">
@@ -1664,7 +1664,7 @@ const SizingTool: React.FC = () => {
                 </select>
               </div>
             </div>
-            <div className="border border-gray-200 bg-gray-50 p-5">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-5">
               <p className="text-sm font-semibold text-gray-500">Handling Precautions</p>
               <ul className="mt-3 space-y-2 text-sm text-gray-700">
                 {leakEquivalent.refrigerant.handlingPrecautions.map((item) => (
@@ -1680,7 +1680,7 @@ const SizingTool: React.FC = () => {
               <p className="mt-3 text-4xl font-bold text-emerald-400">{leakEquivalent.co2eq} tCO2-eq</p>
               <p className="mt-2 text-sm text-gray-300">Based on {leakEquivalent.refrigerant.gwp} GWP for {leakInputs.refrigerantCode}</p>
             </div>
-            <div className="border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-gray-500">Equivalent Car Journeys</p>
               <p className="mt-3 text-4xl font-bold text-gray-900">{leakEquivalent.carJourneys}</p>
               <p className="mt-2 text-sm text-gray-500">Approximate one-way urban journeys for context.</p>
@@ -1689,7 +1689,7 @@ const SizingTool: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-6">
             <div>
               <h3 className="text-xl font-bold text-gray-900">Unit Converter</h3>
               <p className="mt-1 text-sm text-gray-500">
