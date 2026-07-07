@@ -37,7 +37,30 @@ interface BrowserSpeechRecognition {
 
 type RecognitionConstructor = new () => BrowserSpeechRecognition;
 
-async function buildContextualResponse(query: string, emergencyMode: boolean, language: 'en' | 'fr') {
+type ChatTurn = { role: 'user' | 'model'; text: string };
+
+async function fetchGeminiResponse(message: string, history: ChatTurn[]): Promise<string | null> {
+  try {
+    const res = await fetch('/api/voice-assistant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ message, history }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { answer: string | null; fallback: boolean };
+    return data.fallback ? null : data.answer;
+  } catch {
+    return null;
+  }
+}
+
+async function buildContextualResponse(
+  query: string,
+  emergencyMode: boolean,
+  language: 'en' | 'fr',
+  history: ChatTurn[],
+) {
   const trimmed = query.trim();
   const lower = trimmed.toLowerCase();
 
@@ -59,7 +82,11 @@ async function buildContextualResponse(query: string, emergencyMode: boolean, la
       : 'Use the public verification portal with the certificate number or QR code to confirm status and expiry.';
   }
 
-  const baseline = await buildSafetyAssistantResponse(trimmed, language);
+  // Gemini (grounded in the real WhatGas registry via tool-calling) is the primary responder;
+  // the rule-based baseline is the offline/failure fallback so field techs on poor connectivity
+  // or during a Gemini outage still get a real answer, not an error.
+  const geminiAnswer = await fetchGeminiResponse(trimmed, history);
+  const baseline = geminiAnswer ?? await buildSafetyAssistantResponse(trimmed, language);
 
   if (!emergencyMode) {
     return baseline;
@@ -103,6 +130,7 @@ export function FloatingVoiceButton() {
   const [sessions, setSessions] = useState<SafetySession[]>(() =>
     readCollection<SafetySession>(STORAGE_KEYS.voiceSessions, [])
   );
+  const [chatHistory, setChatHistory] = useState<ChatTurn[]>([]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -206,9 +234,14 @@ export function FloatingVoiceButton() {
     const nextQuery = value.trim();
     if (!nextQuery) return;
 
-    const nextResponse = await buildContextualResponse(nextQuery, emergencyMode, language);
+    const nextResponse = await buildContextualResponse(nextQuery, emergencyMode, language, chatHistory);
     setResponse(nextResponse);
     setErrorMessage('');
+    setChatHistory((prev) => [
+      ...prev,
+      { role: 'user' as const, text: nextQuery },
+      { role: 'model' as const, text: nextResponse },
+    ].slice(-12));
     await persistSession(nextQuery, nextResponse);
     speakResponse(nextResponse);
   };
