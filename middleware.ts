@@ -44,7 +44,7 @@ const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
     { prefix: '/learn/manage', roles: ['trainer', 'lecturer'] },
     { prefix: '/learn', roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
     { prefix: '/sizing-tool', roles: ['technician'] },
-    { prefix: '/field-toolkit', roles: ['technician'] },
+    { prefix: '/field-toolkit', roles: ['technician', 'org_admin'] },
     { prefix: '/whatgas', roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
     { prefix: '/certifications', roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
     { prefix: '/rewards', roles: ['technician', 'vendor', 'org_admin'] },

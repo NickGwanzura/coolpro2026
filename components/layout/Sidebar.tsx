@@ -67,7 +67,7 @@ const NAV_SECTIONS: NavSection[] = [
     {
         label: 'Field Tools',
         items: [
-            { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician'] },
+            { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician', 'org_admin'] },
             { name: 'Job Planner', href: '/job-planner', icon: CalendarRange, roles: ['technician'] },
             { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician'] },
             { name: 'Health & Wellness', href: '/health-safety', icon: HeartPulse, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
