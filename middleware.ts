@@ -92,6 +92,10 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
+    if (role === 'org_admin') {
+        return NextResponse.next();
+    }
+
     const matchedRule = ROUTE_ROLE_RULES.find(({ prefix }) => pathname.startsWith(prefix));
     if (matchedRule) {
         if (!role || !matchedRule.roles.includes(role)) {

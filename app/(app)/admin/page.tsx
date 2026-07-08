@@ -16,7 +16,7 @@ export default function AdminPage() {
                     <p className="text-gray-500 mt-1">Program administration and compliance monitoring</p>
                 </div>
             </div>
-            <ComplianceDashboard role={session.role} />
+            <ComplianceDashboard />
         </div>
     );
 }

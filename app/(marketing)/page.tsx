@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -26,6 +27,24 @@ const HERO_TAGS = [
   'Montreal Protocol',
   'Kigali Amendment',
   'SI 49 of 2023',
+];
+
+const HERO_SLIDES = [
+  {
+    src: '/images/hero/zimbabwe-hvac-rooftop.png',
+    alt: 'Zimbabwean HVAC technician inspecting rooftop units in Harare',
+    label: 'Harare rooftop',
+  },
+  {
+    src: '/images/hero/zimbabwe-cold-chain-market.png',
+    alt: 'Zimbabwean refrigeration technician checking a market cold room',
+    label: 'Cold chain',
+  },
+  {
+    src: '/images/hero/zimbabwe-hvac-training.png',
+    alt: 'Zimbabwean HVAC-R trainees reviewing an air conditioning training rig',
+    label: 'Skills training',
+  },
 ];
 
 const WHY = [
@@ -133,16 +152,31 @@ const INSTITUTIONAL_LINKS: {
 ];
 
 export default function HomePage() {
+  const [activeHeroSlide, setActiveHeroSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveHeroSlide((current) => (current + 1) % HERO_SLIDES.length);
+    }, 5500);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#ffffff' }}>
       {/* Hero */}
       <section className="relative min-h-[88vh] sm:min-h-screen flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=1920&h=1080&fit=crop"
-            alt="Zimbabwean HVAC technician at work"
-            className="w-full h-full object-cover object-center scale-105 motion-safe:animate-[slowZoom_24s_ease-out_infinite_alternate]"
-          />
+          {HERO_SLIDES.map((slide, index) => (
+            <img
+              key={slide.src}
+              src={slide.src}
+              alt={slide.alt}
+              className={`absolute inset-0 h-full w-full object-cover object-center scale-105 motion-safe:animate-[slowZoom_24s_ease-out_infinite_alternate] transition-opacity duration-1000 ${
+                activeHeroSlide === index ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+          ))}
           <div className="absolute inset-0 bg-black/65" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/90 to-transparent" />
@@ -199,17 +233,25 @@ export default function HomePage() {
             <p className="mt-5 text-xs sm:text-sm text-white/60 tracking-wide">
               Aligned with the Kigali Amendment · Montreal Protocol · SI 49 of 2023
             </p>
-          </div>
-        </div>
 
-        {/* Floating detail photo */}
-        <div className="hidden lg:block absolute bottom-28 right-8 xl:right-16 z-10 w-56 xl:w-64">
-          <div className="border-4 border-white/10 shadow-2xl shadow-black/40 overflow-hidden rotate-2 hover:rotate-0 transition-transform duration-300">
-            <img
-              src="https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=700&h=875&fit=crop&crop=top"
-              alt="Close-up of a certified technician servicing refrigeration equipment"
-              className="w-full h-72 xl:h-80 object-cover"
-            />
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              {HERO_SLIDES.map((slide, index) => (
+                <button
+                  key={slide.label}
+                  type="button"
+                  onClick={() => setActiveHeroSlide(index)}
+                  className={`inline-flex items-center gap-2 border px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-colors ${
+                    activeHeroSlide === index
+                      ? 'border-[#D97706] bg-[#D97706] text-white'
+                      : 'border-white/25 bg-white/5 text-white/70 hover:border-white/50 hover:text-white'
+                  }`}
+                  aria-label={`Show ${slide.label} hero image`}
+                >
+                  <span className="text-white/60">0{index + 1}</span>
+                  {slide.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

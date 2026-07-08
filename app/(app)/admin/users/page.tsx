@@ -12,7 +12,6 @@ const ROLES = [
   { value: 'lecturer', label: 'Lecturer' },
   { value: 'vendor', label: 'Vendor' },
   { value: 'student', label: 'Student' },
-  { value: 'org_admin', label: 'Org Admin' },
 ];
 
 const STATUSES = [
@@ -85,6 +84,9 @@ function UserRow({ user, isSelf }: { user: AdminUserRecord; isSelf: boolean }) {
           onChange={(e) => handleRoleChange(e.target.value)}
           className="rounded border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:border-blue-300 disabled:opacity-50"
         >
+          {user.role === 'org_admin' && (
+            <option value="org_admin">Org Admin</option>
+          )}
           {ROLES.map((r) => (
             <option key={r.value} value={r.value}>{r.label}</option>
           ))}

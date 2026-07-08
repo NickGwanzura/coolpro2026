@@ -12,7 +12,7 @@ import {
     Search,
 } from 'lucide-react';
 import { getSession, type UserSession } from '@/lib/auth';
-import { usePlannerJobs, useGasLogs } from '@/lib/api';
+import { usePlannerJobs, useGasLogs, useInstallations } from '@/lib/api';
 import { JobTypeLabels } from '@/types/index';
 import type { Installation, PlannerJob, RefrigerantLog } from '@/types/index';
 
@@ -27,6 +27,9 @@ type AdminRecord = {
     equipmentType: string;
     detail: string;
 };
+
+const EMPTY_INSTALLATIONS: Installation[] = [];
+const EMPTY_LOGS: RefrigerantLog[] = [];
 
 function buildAdminRecords(
     plannerJobs: PlannerJob[],
@@ -85,6 +88,7 @@ export default function JobsPage() {
     const [selectedRecordType, setSelectedRecordType] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
     const { data: plannerJobs = [] } = usePlannerJobs();
+    const { data: installationsData } = useInstallations();
     const { data: gasLogsData } = useGasLogs(undefined, undefined, 200);
 
     useEffect(() => {
@@ -93,10 +97,8 @@ export default function JobsPage() {
         setSession(userSession);
     }, []);
 
-    // Installations are still localStorage-only (no DB table yet — item 15 in refactor plan)
-    const installations: Installation[] = [];
-    // Logs from the DB-backed gas logs API
-    const logs: RefrigerantLog[] = (gasLogsData ?? []) as RefrigerantLog[];
+    const installations = installationsData ?? EMPTY_INSTALLATIONS;
+    const logs = (gasLogsData ?? EMPTY_LOGS) as RefrigerantLog[];
 
     const isAdmin = session?.role === 'org_admin';
     const adminRecords = useMemo(

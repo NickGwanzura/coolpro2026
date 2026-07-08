@@ -8,7 +8,6 @@ import {
     LayoutDashboard,
     BookOpen,
     Calculator,
-    Building2,
     Factory,
     Wrench,
     ClipboardList,
@@ -17,15 +16,12 @@ import {
     Award,
     Users,
     ShieldCheck,
-    LogOut,
     X,
     AlertTriangle,
     WifiOff,
-    ChevronDown,
     UserCircle,
     FlaskConical,
     HeartPulse,
-    GraduationCap,
     BarChart3,
     Database,
     Cylinder,
@@ -43,6 +39,7 @@ interface NavItem {
     href: string;
     icon: ComponentType<SVGProps<SVGSVGElement>>;
     roles: string[];
+    exact?: boolean;
     children?: NavItem[];
 }
 
@@ -71,7 +68,7 @@ const NAV_SECTIONS: NavSection[] = [
         items: [
             { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician', 'org_admin'] },
             { name: 'Job Planner', href: '/job-planner', icon: CalendarRange, roles: ['technician'] },
-            { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician'] },
+            { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician', 'org_admin'] },
             { name: 'Health & Wellness', href: '/health-safety', icon: HeartPulse, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
         ],
     },
@@ -97,7 +94,6 @@ const NAV_SECTIONS: NavSection[] = [
         items: [
             { name: 'Certification', href: '/certifications', icon: Award, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
             { name: 'Rewards', href: '/rewards', icon: Award, roles: ['technician', 'vendor', 'org_admin'] },
-            { name: 'Supply Reports', href: '/suppliers', icon: Building2, roles: ['vendor'] },
             { name: 'Supplier Compliance', href: '/supplier-compliance', icon: ShieldCheck, roles: ['vendor'] },
             { name: 'Supply Reports', href: '/suppliers', icon: Factory, roles: ['vendor', 'org_admin'] },
             { name: 'Vendor Reorder', href: '/suppliers/reorder', icon: Factory, roles: ['vendor'] },
@@ -116,13 +112,12 @@ const NAV_SECTIONS: NavSection[] = [
         label: 'People',
         items: [
             { name: 'System Users', href: '/admin/users', icon: Users, roles: ['org_admin'] },
-            { name: 'Technician Registry', href: '/technician-registry', icon: Users, roles: ['org_admin'] },
             { name: 'Applications', href: '/admin/applications', icon: ShieldCheck, roles: ['org_admin'] },
             { name: 'Invites', href: '/admin/invites', icon: UserPlus, roles: ['org_admin'] },
         ],
     },
     {
-        label: 'Compliance',
+        label: 'Admin Reviews',
         items: [
             { name: 'NOU Dashboard', href: '/nou-dashboard', icon: AlertTriangle, roles: ['org_admin'] },
             { name: 'Course Approvals', href: '/learn/approvals', icon: ShieldCheck, roles: ['org_admin'] },
@@ -136,7 +131,79 @@ const NAV_SECTIONS: NavSection[] = [
             { name: 'Reporting', href: '/admin/reporting', icon: BarChart3, roles: ['org_admin'] },
             { name: 'Refrigerant Analytics', href: '/admin/refrigerant-analytics', icon: BarChart3, roles: ['org_admin'] },
             { name: 'Refrigerants (WhatGas Sync)', href: '/admin/refrigerants', icon: Database, roles: ['org_admin'] },
+        ],
+    },
+];
+
+const ADMIN_NAV_SECTIONS: NavSection[] = [
+    {
+        items: [
+            { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['org_admin'] },
+            { name: 'Compliance Dashboard', href: '/admin', icon: ShieldCheck, roles: ['org_admin'], exact: true },
+        ],
+    },
+    {
+        label: 'Operations',
+        items: [
+            { name: 'Learning Hub', href: '/learn', icon: BookOpen, roles: ['org_admin'], exact: true },
+            { name: 'Manage Courses', href: '/learn/manage', icon: BookOpen, roles: ['org_admin'] },
+            { name: 'Field Scheduling', href: '/field-scheduling', icon: BellRing, roles: ['org_admin'] },
+            { name: 'Job Planner', href: '/job-planner', icon: CalendarRange, roles: ['org_admin'] },
+            { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['org_admin'] },
+            { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['org_admin'] },
+            { name: 'Safety', href: '/safety', icon: ShieldCheck, roles: ['org_admin'] },
+            { name: 'Health & Wellness', href: '/health-safety', icon: HeartPulse, roles: ['org_admin'] },
+        ],
+    },
+    {
+        label: 'Tools',
+        items: [
+            { name: 'WhatGas + Risk Engine', href: '/whatgas', icon: FlaskConical, roles: ['org_admin'] },
+            { name: 'Sizing Tool', href: '/sizing-tool', icon: Calculator, roles: ['org_admin'] },
+        ],
+    },
+    {
+        label: 'Refrigerants',
+        items: [
+            { name: 'Refrigerant Catalogue', href: '/refrigerants', icon: Database, roles: ['org_admin'] },
+            { name: 'Cylinder Registry', href: '/cylinders', icon: Cylinder, roles: ['org_admin'] },
+            { name: 'Import/Export Permits', href: '/permits', icon: FileText, roles: ['org_admin'] },
+            { name: 'Reclamation', href: '/reclamation', icon: Recycle, roles: ['org_admin'] },
+            { name: 'Recycling', href: '/recycling', icon: RefreshCw, roles: ['org_admin'] },
+        ],
+    },
+    {
+        label: 'Suppliers',
+        items: [
+            { name: 'Supplier Management', href: '/suppliers', icon: Factory, roles: ['org_admin'], exact: true },
+            { name: 'Supplier Compliance', href: '/supplier-compliance', icon: ShieldCheck, roles: ['org_admin'] },
+            { name: 'Vendor Reorder', href: '/suppliers/reorder', icon: Factory, roles: ['org_admin'] },
+            { name: 'Verify Buyer', href: '/suppliers/verify-buyer', icon: ShieldCheck, roles: ['org_admin'] },
+            { name: 'Supplier Approvals', href: '/suppliers/approvals', icon: ShieldCheck, roles: ['org_admin'] },
+        ],
+    },
+    {
+        label: 'Registry & People',
+        items: [
+            { name: 'Technician Registry', href: '/technician-registry', icon: Users, roles: ['org_admin'] },
+            { name: 'Certificate Verification', href: '/verify-technician', icon: ShieldCheck, roles: ['org_admin'] },
             { name: 'Certifications', href: '/certifications', icon: Award, roles: ['org_admin'] },
+            { name: 'Rewards', href: '/rewards', icon: Award, roles: ['org_admin'] },
+            { name: 'System Users', href: '/admin/users', icon: Users, roles: ['org_admin'] },
+            { name: 'Applications', href: '/admin/applications', icon: ShieldCheck, roles: ['org_admin'] },
+            { name: 'Invites', href: '/admin/invites', icon: UserPlus, roles: ['org_admin'] },
+        ],
+    },
+    {
+        label: 'Reviews & Data',
+        items: [
+            { name: 'NOU Dashboard', href: '/nou-dashboard', icon: AlertTriangle, roles: ['org_admin'] },
+            { name: 'Course Approvals', href: '/learn/approvals', icon: ShieldCheck, roles: ['org_admin'] },
+            { name: 'COC Requests', href: '/admin/coc-requests', icon: FileText, roles: ['org_admin'] },
+            { name: 'Accidents Module', href: '/admin/accidents', icon: AlertTriangle, roles: ['org_admin'] },
+            { name: 'Reporting', href: '/admin/reporting', icon: BarChart3, roles: ['org_admin'] },
+            { name: 'Refrigerant Analytics', href: '/admin/refrigerant-analytics', icon: BarChart3, roles: ['org_admin'] },
+            { name: 'Refrigerants (WhatGas Sync)', href: '/admin/refrigerants', icon: Database, roles: ['org_admin'] },
         ],
     },
 ];
@@ -146,7 +213,7 @@ interface SidebarProps {
 }
 
 function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string; onClose?: () => void }) {
-    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+    const isActive = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
     return (
         <Link
             href={item.href}
@@ -177,7 +244,8 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
     const { emergencyMode, toggleEmergencyMode } = useEmergencyMode();
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-    const visibleSections = NAV_SECTIONS.map(section => ({
+    const navSections = role === 'org_admin' ? ADMIN_NAV_SECTIONS : NAV_SECTIONS;
+    const visibleSections = navSections.map(section => ({
         ...section,
         items: section.items.filter(item => item.roles.includes(role)),
     })).filter(section => section.items.length > 0);

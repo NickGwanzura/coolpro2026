@@ -5,7 +5,7 @@ import { type UserSession } from '@/lib/auth';
 import { useClientSession } from '@/lib/useClientSession';
 import FieldScheduling from '@/components/FieldScheduling';
 
-const ALLOWED_ROLES: UserSession['role'][] = ['technician'];
+const ALLOWED_ROLES: UserSession['role'][] = ['technician', 'org_admin'];
 
 function AccessDenied() {
     return (
@@ -17,7 +17,7 @@ function AccessDenied() {
                 <div className="space-y-2">
                     <h1 className="text-2xl font-bold text-gray-900">Field Scheduling Access Required</h1>
                     <p className="text-sm text-gray-600">
-                        This equipment and alert workspace is available to technicians only.
+                        This equipment and alert workspace is available to technicians and organisation admins only.
                     </p>
                 </div>
             </div>

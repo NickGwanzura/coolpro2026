@@ -11,7 +11,6 @@ const ROLES = [
   { value: 'lecturer', label: 'Lecturer' },
   { value: 'vendor', label: 'Vendor' },
   { value: 'student', label: 'Student' },
-  { value: 'org_admin', label: 'Org Admin' },
 ];
 
 const STATUS_STYLES: Record<InviteStatus, string> = {
@@ -164,7 +163,7 @@ export default function AdminInvitesPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {invites.map((invite) => {
-              const url = typeof window !== 'undefined'
+              const url = invite.token && typeof window !== 'undefined'
                 ? `${window.location.origin}/accept-invite?token=${invite.token}`
                 : '';
               return (
@@ -189,6 +188,7 @@ export default function AdminInvitesPage() {
                     {invite.status === 'pending' && (
                       <>
                         <button
+                          disabled={!url}
                           onClick={() => copyLink(invite.id, url)}
                           className="inline-flex items-center gap-1.5 border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                         >

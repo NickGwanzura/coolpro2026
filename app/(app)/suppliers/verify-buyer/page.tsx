@@ -105,10 +105,10 @@ export default function VerifyBuyerPage() {
         );
     }
 
-    if (!session || session.role !== 'vendor') {
+    if (!session || (session.role !== 'vendor' && session.role !== 'org_admin')) {
         return (
             <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-                Access restricted. This page is for vendors only.
+                Access restricted. This page is for vendors and admins only.
             </div>
         );
     }

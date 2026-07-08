@@ -42,6 +42,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!VALID_ROLES.includes(body.role as (typeof VALID_ROLES)[number])) {
       return NextResponse.json({ error: 'Unknown role' }, { status: 400 });
     }
+    if (body.role === 'org_admin' && existing.role !== 'org_admin') {
+      return NextResponse.json({ error: 'Org admin access cannot be granted from this screen' }, { status: 403 });
+    }
     update.role = body.role as (typeof VALID_ROLES)[number];
   }
   if (body.status !== undefined) {

@@ -5,11 +5,33 @@ import { Mail, MapPin, Phone, Send, CheckCircle, Facebook, Linkedin } from 'luci
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError('');
+    setIsSending(true);
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+
+      const result = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) {
+        throw new Error(result.error ?? 'Unable to send message');
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to send message');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -113,6 +135,7 @@ export default function ContactPage() {
                     <button
                       onClick={() => {
                         setSubmitted(false);
+                        setError('');
                         setForm({ name: '', email: '', subject: '', message: '' });
                       }}
                       className="mt-6 text-sm font-semibold"
@@ -125,8 +148,15 @@ export default function ContactPage() {
                   <form onSubmit={handleSubmit} className="space-y-5">
                     <h2 className="text-2xl font-bold mb-6" style={{ color: '#1C1917' }}>Send us a message</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: '#1C1917' }}>Name</label>
+                    {error && (
+                      <div className="border px-4 py-3 text-sm font-medium" style={{ borderColor: '#FCA5A5', backgroundColor: '#FEF2F2', color: '#991B1B' }}>
+                        {error === 'Email service unavailable'
+                          ? 'Email is not configured yet. Please use info@hevacraz.co.zw for now.'
+                          : error}
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: '#1C1917' }}>Name</label>
                         <input
                           type="text"
                           required
@@ -179,10 +209,11 @@ export default function ContactPage() {
                     </div>
                     <button
                       type="submit"
-                      className="inline-flex items-center gap-2 px-6 py-3 font-semibold text-white transition-colors"
-                      style={{ backgroundColor: '#D97706' }}
+                      disabled={isSending}
+                      className="inline-flex items-center gap-2 px-6 py-3 font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                      style={{ backgroundColor: isSending ? '#A8A29E' : '#D97706' }}
                     >
-                      Send message
+                      {isSending ? 'Sending...' : 'Send message'}
                       <Send className="h-4 w-4" />
                     </button>
                   </form>

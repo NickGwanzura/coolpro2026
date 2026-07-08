@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
+  },
   env: {
     // Bridges the server-only ENABLE_DEMO_LOGIN into a client-readable value at build time,
     // so only one Railway variable needs to be set instead of two independently-named ones

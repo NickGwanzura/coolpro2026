@@ -122,7 +122,7 @@ function buildTechnicianActivity(items: TechnicianApplication[] | undefined): Ac
                 : `${t.name} application rejected`,
         description: `${t.specialization} · ${t.province} · ${t.yearsExperience}yrs exp`,
         actor: t.name,
-        href: '/admin/technicians',
+        href: '/technician-registry',
     }));
 }
 
@@ -419,7 +419,7 @@ export default function ReportingPage() {
                                 <p className="text-xs text-gray-500">Registration funnel</p>
                             </div>
                         </div>
-                        <Link href="/admin/technicians" className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">
+                        <Link href="/technician-registry" className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">
                             View <ChevronRight className="h-3 w-3" />
                         </Link>
                     </div>

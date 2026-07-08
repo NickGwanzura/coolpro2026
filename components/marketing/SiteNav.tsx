@@ -3,22 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X, ChevronDown, ArrowRight } from 'lucide-react';
-
-type SolutionLink = { name: string; href: string; description: string };
-
-const SOLUTIONS: SolutionLink[] = [
-  {
-    name: 'For Businesses',
-    href: '/for-businesses',
-    description: 'Verify technicians and manage team compliance at scale.',
-  },
-  {
-    name: 'For Suppliers',
-    href: '/for-suppliers',
-    description: 'Verify buyers and track refrigerant sales with NOU oversight.',
-  },
-];
+import { Menu, X, ArrowRight } from 'lucide-react';
 
 const PRIMARY_LINKS = [
   { name: 'About', href: '/about' },
@@ -31,11 +16,9 @@ const PRIMARY_LINKS = [
 export function SiteNav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [navHeight, setNavHeight] = useState(72);
   const pathname = usePathname();
   const navRef = useRef<HTMLElement | null>(null);
-  const solutionsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -66,31 +49,15 @@ export function SiteNav() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setMobileMenuOpen(false);
-        setSolutionsOpen(false);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  useEffect(() => {
-    setSolutionsOpen(false);
-  }, [pathname]);
-
   const navClass = scrolled
     ? 'fixed w-full z-50 transition-all duration-300 backdrop-blur-md bg-white/90 shadow-[0_1px_0_0_rgba(0,0,0,0.04),0_4px_20px_-6px_rgba(0,0,0,0.08)] py-3'
     : 'fixed w-full z-50 transition-all duration-300 bg-white/95 backdrop-blur-sm py-4';
-
-  const solutionsActive = SOLUTIONS.some((s) => pathname === s.href);
-
-  const openSolutions = () => {
-    if (solutionsTimer.current) clearTimeout(solutionsTimer.current);
-    setSolutionsOpen(true);
-  };
-  const closeSolutions = () => {
-    if (solutionsTimer.current) clearTimeout(solutionsTimer.current);
-    solutionsTimer.current = setTimeout(() => setSolutionsOpen(false), 120);
-  };
 
   return (
     <>
@@ -142,68 +109,6 @@ export function SiteNav() {
                 );
               })}
 
-              {/* Solutions dropdown */}
-              <div className="relative" onMouseEnter={openSolutions} onMouseLeave={closeSolutions}>
-                <button
-                  type="button"
-                  onClick={() => setSolutionsOpen((v) => !v)}
-                  aria-expanded={solutionsOpen}
-                  aria-haspopup="menu"
-                  className={`group relative inline-flex items-center gap-1 font-medium text-sm px-3 py-2 rounded-sm transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 ${
-                    solutionsActive || solutionsOpen ? 'text-[#1C1917]' : 'text-[#1C1917]/80 hover:text-[#1C1917]'
-                  }`}
-                >
-                  Solutions
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                      solutionsOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                  <span
-                    className={`pointer-events-none absolute left-3 right-7 -bottom-0.5 h-[2px] transition-all duration-300 ${
-                      solutionsActive ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
-                    }`}
-                    style={{ backgroundColor: '#D97706', transformOrigin: 'left' }}
-                  />
-                </button>
-
-                {solutionsOpen && (
-                  <div
-                    role="menu"
-                    className="absolute top-full left-0 mt-2 w-80 rounded-lg bg-white border border-[#E7E5E4] shadow-lg py-2 animate-[slideDown_180ms_ease-out]"
-                  >
-                    {SOLUTIONS.map((s) => {
-                      const active = pathname === s.href;
-                      return (
-                        <Link
-                          key={s.href}
-                          href={s.href}
-                          role="menuitem"
-                          aria-current={active ? 'page' : undefined}
-                          className="group flex items-start gap-3 px-4 py-3 text-sm transition-colors hover:bg-[#FAFAF9] focus-visible:outline-none focus-visible:bg-[#FAFAF9]"
-                          onClick={() => setSolutionsOpen(false)}
-                        >
-                          <span className="mt-1 shrink-0 p-1.5" style={{ backgroundColor: 'rgba(217,119,6,0.1)', color: '#D97706' }}>
-                            <ArrowRight className="h-3 w-3" />
-                          </span>
-                          <span className="flex-1">
-                            <span
-                              className={`block font-semibold tracking-tight ${
-                                active ? 'text-[#D97706]' : 'text-[#1C1917]'
-                              }`}
-                            >
-                              {s.name}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-gray-500 leading-snug">
-                              {s.description}
-                            </span>
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Right CTAs (desktop) */}
@@ -274,31 +179,6 @@ export function SiteNav() {
                     </li>
                   );
                 })}
-                <li className="py-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-400 mt-1 mb-1">
-                    Solutions
-                  </p>
-                  <ul className="space-y-1">
-                    {SOLUTIONS.map((s) => {
-                      const active = pathname === s.href;
-                      return (
-                        <li key={s.href}>
-                          <Link
-                            href={s.href}
-                            aria-current={active ? 'page' : undefined}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className={`flex items-center justify-between py-3 text-base transition-colors ${
-                              active ? 'text-[#D97706] font-medium' : 'text-[#1C1917]/90'
-                            }`}
-                          >
-                            <span>{s.name}</span>
-                            <ArrowRight className={`h-4 w-4 ${active ? 'text-[#D97706]' : 'text-gray-300'}`} />
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </li>
                 <li>
                   <Link
                     href="/login"

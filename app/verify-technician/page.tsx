@@ -124,7 +124,7 @@ export default function VerifyTechnicianPage() {
     '/api/public/technicians',
     (url: string) => fetch(url).then((res) => (res.ok ? res.json() : []))
   );
-  const technicians = techniciansData ?? [];
+  const technicians = useMemo(() => techniciansData ?? [], [techniciansData]);
 
   const { data: certificatesData } = useSWR<CertificateRecord[]>(
     '/api/public/certificates',
@@ -157,11 +157,14 @@ export default function VerifyTechnicianPage() {
   const [initialQueryRun, setInitialQueryRun] = useState(false);
   useEffect(() => {
     if (!initialQueryRun && !techniciansLoading && technicians.length > 0 && initialState.searchQuery) {
-      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const token = params?.get('token');
-      const match = findVerificationResult(initialState.searchQuery, initialState.searchMode, technicians, availableCertificates, token);
-      applySearchResult(match);
-      setInitialQueryRun(true);
+      const timer = window.setTimeout(() => {
+        const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+        const token = params?.get('token');
+        const match = findVerificationResult(initialState.searchQuery, initialState.searchMode, technicians, availableCertificates, token);
+        applySearchResult(match);
+        setInitialQueryRun(true);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [techniciansLoading, technicians, initialQueryRun, initialState, availableCertificates]);
 

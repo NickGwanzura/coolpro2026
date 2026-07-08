@@ -650,7 +650,7 @@ export default function LearnManagePage() {
         );
     }
 
-    if (!user || (user.role !== 'trainer' && user.role !== 'lecturer')) {
+    if (!user || (user.role !== 'trainer' && user.role !== 'lecturer' && user.role !== 'org_admin')) {
         router.replace('/dashboard');
         return null;
     }

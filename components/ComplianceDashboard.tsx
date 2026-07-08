@@ -2,8 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { UserRole } from '../types';
-import { TrendingDown, TrendingUp, ShieldCheck } from 'lucide-react';
+import { Download, ShieldCheck, TrendingDown, TrendingUp } from 'lucide-react';
 import OccupationalAccidentSection from './OccupationalAccidentSection';
 import { useReorders, useTechnicians } from '@/lib/api';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
@@ -37,7 +36,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, unit, trend, positive, 
   </div>
 );
 
-const ComplianceDashboard: React.FC<{ role: UserRole }> = ({ role }) => {
+const ComplianceDashboard: React.FC = () => {
   const { data: reorders = [] } = useReorders();
   const { data: technicians = [] } = useTechnicians();
 
@@ -100,8 +99,37 @@ const ComplianceDashboard: React.FC<{ role: UserRole }> = ({ role }) => {
       gwpImpactTonnes: Math.round(gwpImpactTonnes),
       naturalSharePct,
       activeCerts,
+      approvedKg: Math.round(totalKg),
+      pendingReviewCount: reorders.filter(r => r.status === 'pending_hevacraz' || r.status === 'pending_nou').length,
     };
   }, [reorders, technicians]);
+
+  const exportPdf = async () => {
+    const { jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text('HEVACRAZ Compliance Report', 14, 18);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleString('en-ZW')}`, 14, 26);
+
+    autoTable(doc, {
+      startY: 34,
+      head: [['Metric', 'Value']],
+      body: [
+        ['Total GWP Impact', `${kpiValues.gwpImpactTonnes.toLocaleString()} tCO2e`],
+        ['Approved Refrigerant Volume', `${kpiValues.approvedKg.toLocaleString()} kg`],
+        ['Active Technicians', `${technicians.filter(t => t.status === 'active').length}`],
+        ['Valid Certifications', `${kpiValues.activeCerts}`],
+        ['Natural Gas Transition', `${kpiValues.naturalSharePct}%`],
+        ['Pending Reorder Reviews', `${kpiValues.pendingReviewCount}`],
+      ],
+      headStyles: { fillColor: [15, 23, 42] },
+    });
+
+    doc.save(`hevacraz-compliance-${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
 
   return (
     <div className="space-y-6">
@@ -116,12 +144,12 @@ const ComplianceDashboard: React.FC<{ role: UserRole }> = ({ role }) => {
           description="Approved reorders weighted by refrigerant GWP"
         />
         <KpiCard
-          label="Leak Rate"
-          value="—"
-          unit="%"
-          trend="Awaiting data"
+          label="Approved Volume"
+          value={kpiValues.approvedKg.toLocaleString()}
+          unit="kg"
+          trend={`${kpiValues.pendingReviewCount} pending`}
           positive={true}
-          description="Target: < 5% (Kigali Limit). Awaiting field leak logs"
+          description="Approved refrigerant reorders with active review backlog"
         />
         <KpiCard
           label="Active Technicians"
@@ -147,9 +175,14 @@ const ComplianceDashboard: React.FC<{ role: UserRole }> = ({ role }) => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Refrigerant Phasedown Progress</h3>
-              <p className="text-sm text-gray-500">Monthly aggregate for commercial sector</p>
+              <p className="text-sm text-gray-500">Monthly aggregate of approved and submitted reorders</p>
             </div>
-            <button className="px-4 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">
+            <button
+              type="button"
+              onClick={exportPdf}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+            >
+              <Download className="h-4 w-4" />
               Export PDF
             </button>
           </div>

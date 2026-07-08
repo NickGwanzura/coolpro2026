@@ -20,6 +20,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     return NextResponse.json({ error: `This invite is ${invite.status}` }, { status: 410 });
   }
 
+  if (invite.role === 'org_admin') {
+    return NextResponse.json({ error: 'Org admin invites are no longer supported' }, { status: 403 });
+  }
+
   return NextResponse.json({
     email: invite.email,
     role: invite.role,

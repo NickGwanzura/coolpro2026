@@ -1132,7 +1132,7 @@ export interface Invite {
   email: string;
   role: string;
   region: string;
-  token: string;
+  token: string | null;
   status: InviteStatus;
   invitedBy: string;
   acceptedAt: string | null;

@@ -1,7 +1,16 @@
 import { Resend } from 'resend';
 import { SITE_URL } from '@/lib/site-url';
 
-const FROM_ADDRESS = 'HEVACRAZ <noreply@zimhvacregistry.org>';
+const FROM_ADDRESS = process.env.EMAIL_FROM ?? 'HEVACRAZ <noreply@zimhvacregistry.org>';
+const CONTACT_TO_ADDRESS = process.env.CONTACT_TO_EMAIL ?? 'info@hevacraz.co.zw';
+const BRAND = {
+  ink: '#1C1917',
+  amber: '#D97706',
+  green: '#5A7D5A',
+  line: '#E5E0DB',
+  muted: '#78716C',
+  soft: '#FAFAF9',
+};
 
 let _resend: Resend | null = null;
 
@@ -12,44 +21,65 @@ function getResendClient(): Resend | null {
   return _resend;
 }
 
-function emailShell(bodyHtml: string): string {
+function emailShell(bodyHtml: string, preview = 'HEVACRAZ / National Ozone Unit Zimbabwe'): string {
   return `
-    <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; background: #ffffff;">
-      <div style="background: #1C1917; padding: 24px; text-align: center;">
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent;">
+      ${escapeHtml(preview)}
+    </div>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff;">
+      <div style="background: ${BRAND.ink}; padding: 28px 24px; text-align: center;">
         <img src="${SITE_URL}/logos/hevacraz-logo.jpeg" alt="HEVACRAZ" width="40" height="40"
-             style="border-radius: 4px; display: block; margin: 0 auto 10px;" />
-        <p style="color: #D97706; font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; margin: 0;">
+             style="border-radius: 6px; display: block; margin: 0 auto 12px;" />
+        <p style="color: ${BRAND.amber}; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; margin: 0;">
           HEVACRAZ &middot; National Ozone Unit
         </p>
+        <p style="color: #ffffff; font-size: 20px; font-weight: 750; margin: 8px 0 0;">
+          Zimbabwe HVAC Compliance Registry
+        </p>
       </div>
-      <div style="padding: 24px; border: 1px solid #E5E0DB; border-top: none;">
+      <div style="padding: 28px; border: 1px solid ${BRAND.line}; border-top: none;">
         ${bodyHtml}
       </div>
-      <div style="padding: 20px 24px; text-align: center;">
-        <p style="color: #A8A29E; font-size: 11px; line-height: 1.6; margin: 0;">
-          HEVACRAZ &middot; <a href="mailto:info@hevacraz.co.zw" style="color: #A8A29E;">info@hevacraz.co.zw</a><br />
-          National Ozone Unit &middot; <a href="mailto:nou@environment.gov.zw" style="color: #A8A29E;">nou@environment.gov.zw</a>
+      <div style="padding: 22px 24px; text-align: center; background: ${BRAND.soft};">
+        <p style="color: ${BRAND.muted}; font-size: 11px; line-height: 1.7; margin: 0;">
+          HEVACRAZ &middot; <a href="mailto:info@hevacraz.co.zw" style="color: ${BRAND.muted};">info@hevacraz.co.zw</a><br />
+          National Ozone Unit &middot; <a href="mailto:nou@environment.gov.zw" style="color: ${BRAND.muted};">nou@environment.gov.zw</a><br />
+          <a href="${SITE_URL}" style="color: ${BRAND.amber}; font-weight: 700; text-decoration: none;">${SITE_URL.replace(/^https?:\/\//, '')}</a>
         </p>
       </div>
     </div>
   `;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function inviteEmailHtml(input: { inviteUrl: string; role: string; invitedBy: string }): string {
+  const invitedBy = escapeHtml(input.invitedBy);
+  const role = escapeHtml(input.role.replace('_', ' '));
+  const inviteUrl = escapeHtml(input.inviteUrl);
+
   return emailShell(`
-    <p style="color: #1C1917; font-size: 18px; font-weight: 700; margin: 0 0 12px;">You've been invited</p>
-    <p style="color: #1C1917; font-size: 14px; line-height: 1.6; margin: 0;">
-      ${input.invitedBy} has invited you to join the HEVACRAZ / National Ozone Unit Zimbabwe
-      compliance platform as a <strong>${input.role.replace('_', ' ')}</strong>.
+    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Registry access</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">You've been invited</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
+      ${invitedBy} has invited you to join the HEVACRAZ / National Ozone Unit Zimbabwe
+      compliance platform as a <strong>${role}</strong>.
     </p>
-    <a href="${input.inviteUrl}"
-       style="display: inline-block; margin-top: 16px; background: #D97706; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px 20px;">
+    <a href="${inviteUrl}"
+       style="display: inline-block; margin-top: 18px; background: ${BRAND.amber}; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 22px; border-radius: 4px;">
       Accept invite
     </a>
-    <p style="color: #78716C; font-size: 12px; margin-top: 20px;">
+    <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
       This invite expires in 7 days. If you didn't expect this, you can ignore this email.
     </p>
-  `);
+  `, 'You have been invited to the HEVACRAZ / NOU Zimbabwe registry.');
 }
 
 /**
@@ -98,23 +128,28 @@ function approvalEmailHtml(input: {
   role: string;
   loginUrl: string;
 }): string {
+  const name = escapeHtml(input.name);
+  const role = escapeHtml(input.role.replace('_', ' '));
+  const loginUrl = escapeHtml(input.loginUrl);
+
   return emailShell(`
-    <p style="color: #1C1917; font-size: 18px; font-weight: 700; margin: 0 0 12px;">Application approved</p>
-    <p style="color: #1C1917; font-size: 14px; line-height: 1.6; margin: 0;">
-      Hi ${input.name}, your application to join HEVACRAZ / National Ozone Unit Zimbabwe
-      as a <strong>${input.role.replace('_', ' ')}</strong> has been approved.
+    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Application update</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Application approved</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
+      Hi ${name}, your application to join HEVACRAZ / National Ozone Unit Zimbabwe
+      as a <strong>${role}</strong> has been approved.
     </p>
-    <p style="color: #1C1917; font-size: 14px; line-height: 1.6; margin: 12px 0 0;">
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 12px 0 0;">
       You can now log in using the email and password you submitted with your application.
     </p>
-    <a href="${input.loginUrl}"
-       style="display: inline-block; margin-top: 16px; background: #D97706; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px 20px;">
+    <a href="${loginUrl}"
+       style="display: inline-block; margin-top: 18px; background: ${BRAND.amber}; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 22px; border-radius: 4px;">
       Log in now
     </a>
-    <p style="color: #78716C; font-size: 12px; margin-top: 20px;">
+    <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
       If you didn't apply for this account, you can ignore this email.
     </p>
-  `);
+  `, 'Your HEVACRAZ application has been approved.');
 }
 
 /**
@@ -150,6 +185,94 @@ export async function sendApprovalEmail(input: {
     return { sent: true };
   } catch (err) {
     console.error('[email] Failed to send approval email:', err instanceof Error ? err.message : err);
+    return { sent: false };
+  }
+}
+
+function contactNotificationHtml(input: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): string {
+  const name = escapeHtml(input.name);
+  const email = escapeHtml(input.email);
+  const subject = escapeHtml(input.subject);
+  const message = escapeHtml(input.message).replace(/\n/g, '<br />');
+
+  return emailShell(`
+    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Website enquiry</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">New contact message</p>
+    <div style="background: ${BRAND.soft}; border: 1px solid ${BRAND.line}; padding: 16px; margin: 0 0 18px;">
+      <p style="margin: 0 0 8px; color: ${BRAND.ink}; font-size: 14px;"><strong>Name:</strong> ${name}</p>
+      <p style="margin: 0 0 8px; color: ${BRAND.ink}; font-size: 14px;"><strong>Email:</strong> <a href="mailto:${email}" style="color: ${BRAND.amber};">${email}</a></p>
+      <p style="margin: 0; color: ${BRAND.ink}; font-size: 14px;"><strong>Topic:</strong> ${subject}</p>
+    </div>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">${message}</p>
+  `, `New HEVACRAZ website enquiry from ${input.name}.`);
+}
+
+function contactConfirmationHtml(input: {
+  name: string;
+  subject: string;
+}): string {
+  const name = escapeHtml(input.name);
+  const subject = escapeHtml(input.subject);
+
+  return emailShell(`
+    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Message received</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Thanks, ${name}</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
+      We received your HEVACRAZ enquiry about <strong>${subject}</strong>. A member of the team will respond within one working day.
+    </p>
+    <a href="${SITE_URL}/contact"
+       style="display: inline-block; margin-top: 18px; background: ${BRAND.amber}; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 22px; border-radius: 4px;">
+      Visit contact page
+    </a>
+  `, 'HEVACRAZ received your message.');
+}
+
+export async function sendContactEmails(input: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): Promise<{ sent: boolean }> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set — contact email not sent:', input.email);
+    return { sent: false };
+  }
+
+  try {
+    const notification = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: CONTACT_TO_ADDRESS,
+      replyTo: input.email,
+      subject: `HEVACRAZ website enquiry: ${input.subject}`,
+      html: contactNotificationHtml(input),
+    });
+
+    if (notification.error) {
+      console.error('[email] Resend rejected contact notification:', notification.error.message);
+      return { sent: false };
+    }
+
+    const confirmation = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: input.email,
+      subject: 'HEVACRAZ received your message',
+      html: contactConfirmationHtml(input),
+    });
+
+    if (confirmation.error) {
+      console.error('[email] Resend rejected contact confirmation:', confirmation.error.message);
+      return { sent: false };
+    }
+
+    return { sent: true };
+  } catch (err) {
+    console.error('[email] Failed to send contact email:', err instanceof Error ? err.message : err);
     return { sent: false };
   }
 }

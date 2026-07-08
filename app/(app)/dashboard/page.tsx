@@ -15,7 +15,6 @@ import {            ClipboardCheck,
     MapPin,
     Clock,
     Wrench,
-    Thermometer,
     ShieldAlert,
     Plus,
     Building2,
@@ -30,12 +29,12 @@ import {            ClipboardCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import OccupationalAccidentSection from '@/components/OccupationalAccidentSection';
-import { CertificateRecord, JobType, JobTypeLabels, PlannerJob, RefrigerantLog } from '@/types/index';
+import { CertificateRecord, JobTypeLabels, RefrigerantLog } from '@/types/index';
 import { BRAND as colors } from '@/constants/colors';
 import { rangeMsFor, type SimpleDateRange } from '@/lib/dateRange';
 
 export default function DashboardPage() {
-    const [session, setSession] = useState<UserSession | null>(() => getSession());
+    const [session] = useState<UserSession | null>(() => getSession());
     const [isLoading, setIsLoading] = useState(true);
     const [dateRange, setDateRange] = useState('today');
     const [regionFilter, setRegionFilter] = useState('all');
@@ -188,7 +187,7 @@ export default function DashboardPage() {
         {
             label: 'Refrigerant Volume',
             value: `${adminMetrics.totalRefrigerantKg.toLocaleString()} kg`,
-            icon: ShieldAlert,
+            icon: Droplets,
             color: 'red',
             trend: dateRange === 'today' ? 'Reorders in last 24 hours' : dateRange === 'week' ? 'Reorders in last 7 days' : 'Reorders in last 30 days'
         },
@@ -289,7 +288,7 @@ export default function DashboardPage() {
             iconClassName: 'bg-orange-100 text-orange-600',
         },
         {
-            href: '/safety',
+            href: '/admin/accidents',
             title: 'Safety Oversight',
             detail: 'Regional accident monitoring and reports',
             icon: ShieldAlert,
@@ -336,7 +335,10 @@ export default function DashboardPage() {
     ];
 
     // Admin-only derived data: top performers ranked by valid certifications
-    const topPerformers = technicians
+    const topPerformers = (regionFilter === 'all'
+        ? technicians
+        : technicians.filter(tech => tech.province === regionFilter)
+    )
         .map(tech => ({
             ...tech,
             validCertCount: tech.certifications.filter(cert => cert.status === 'valid').length,
@@ -489,7 +491,7 @@ export default function DashboardPage() {
             )}
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 ${isAdmin ? 'xl:grid-cols-5' : 'lg:grid-cols-4'}`}>
                 {stats.map((stat, index) => {
                     const Icon = stat.icon;
                     const colorClasses: Record<string, string> = {
@@ -530,7 +532,7 @@ export default function DashboardPage() {
                                 Supplier Review Queue
                             </h2>
                             <p className="text-sm text-gray-500 mt-1">
-                                Supplier applications from the mock intake flow are synced here for NOU review.
+                                New supplier applications are synced here for HEVACRAZ and NOU review.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-3">
@@ -597,7 +599,7 @@ export default function DashboardPage() {
                 <h2 className="text-lg font-semibold mb-4 text-[#1C1917]">
                     {isAdmin ? 'Admin Quick Actions' : 'Quick Actions'}
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isAdmin ? 'lg:grid-cols-3 xl:grid-cols-6' : 'lg:grid-cols-4'}`}>
                     {(isAdmin ? adminQuickActions : technicianQuickActions).map((action) => {
                         const Icon = action.icon;
 
@@ -1059,7 +1061,12 @@ export default function DashboardPage() {
             {/* Admin-only: Technician Performance Table */}
             {isAdmin && (
                 <div className="rounded-lg bg-white border border-[#E7E5E4] p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1917] mb-4">Top Performers {dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This Week' : 'This Month'}</h2>
+                    <div className="mb-4">
+                        <h2 className="text-lg font-semibold text-[#1C1917]">Top Certified Technicians</h2>
+                        <p className="mt-1 text-sm text-[#78716C]">
+                            Ranked by valid certification count{regionFilter === 'all' ? '' : ` in ${regionFilter}`}.
+                        </p>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>

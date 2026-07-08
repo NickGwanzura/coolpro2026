@@ -73,7 +73,6 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
   useEffect(() => {
     setPendingSyncIds(readCollection<string>(STORAGE_KEYS.fieldToolkitPendingSync, []));
     setIsOnline(navigator.onLine);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Installations are DB-backed via useInstallations hook — no localStorage mirror needed
@@ -866,7 +865,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                     ))}
                   </select>
                   {approvedSuppliersError && (
-                    <p className="text-xs text-red-600">Couldn't load approved suppliers. Check your connection and retry.</p>
+                    <p className="text-xs text-red-600">Couldn&apos;t load approved suppliers. Check your connection and retry.</p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -1012,7 +1011,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                   <WifiOff className="h-5 w-5 text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-amber-900 font-bold">You're offline</p>
+                  <p className="text-sm text-amber-900 font-bold">You&apos;re offline</p>
                   <p className="text-xs text-amber-700 mt-1">
                     {pendingSyncIds.length > 0
                       ? `${pendingSyncIds.length} log${pendingSyncIds.length === 1 ? '' : 's'} saved on this device and will sync automatically once you're back online.`
@@ -1031,7 +1030,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                       {pendingSyncIds.length} log{pendingSyncIds.length === 1 ? '' : 's'} pending sync
                     </p>
                     <p className="text-xs text-amber-700 mt-1">
-                      These logs are saved on this device but haven't synced to the central database yet.
+                      These logs are saved on this device but haven&apos;t synced to the central database yet.
                     </p>
                   </div>
                 </div>

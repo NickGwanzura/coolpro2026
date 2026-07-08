@@ -23,11 +23,12 @@ export function RefrigerantIntelligencePanel({
     const [summary, setSummary] = useState<Summary | null>(null);
     const [checklist, setChecklist] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [referenceTime] = useState(() => Date.now());
     const { data: syncStatus } = useWhatGasSyncStatus();
     const lastSync = syncStatus?.lastSuccessfulSync?.finishedAt
         ? new Date(syncStatus.lastSuccessfulSync.finishedAt)
         : null;
-    const syncIsStale = lastSync && (Date.now() - lastSync.getTime() > 24 * 60 * 60 * 1000);
+    const syncIsStale = lastSync && (referenceTime - lastSync.getTime() > 24 * 60 * 60 * 1000);
 
     useEffect(() => {
         let cancelled = false;

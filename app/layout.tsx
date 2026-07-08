@@ -10,6 +10,14 @@ import { ToastProvider } from '@/components/ui/Toast';
 export const metadata: Metadata = {
   title: 'HEVACRAZ - HVAC-R Association Zimbabwe',
   description: 'HVAC-R Association of Zimbabwe - Professional Training & Compliance Platform',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: [{ url: '/apple-icon.png', type: 'image/png', sizes: '180x180' }],
+  },
+  manifest: '/manifest.webmanifest',
 };
 
 export default function RootLayout({
