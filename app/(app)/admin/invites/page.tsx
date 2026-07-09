@@ -11,6 +11,7 @@ const ROLES = [
   { value: 'lecturer', label: 'Lecturer' },
   { value: 'vendor', label: 'Vendor' },
   { value: 'student', label: 'Student' },
+  { value: 'org_admin', label: 'Org Admin' },
 ];
 
 const STATUS_STYLES: Record<InviteStatus, string> = {

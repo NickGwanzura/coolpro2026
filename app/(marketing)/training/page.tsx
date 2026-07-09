@@ -12,6 +12,7 @@ import {
   DollarSign,
   Filter,
   X,
+  UploadCloud,
 } from 'lucide-react';
 import { useTrainingSessions } from '@/lib/api';
 import type { TrainingSession } from '@/types/index';
@@ -197,14 +198,24 @@ export default function TrainingPage() {
                 HEVACRAZ centres and partner Polytechnics across Zimbabwe.
               </p>
             </div>
-            <Link
-              href="/login"
-              className="group inline-flex items-center justify-center gap-2 px-5 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:brightness-110 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2"
-              style={{ backgroundColor: '#1C1917' }}
-            >
-              View Training Center
-              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+              <Link
+                href="/login"
+                className="group inline-flex items-center justify-center gap-2 px-5 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:brightness-110 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2"
+                style={{ backgroundColor: '#1C1917' }}
+              >
+                View Training Center
+                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+              </Link>
+              <Link
+                href="/login?next=%2Flearn%2Fmanage"
+                className="inline-flex items-center justify-center gap-2 border px-5 py-3.5 text-sm font-semibold transition-all duration-200 hover:bg-[#FAFAF9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2"
+                style={{ borderColor: '#E5E0DB', color: '#1C1917' }}
+              >
+                <UploadCloud className="h-4 w-4" />
+                Upload courses
+              </Link>
+            </div>
           </div>
         </div>
       </section>

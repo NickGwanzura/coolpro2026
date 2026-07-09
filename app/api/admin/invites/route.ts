@@ -10,7 +10,7 @@ import { SITE_URL } from '@/lib/site-url';
 
 const INVITE_TTL_DAYS = 7;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const INVITABLE_ROLES = VALID_ROLES.filter(role => role !== 'org_admin') as string[];
+const INVITABLE_ROLES = VALID_ROLES as readonly string[];
 
 function generateInviteToken() {
   return randomBytes(24).toString('base64url');
@@ -64,11 +64,6 @@ export async function POST(req: Request) {
     .set({ status: 'expired' })
     .where(and(eq(invites.status, 'pending'), lt(invites.expiresAt, new Date())));
 
-  await db
-    .update(invites)
-    .set({ status: 'revoked' })
-    .where(and(eq(invites.status, 'pending'), eq(invites.role, 'org_admin')));
-
   const [existingInvite] = await db
     .select()
     .from(invites)
@@ -120,16 +115,11 @@ export async function GET(req: Request) {
     .set({ status: 'expired' })
     .where(and(eq(invites.status, 'pending'), lt(invites.expiresAt, new Date())));
 
-  await db
-    .update(invites)
-    .set({ status: 'revoked' })
-    .where(and(eq(invites.status, 'pending'), eq(invites.role, 'org_admin')));
-
   const rows = await db.select().from(invites).orderBy(desc(invites.createdAt));
   return NextResponse.json({
     data: rows.map(row => ({
       ...row,
-      token: row.status === 'pending' && row.role !== 'org_admin' ? row.token : null,
+      token: row.status === 'pending' ? row.token : null,
     })),
   });
 }

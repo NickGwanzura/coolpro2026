@@ -45,9 +45,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   if (invite.status !== 'pending') {
     return NextResponse.json({ error: `This invite is ${invite.status}` }, { status: 410 });
   }
-  if (invite.role === 'org_admin') {
-    return NextResponse.json({ error: 'Org admin invites are no longer supported' }, { status: 403 });
-  }
 
   const passwordHash = await hashPassword(password);
 

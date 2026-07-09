@@ -19,7 +19,7 @@ import {
 } from '@/lib/platformStore';
 import { deleteCourseMaterial } from '@/lib/api';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { Paperclip, Download, X, Loader2 } from 'lucide-react';
+import { Paperclip, Download, X, Loader2, UploadCloud } from 'lucide-react';
 
 function formatFileSize(bytes: number) {
     if (bytes < 1024) return `${bytes} B`;
@@ -76,14 +76,20 @@ function ModuleRow({
     const attachments = mod.attachments ?? [];
 
     async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0];
+        const files = Array.from(e.target.files ?? []);
         e.target.value = '';
-        if (!file || !courseId) return;
+        if (files.length === 0 || !courseId) return;
         setError('');
         setUploadProgress(0);
         try {
-            const attachment = await uploadCourseMaterial(courseId, file, setUploadProgress);
-            onAttachmentsChange(index, [...attachments, attachment]);
+            const uploaded: CourseAttachment[] = [];
+            for (const [fileIndex, file] of files.entries()) {
+                const attachment = await uploadCourseMaterial(courseId, file, percent => {
+                    setUploadProgress(Math.round(((fileIndex + percent / 100) / files.length) * 100));
+                });
+                uploaded.push(attachment);
+            }
+            onAttachmentsChange(index, [...attachments, ...uploaded]);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Upload failed');
         } finally {
@@ -177,7 +183,7 @@ function ModuleRow({
                 ))}
                 {!readOnly && courseId && (
                     <div>
-                        <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
+                        <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
@@ -190,7 +196,7 @@ function ModuleRow({
                                 </>
                             ) : (
                                 <>
-                                    <Paperclip className="h-3.5 w-3.5" /> Attach file
+                                    <Paperclip className="h-3.5 w-3.5" /> Upload files
                                 </>
                             )}
                         </button>
@@ -525,9 +531,12 @@ function CreateCourseForm({
     onCreated: (c: ManagedCourse) => void;
     onCancel: () => void;
 }) {
+    const courseFilesInputRef = useRef<HTMLInputElement>(null);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [modules, setModules] = useState<CourseModule[]>([{ title: '', content: '', minutes: 30 }]);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const [notice, setNotice] = useState('');
     const [saving, setSaving] = useState(false);
 
@@ -543,16 +552,53 @@ function CreateCourseForm({
         setModules(prev => prev.filter((_, i) => i !== index));
     }
 
+    function handleCourseFilesSelect(e: React.ChangeEvent<HTMLInputElement>) {
+        const files = Array.from(e.target.files ?? []);
+        e.target.value = '';
+        if (files.length === 0) return;
+        setSelectedFiles(prev => [...prev, ...files]);
+    }
+
+    function removeSelectedFile(index: number) {
+        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    }
+
     async function handleCreate() {
         if (!title.trim()) { setNotice('Course title is required.'); return; }
         if (modules.length === 0) { setNotice('Add at least one module.'); return; }
         setSaving(true);
+        setUploadProgress(selectedFiles.length > 0 ? 0 : null);
         try {
-            const course = await createCourse({ lecturerId, lecturerName, title: title.trim(), description: description.trim(), modules });
-            onCreated(course);
+            const draftModules = modules.map((mod, index) => ({
+                ...mod,
+                title: mod.title.trim() || `Module ${index + 1}`,
+                content: mod.content.trim(),
+                minutes: mod.minutes || 30,
+            }));
+            const course = await createCourse({ lecturerId, lecturerName, title: title.trim(), description: description.trim(), modules: draftModules });
+
+            if (selectedFiles.length === 0) {
+                onCreated(course);
+                return;
+            }
+
+            const uploaded: CourseAttachment[] = [];
+            for (const [fileIndex, file] of selectedFiles.entries()) {
+                const attachment = await uploadCourseMaterial(course.id, file, percent => {
+                    setUploadProgress(Math.round(((fileIndex + percent / 100) / selectedFiles.length) * 100));
+                });
+                uploaded.push(attachment);
+            }
+
+            const updatedModules = course.modules.map((mod, index) => (
+                index === 0 ? { ...mod, attachments: [...(mod.attachments ?? []), ...uploaded] } : mod
+            ));
+            const updatedCourse = await updateCourse(course.id, { modules: updatedModules });
+            onCreated(updatedCourse);
         } catch (err) {
             setNotice((err as Error).message);
         } finally {
+            setUploadProgress(null);
             setSaving(false);
         }
     }
@@ -608,13 +654,71 @@ function CreateCourseForm({
                         + Add Module
                     </button>
                 </div>
+                <div className="rounded-lg border border-dashed border-[#D97706]/50 bg-amber-50/60 p-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                            <div className="rounded-lg bg-white p-2 text-[#D97706] shadow-sm">
+                                <UploadCloud className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-gray-900">Upload course materials</p>
+                                <p className="mt-1 text-xs text-gray-600">
+                                    Add PDFs, slides, videos, images, or worksheets now. They will attach to Module 1 after the draft is created.
+                                </p>
+                            </div>
+                        </div>
+                        <input
+                            ref={courseFilesInputRef}
+                            type="file"
+                            multiple
+                            className="hidden"
+                            onChange={handleCourseFilesSelect}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => courseFilesInputRef.current?.click()}
+                            disabled={saving}
+                            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-[#D97706] shadow-sm ring-1 ring-amber-200 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            <UploadCloud className="h-4 w-4" />
+                            Choose files
+                        </button>
+                    </div>
+                    {selectedFiles.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                            {selectedFiles.map((file, index) => (
+                                <div key={`${file.name}-${file.lastModified}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2">
+                                    <span className="flex min-w-0 items-center gap-2 text-sm text-gray-700">
+                                        <Paperclip className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                                        <span className="truncate">{file.name}</span>
+                                        <span className="shrink-0 text-xs text-gray-400">{formatFileSize(file.size)}</span>
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeSelectedFile(index)}
+                                        disabled={saving}
+                                        className="text-gray-400 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                        aria-label="Remove selected file"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {uploadProgress !== null && (
+                        <div className="mt-4 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-semibold text-amber-800">
+                            Uploading materials... {uploadProgress}%
+                        </div>
+                    )}
+                </div>
                 <button
                     type="button"
                     onClick={handleCreate}
                     disabled={saving}
                     className="rounded-lg bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                    Create Course
+                    {saving ? 'Creating...' : selectedFiles.length > 0 ? 'Create Course & Upload Files' : 'Create Course'}
                 </button>
                 {notice && (
                     <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{notice}</div>
