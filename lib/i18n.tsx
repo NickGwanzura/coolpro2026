@@ -61,7 +61,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         language,
         setLanguage,
         t: DICTIONARY[language],
-        speechLocale: language === 'fr' ? 'fr-FR' : 'en-US',
+        // South African English is a much closer default for Zimbabwean field teams than
+        // US English. The browser still falls back gracefully when that locale is absent.
+        speechLocale: language === 'fr' ? 'fr-FR' : 'en-ZA',
     }), [language]);
 
     return (

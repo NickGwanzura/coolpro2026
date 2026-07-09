@@ -1,7 +1,7 @@
 'use client';
 
-import { CSSProperties, useEffect, useMemo, useState } from 'react';
-import { getSession, UserSession } from '@/lib/auth';
+import { CSSProperties, useMemo, useState } from 'react';
+import { useAuth } from '@/lib/auth';
 import { mutate } from 'swr';
 import { useSupplierApplications, useTechnicians, useReorders, useGasUsage, usePlannerJobs, useGasLogs, useCocRequests } from '@/lib/api';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
@@ -34,8 +34,7 @@ import { BRAND as colors } from '@/constants/colors';
 import { rangeMsFor, type SimpleDateRange } from '@/lib/dateRange';
 
 export default function DashboardPage() {
-    const [session] = useState<UserSession | null>(() => getSession());
-    const [isLoading, setIsLoading] = useState(true);
+    const { user: session, isLoading } = useAuth();
     const [dateRange, setDateRange] = useState('today');
     const [regionFilter, setRegionFilter] = useState('all');
     const isAdmin = session?.role === 'org_admin';
@@ -46,10 +45,6 @@ export default function DashboardPage() {
     const { data: plannerJobs = [] } = usePlannerJobs();
     const { data: gasLogsData } = useGasLogs(undefined, undefined, 50);
     const { data: cocRequests = [] } = useCocRequests();
-
-    useEffect(() => {
-        setIsLoading(false);
-    }, []);
 
     // Derive refrigerant logs from Gas Logs API (DB-backed) rather than localStorage
     const refrigerantLogs = useMemo(() => (gasLogsData ?? []) as RefrigerantLog[], [gasLogsData]);

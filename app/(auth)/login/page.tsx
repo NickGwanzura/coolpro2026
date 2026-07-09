@@ -88,8 +88,18 @@ function LoginPageContent() {
 
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center bg-[#D97706] mb-4">
-            <Thermometer className="h-6 w-6 text-white" />
+          <div className="mb-4 inline-flex items-center gap-2.5" aria-label="HEVACRAZ and Ministry of Environment">
+            <img
+              src="/logos/ministry-of-environment.jpeg"
+              alt="Ministry of Environment, Climate and Wildlife"
+              className="h-12 w-12 rounded-full object-cover"
+            />
+            <span className="h-8 w-px bg-[#D6D3D1]" aria-hidden="true" />
+            <img
+              src="/logos/hevacraz-logo.jpeg"
+              alt="HEVACRAZ"
+              className="h-12 w-12 rounded-full object-cover"
+            />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-[#1C1917]">HEVACRAZ</h1>
           <p className="mt-1 text-sm text-[#78716C]">HVAC-R Professionals Zimbabwe Member Portal</p>

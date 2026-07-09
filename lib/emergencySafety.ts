@@ -98,6 +98,16 @@ export function getEmergencySafetyScripts(language: AppLanguage): EmergencySafet
   return SAFETY_SCRIPTS[language] ?? SAFETY_SCRIPTS.en;
 }
 
+export function getEmergencySafetyScriptForQuery(
+  query: string,
+  language: AppLanguage,
+): EmergencySafetyScript | null {
+  const normalized = query.toUpperCase().replace(/\s+/g, '');
+  return getEmergencySafetyScripts(language).find((script) =>
+    normalized.includes(script.refrigerantCode.replace('-', '')),
+  ) ?? null;
+}
+
 /**
  * Fetch scripts from the static JSON files cached by the service worker.
  * Falls back to the in-memory scripts if the fetch fails (e.g. offline).

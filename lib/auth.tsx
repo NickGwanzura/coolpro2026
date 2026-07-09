@@ -6,8 +6,13 @@ export type { UserSession } from './session-types';
 
 export function getSession(): UserSession | null {
     if (typeof window === 'undefined') return null;
-    const stored = localStorage.getItem('coolpro_user');
-    return stored ? JSON.parse(stored) as UserSession : null;
+    try {
+        const stored = localStorage.getItem('coolpro_user');
+        return stored ? JSON.parse(stored) as UserSession : null;
+    } catch {
+        localStorage.removeItem('coolpro_user');
+        return null;
+    }
 }
 
 async function postLogin(body: Record<string, string>): Promise<UserSession> {
@@ -68,12 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setUser(data.user);
                     localStorage.setItem('coolpro_user', JSON.stringify(data.user));
                 } else {
-                    const cached = getSession();
-                    setUser(cached);
+                    // A browser cache is never an authority for identity or role. Keeping it
+                    // here could resurrect a previous demo user after their cookie expires.
+                    localStorage.removeItem('coolpro_user');
+                    setUser(null);
                 }
             })
             .catch(() => {
-                setUser(getSession());
+                // Do not render a cached role when the session cannot be verified.
+                localStorage.removeItem('coolpro_user');
+                setUser(null);
             })
             .finally(() => setIsLoading(false));
     }, []);

@@ -7,7 +7,7 @@ import { useEmergencyMode } from '@/lib/emergencyMode';
 import { useI18n } from '@/lib/i18n';
 import { prependCollectionItem, readCollection, STORAGE_KEYS } from '@/lib/platformStore';
 import { buildSafetyAssistantResponse, getRiskSummary } from '@/lib/refrigerantIntelligence';
-import { getEmergencySafetyScripts } from '@/lib/emergencySafety';
+import { getEmergencySafetyScriptForQuery } from '@/lib/emergencySafety';
 import type { SafetySession } from '@/types/index';
 import { RefrigerantRiskBadge } from './RefrigerantRiskBadge';
 
@@ -41,10 +41,15 @@ type ChatTurn = { role: 'user' | 'model'; text: string };
 
 // Higher-quality system voices ship with these markers in their names; the bare
 // browser default is often the most robotic one available.
-const PREFERRED_VOICE_MARKERS = ['natural', 'neural', 'premium', 'enhanced', 'google', 'siri'];
+const PREFERRED_VOICE_MARKERS = ['africa', 'south africa', 'south african', 'en-za', 'zulu', 'xhosa', 'natural', 'neural', 'premium', 'enhanced', 'google', 'siri'];
+
+const AFRICAN_ENGLISH_LOCALES = ['en-za', 'en-zw', 'en-ke', 'en-ng', 'en-gh', 'en-tz'];
 
 function rankVoice(voice: SpeechSynthesisVoice): number {
   const name = voice.name.toLowerCase();
+  const locale = voice.lang.toLowerCase();
+  const africanLocaleIndex = AFRICAN_ENGLISH_LOCALES.indexOf(locale);
+  if (africanLocaleIndex !== -1) return africanLocaleIndex - AFRICAN_ENGLISH_LOCALES.length;
   const markerIndex = PREFERRED_VOICE_MARKERS.findIndex((marker) => name.includes(marker));
   return markerIndex === -1 ? PREFERRED_VOICE_MARKERS.length : markerIndex;
 }
@@ -54,7 +59,7 @@ function pickDefaultVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice 
   return [...voices].sort((a, b) => rankVoice(a) - rankVoice(b))[0];
 }
 
-async function fetchGeminiResponse(message: string, history: ChatTurn[]): Promise<string | null> {
+async function fetchGeminiResponse(message: string, history: ChatTurn[]): Promise<{ answer: string | null; error?: string }> {
   try {
     const res = await fetch('/api/voice-assistant', {
       method: 'POST',
@@ -62,11 +67,14 @@ async function fetchGeminiResponse(message: string, history: ChatTurn[]): Promis
       credentials: 'include',
       body: JSON.stringify({ message, history }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const data = await res.json().catch(() => null) as { error?: string } | null;
+      return { answer: null, error: data?.error ?? 'The live assistant is unavailable.' };
+    }
     const data = await res.json() as { answer: string | null; fallback: boolean };
-    return data.fallback ? null : data.answer;
+    return { answer: data.fallback ? null : data.answer };
   } catch {
-    return null;
+    return { answer: null, error: 'Network unavailable. Using offline safety guidance.' };
   }
 }
 
@@ -75,45 +83,49 @@ async function buildContextualResponse(
   emergencyMode: boolean,
   language: 'en' | 'fr',
   history: ChatTurn[],
-) {
+) : Promise<{ response: string; fallbackNotice?: string }> {
   const trimmed = query.trim();
   const lower = trimmed.toLowerCase();
 
   if (!trimmed) {
-    return language === 'fr'
-      ? 'Posez une question de securite, de refrigerant, ou de certificat pour commencer.'
-      : 'Ask a safety, refrigerant, or certificate question to get started.';
+    return {
+      response: language === 'fr'
+        ? 'Posez une question de securite, de refrigerant, ou de certificat pour commencer.'
+        : 'Ask a safety, refrigerant, or certificate question to get started.',
+    };
   }
 
   if (lower.includes('coc')) {
-    return language === 'fr'
+    return { response: language === 'fr'
       ? 'Le flux COC reste dans Field Toolkit. Confirmez l’installation, joignez les photos, puis soumettez la demande avant emission.'
-      : 'The COC workflow stays in Field Toolkit. Confirm the installation, attach photos, then submit the request before issuance.';
+      : 'The COC workflow stays in Field Toolkit. Confirm the installation, attach photos, then submit the request before issuance.' };
   }
 
   if (lower.includes('certificate') || lower.includes('certification')) {
-    return language === 'fr'
+    return { response: language === 'fr'
       ? 'Utilisez le portail public de verification avec le numero de certificat ou le code QR pour confirmer le statut et la date d’expiration.'
-      : 'Use the public verification portal with the certificate number or QR code to confirm status and expiry.';
+      : 'Use the public verification portal with the certificate number or QR code to confirm status and expiry.' };
   }
 
   // Gemini (grounded in the real WhatGas registry via tool-calling) is the primary responder;
   // the rule-based baseline is the offline/failure fallback so field techs on poor connectivity
   // or during a Gemini outage still get a real answer, not an error.
-  const geminiAnswer = await fetchGeminiResponse(trimmed, history);
-  const baseline = geminiAnswer ?? await buildSafetyAssistantResponse(trimmed, language);
+  const gemini = await fetchGeminiResponse(trimmed, history);
+  const baseline = gemini.answer ?? await buildSafetyAssistantResponse(trimmed, language);
 
   if (!emergencyMode) {
-    return baseline;
+    return { response: baseline, fallbackNotice: gemini.answer ? undefined : gemini.error };
   }
 
-  const scripts = getEmergencySafetyScripts(language);
-  const emergencySteps = scripts
-    .slice(0, 2)
-    .map((script) => `${script.refrigerantCode}: ${script.steps[0]}`)
-    .join(' ');
+  const script = getEmergencySafetyScriptForQuery(trimmed, language);
+  const emergencySteps = script
+    ? script.steps.join(' ')
+    : language === 'fr'
+      ? 'N’entrez pas dans une zone dangereuse. Isolez la zone, ventilez si vous pouvez le faire sans risque et contactez les secours ou votre superviseur.'
+      : 'Do not enter a hazardous area. Isolate the area, ventilate only if it is safe to do so, and contact emergency services or your supervisor.';
 
-  return `${baseline} ${emergencySteps}`;
+  const prefix = language === 'fr' ? 'URGENCE — ' : 'EMERGENCY — ';
+  return { response: `${prefix}${emergencySteps} ${baseline}`, fallbackNotice: gemini.answer ? undefined : gemini.error };
 }
 
 export function FloatingVoiceButton() {
@@ -142,6 +154,7 @@ export function FloatingVoiceButton() {
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [sessions, setSessions] = useState<SafetySession[]>(() =>
     readCollection<SafetySession>(STORAGE_KEYS.voiceSessions, [])
   );
@@ -285,16 +298,23 @@ export function FloatingVoiceButton() {
     const nextQuery = value.trim();
     if (!nextQuery) return;
 
-    const nextResponse = await buildContextualResponse(nextQuery, emergencyMode, language, chatHistory);
-    setResponse(nextResponse);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setErrorMessage('');
-    setChatHistory((prev) => [
-      ...prev,
-      { role: 'user' as const, text: nextQuery },
-      { role: 'model' as const, text: nextResponse },
-    ].slice(-12));
-    await persistSession(nextQuery, nextResponse);
-    speakResponse(nextResponse);
+    try {
+      const result = await buildContextualResponse(nextQuery, emergencyMode, language, chatHistory);
+      setResponse(result.response);
+      if (result.fallbackNotice) setErrorMessage(result.fallbackNotice);
+      setChatHistory((prev) => [
+        ...prev,
+        { role: 'user' as const, text: nextQuery },
+        { role: 'model' as const, text: result.response },
+      ].slice(-12));
+      await persistSession(nextQuery, result.response);
+      speakResponse(result.response);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const startListening = () => {
@@ -345,7 +365,7 @@ export function FloatingVoiceButton() {
 
       {showOverlay && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center">
-          <div className="max-h-[88vh] w-full overflow-hidden -3xl bg-white sm:w-[560px] sm:">
+          <div className="flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white sm:w-[560px] sm:rounded-3xl">
             <div className="flex items-center justify-between border-b border-gray-100 p-4">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Voice AI Safety Desk</h3>
@@ -361,7 +381,7 @@ export function FloatingVoiceButton() {
               </button>
             </div>
 
-            <div className="space-y-5 overflow-y-auto p-5">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
               <div
                 className={`border p-4 ${
                   emergencyMode ? 'border-red-200 bg-red-50' : 'border-blue-100 bg-blue-50'
@@ -490,14 +510,27 @@ export function FloatingVoiceButton() {
                 </div>
               )}
 
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold text-gray-700">Prompt</label>
+              <form
+                className="space-y-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void submitQuery(query);
+                }}
+              >
+                <label htmlFor="voice-assistant-prompt" className="block text-sm font-semibold text-gray-700">Prompt</label>
                 <textarea
+                  id="voice-assistant-prompt"
                   rows={3}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Example: What safety controls do I need before charging R-290?"
                   className="w-full border border-gray-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                  onKeyDown={(event) => {
+                    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                      event.preventDefault();
+                      void submitQuery(query);
+                    }
+                  }}
                 />
                 <div className="flex flex-wrap gap-2">
                   {quickPrompts.map((prompt) => (
@@ -514,10 +547,11 @@ export function FloatingVoiceButton() {
                   ))}
                 </div>
                 <button
-                  onClick={() => submitQuery(query)}
-                  className="w-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                  type="submit"
+                  disabled={!query.trim() || isSubmitting}
+                  className="w-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Generate response
+                  {isSubmitting ? 'Preparing safety guidance…' : 'Generate response'}
                 </button>
                 {transcript && (
                   <div className="border border-orange-100 bg-orange-50 p-4">
@@ -528,7 +562,7 @@ export function FloatingVoiceButton() {
                 {errorMessage && (
                   <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-700">{errorMessage}</div>
                 )}
-              </div>
+              </form>
 
               {response && (
                 <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
