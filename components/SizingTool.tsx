@@ -6,6 +6,31 @@ import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, D
 import { useAuth } from '../lib/auth';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
 
+// HEVACRAZ brand palette (mirrors tailwind.config hevac-* colors) for PDF export
+const PDF_BRAND = {
+  primary: [44, 36, 32] as [number, number, number], // charcoal
+  secondary: [212, 165, 116] as [number, number, number], // terracotta
+  accent: [90, 125, 90] as [number, number, number], // sage
+  highlight: [255, 107, 53] as [number, number, number], // electric orange
+};
+const PDF_LOGO_PATH = '/logos/hevacraz-logo.jpeg';
+
+async function loadImageAsDataUrl(path: string): Promise<string | null> {
+  try {
+    const res = await fetch(path);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 // Technical References/Sources
 const SIZING_SOURCES = [
   { name: 'SANS 5001-1', description: 'South African National Standard for Refrigeration', url: 'https://www.sabs.co.za' },
@@ -13,6 +38,16 @@ const SIZING_SOURCES = [
   { name: 'Manufacturer Data', description: 'Equipment specifications and performance data', url: null },
   { name: 'SANS 10142-1', description: 'Wiring of Premises (Electrical)', url: 'https://www.sabs.co.za' },
 ];
+
+// Job type specific multipliers — single source of truth, also used by the on-screen
+// formula walkthrough so it can't drift out of sync with the actual calculation.
+const JOB_TYPE_MULTIPLIERS: Record<JobType, { infiltration: number; product: number; safety: number }> = {
+  C40_FREEZER: { infiltration: 1.2, product: 1.1, safety: 1.15 },
+  C60_FREEZER: { infiltration: 1.3, product: 1.15, safety: 1.20 },
+  C90_FREEZER: { infiltration: 1.5, product: 1.2, safety: 1.25 },
+  COLD_ROOM: { infiltration: 1.0, product: 1.0, safety: 1.15 },
+  FREEZER_ROOM: { infiltration: 1.1, product: 1.05, safety: 1.15 }
+};
 
 type CalculatorTab = 'wizard' | 'superheat' | 'pt-chart' | 'leak-rate' | 'converter';
 type RefrigerantCode = 'R-290' | 'R-32' | 'R-744' | 'R-22';
@@ -184,203 +219,227 @@ const SizingTool: React.FC = () => {
     setConverterTo(defaultTo ?? defaultFrom);
   }, [converterType]);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     // Generate PDF using jsPDF
-    import('jspdf').then(({ jsPDF }) => {
-      const doc = new jsPDF();
-      
-      // Title
-      doc.setFontSize(20);
+    const [{ jsPDF }, logoDataUrl] = await Promise.all([
+      import('jspdf'),
+      loadImageAsDataUrl(PDF_LOGO_PATH),
+    ]);
+
+    const doc = new jsPDF();
+    const PAGE_WIDTH = doc.internal.pageSize.getWidth();
+
+    const MARGIN_LEFT = 20;
+    const INDENT = 25;
+    const PAGE_BOTTOM = 280;
+    const HEADER_HEIGHT = 36;
+    let y = HEADER_HEIGHT + 10;
+    let pageNum = 1;
+
+    const drawPageChrome = () => {
+      // Slim brand rule + page number, printed on every page
+      doc.setFillColor(...PDF_BRAND.secondary);
+      doc.rect(0, 0, PAGE_WIDTH, 3, 'F');
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`HEVACRAZ · Page ${pageNum}`, PAGE_WIDTH - 40, 292);
+      doc.setTextColor(20);
+    };
+
+    const drawTitleBand = () => {
+      doc.setFillColor(...PDF_BRAND.primary);
+      doc.rect(0, 3, PAGE_WIDTH, HEADER_HEIGHT - 3, 'F');
+      const textX = logoDataUrl ? 42 : MARGIN_LEFT;
+      if (logoDataUrl) {
+        try { doc.addImage(logoDataUrl, 'JPEG', 14, 8, 22, 22); } catch { /* logo optional */ }
+      }
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('HEVACRAZ TECHNICAL SIZING REPORT', 20, 20);
-      
+      doc.setTextColor(255, 255, 255);
+      doc.text('HEVACRAZ TECHNICAL SIZING REPORT', textX, 18);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...PDF_BRAND.secondary);
+      doc.text(`HVAC-R Professionals Zimbabwe  ·  Generated ${new Date().toLocaleDateString()}`, textX, 26);
+      doc.setTextColor(20);
+    };
+
+    const ensureSpace = (needed: number) => {
+      if (y + needed > PAGE_BOTTOM) {
+        doc.addPage();
+        pageNum += 1;
+        drawPageChrome();
+        y = 20;
+      }
+    };
+
+    const heading = (text: string) => {
+      ensureSpace(18);
+      doc.setFillColor(...PDF_BRAND.highlight);
+      doc.rect(MARGIN_LEFT, y - 4, 3, 3, 'F');
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...PDF_BRAND.primary);
+      doc.text(text, MARGIN_LEFT + 6, y);
+      y += 10;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(20);
+    };
+
+    const line = (text: string) => {
+      ensureSpace(9);
+      doc.text(text, INDENT, y);
+      y += 9;
+    };
+
+    drawPageChrome();
+    drawTitleBand();
+
+    // Technician
+    heading('Technician');
+    line(`Name: ${user?.name || 'Technician'}`);
+    y += 5;
+
+    // Job Type & Processing Mode
+    heading('Job Configuration');
+    line(`Type: ${JobTypeLabels[inputs.jobType as JobType] || 'Cold Room'}`);
+    line(`Mode: ${ProcessingModeLabels[inputs.processingMode]}`);
+
+    if (inputs.processingMode === 'BLASTING') {
+      line(`Air Temp: ${inputs.blastAirTemp}°C`);
+      line(`Air Velocity: ${inputs.blastAirVelocity.toFixed(1)} m/s`);
+      line(`Core Target: -18°C`);
+      line(`Cycle Duration: ${inputs.blastCycleDurationMinutes} min`);
+      if (inputs.blastPharmaMode) line('Pharmaceutical Mode: Active');
+    } else if (inputs.processingMode === 'HOLDING') {
+      line(`Target Temp: ${inputs.holdTargetTemp}°C`);
+      line(`Relative Humidity: ${inputs.holdRH}%`);
+      line(`Defrost: ${inputs.holdDefrostCyclesPerDay}x/day, ${inputs.holdDefrostDurationMin} min`);
+      line(`Air Velocity: ${inputs.holdAirVelocity.toFixed(2)} m/s`);
+      line(`Recovery Time: ${inputs.holdRecoveryTimeSec}s`);
+      line(`Floor Clearance: ${inputs.holdFloorClearanceCm}cm · Wall Clearance: ${inputs.holdAirflowClearanceCm}cm`);
+    } else if (inputs.processingMode === 'FREEZING') {
+      line(`Storage Temp: ${inputs.freezeStorageTemp}°C`);
+      line(`Freezing Rate: ${inputs.freezeRateCHour}°C/hr`);
+      line(`Air Velocity: ${inputs.freezeAirVelocity.toFixed(1)} m/s`);
+      line(`Product Thickness: ${inputs.freezeProductThicknessMm} mm`);
+      line('Target Core Temp: -18°C');
+      if (inputs.freezeBioStorage) line('Biological Storage: Active (down to -80°C)');
+    }
+    y += 5;
+
+    // Room Dimensions
+    heading('Room Dimensions');
+    line(`Width: ${inputs.roomWidth}m`);
+    line(`Length: ${inputs.roomLength}m`);
+    line(`Height: ${inputs.roomHeight}m`);
+    y += 5;
+
+    // Insulation
+    heading('Insulation');
+    line(`Type: ${inputs.insulationType}`);
+    line(`Thickness: ${inputs.insulationThickness}mm`);
+    y += 5;
+
+    // Operating Conditions
+    heading('Operating Conditions');
+    line(`Ambient Temperature: ${inputs.ambientTemp}°C`);
+    line(`Target Temperature: ${inputs.targetTemp}°C`);
+    line(`Product Temperature: ${inputs.productTemp}°C`);
+    line(`Product Mass: ${inputs.productMass}kg`);
+    line(`Pull-down Time: ${inputs.loadingTimeHours} hours`);
+    y += 5;
+
+    // Calculated Results
+    heading('Calculated Results');
+    ensureSpace(20);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...PDF_BRAND.highlight);
+    doc.text(`${results.total.toFixed(2)} kW`, INDENT, y + 6);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(120);
+    doc.text('TOTAL SYSTEM LOAD', INDENT, y + 13);
+    doc.setTextColor(20);
+    doc.setFontSize(11);
+    y += 22;
+    if (results.isHolding) {
+      line(`Transmission: ${results.transmission.toFixed(2)} kW`);
+      line(`Product: ${results.product.toFixed(2)} kW`);
+      line(`Infiltration: ${results.infiltration.toFixed(2)} kW (RH×Recovery adj.)`);
+      line(`Defrost (${inputs.holdDefrostCyclesPerDay}x${inputs.holdDefrostDurationMin}min): ${results.defrost.toFixed(2)} kW`);
+      line(`Internal Load: ${results.internal.toFixed(2)} kW`);
+    } else if (results.isFreezing) {
+      line(`Transmission Load: ${results.transmission.toFixed(2)} kW`);
+      line(`Product Load: ${results.product.toFixed(2)} kW`);
+      line(`Infiltration Load: ${results.infiltration.toFixed(2)} kW`);
+      line(`Core Freezing Time: ${results.freezingTimeHours.toFixed(1)} hrs`);
+      line(`Critical Zone Transit: ${results.criticalZoneHours.toFixed(2)} hrs`);
+    } else {
+      line(`Transmission Load: ${results.transmission.toFixed(2)} kW`);
+      line(`Product Load: ${results.product.toFixed(2)} kW`);
+      line(`Infiltration Load: ${results.infiltration.toFixed(2)} kW`);
+    }
+    line(`Safety Margin (${results.safetyPct.toFixed(0)}%): ${results.safetyMargin.toFixed(2)} kW`);
+    y += 5;
+
+    // Refrigerants
+    heading('Recommended Refrigerants');
+    line('• R-744 (CO2) - Low GWP');
+    line('• R-290 (Propane) - Low GWP');
+    y += 5;
+
+    // Equipment Sizing
+    heading('Equipment Sizing');
+    line(`Compressor: ${equipmentSpecs.compressorSize}`);
+    line(`Evaporator: ${equipmentSpecs.evaporatorSize}`);
+    line(`Expansion: ${equipmentSpecs.valveType}`);
+    line(`Size: ${equipmentSpecs.txvSize}`);
+    line(`Liquid Line: ${equipmentSpecs.liquidLine}`);
+    line(`Suction Line: ${equipmentSpecs.suctionLine}`);
+    line(`Est. Pipe Length: ${equipmentSpecs.estimatedPipeLength}m`);
+    y += 5;
+
+    // Sources
+    heading('References & Sources');
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    line('1. SANS 5001-1 - South African National Standard for Refrigeration');
+    line('2. ASHRAE Fundamentals - American Society of Heating, Refrigerating and Air-Conditioning Engineers');
+    line('3. Manufacturer Equipment Data - Specific unit specifications');
+    line('4. SANS 10142-1 - Wiring of Premises (Electrical Requirements)');
+    doc.setTextColor(0);
+
+    // Footer
+    y += 5;
+    ensureSpace(10);
+    doc.setFontSize(8);
+    doc.setTextColor(140);
+    doc.text('Generated by HEVACRAZ Digital Toolkit', MARGIN_LEFT, y);
+    doc.setTextColor(20);
+
+    // AI Advice if available
+    if (aiAdvice) {
+      doc.addPage();
+      pageNum += 1;
+      drawPageChrome();
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...PDF_BRAND.primary);
+      doc.text('AI Technical Advice', 20, 20);
+      doc.setTextColor(20);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 30);
-      doc.text('HVAC-R Professionals Zimbabwe', 20, 37);
-      
-      // Technician
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Technician', 20, 42);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Name: ${user?.name || 'Technician'}`, 25, 52);
-      
-      // Job Type & Processing Mode
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Job Configuration', 20, 62);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Type: ${JobTypeLabels[inputs.jobType as JobType] || 'Cold Room'}`, 25, 72);
-      doc.text(`Mode: ${ProcessingModeLabels[inputs.processingMode]}`, 25, 81);
 
-      // Processing mode details
-      let modeLines = 0;
-      if (inputs.processingMode === 'BLASTING') {
-        doc.text(`Air Temp: ${inputs.blastAirTemp}°C`, 25, 91);
-        doc.text(`Air Velocity: ${inputs.blastAirVelocity.toFixed(1)} m/s`, 25, 100);
-        doc.text(`Core Target: -18°C`, 25, 109);
-        doc.text(`Cycle Duration: ${inputs.blastCycleDurationMinutes} min`, 25, 118);
-        modeLines = 4;
-        if (inputs.blastPharmaMode) {
-          doc.text(`Pharmaceutical Mode: Active`, 25, 127);
-          modeLines = 5;
-        }
-      } else if (inputs.processingMode === 'HOLDING') {
-        doc.text(`Target Temp: ${inputs.holdTargetTemp}°C`, 25, 91);
-        doc.text(`Relative Humidity: ${inputs.holdRH}%`, 25, 100);
-        doc.text(`Defrost: ${inputs.holdDefrostCyclesPerDay}x/day, ${inputs.holdDefrostDurationMin} min`, 25, 109);
-        doc.text(`Air Velocity: ${inputs.holdAirVelocity.toFixed(2)} m/s`, 25, 118);
-        doc.text(`Recovery Time: ${inputs.holdRecoveryTimeSec}s`, 25, 127);
-        doc.text(`Floor Clearance: ${inputs.holdFloorClearanceCm}cm · Wall Clearance: ${inputs.holdAirflowClearanceCm}cm`, 25, 136);
-        modeLines = 6;
-      } else if (inputs.processingMode === 'FREEZING') {
-        doc.text(`Storage Temp: ${inputs.freezeStorageTemp}°C`, 25, 91);
-        doc.text(`Freezing Rate: ${inputs.freezeRateCHour}°C/hr`, 25, 100);
-        doc.text(`Air Velocity: ${inputs.freezeAirVelocity.toFixed(1)} m/s`, 25, 109);
-        doc.text(`Product Thickness: ${inputs.freezeProductThicknessMm} mm`, 25, 118);
-        doc.text(`Target Core Temp: -18°C`, 25, 127);
-        modeLines = 5;
-        if (inputs.freezeBioStorage) {
-          doc.text(`Biological Storage: Active (down to -80°C)`, 25, 136);
-          modeLines = 6;
-        }
-      }
+      const splitText = doc.splitTextToSize(aiAdvice, 170);
+      doc.text(splitText, 20, 35);
+    }
 
-      // Calculate where Room Dimensions starts based on mode lines
-      const roomDimHeader = inputs.processingMode !== 'FREEZING' && inputs.processingMode !== 'HOLDING' && inputs.processingMode !== 'BLASTING'
-        ? 92
-        : 91 + modeLines * 9 + 10;
-
-      // Room Dimensions
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Room Dimensions', 20, roomDimHeader);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Width: ${inputs.roomWidth}m`, 25, roomDimHeader + 10);
-      doc.text(`Length: ${inputs.roomLength}m`, 25, roomDimHeader + 19);
-      doc.text(`Height: ${inputs.roomHeight}m`, 25, roomDimHeader + 28);
-
-      const roomDimEnd = roomDimHeader + 28;
-      
-      // Calculate dynamic y-offset for sections after room dimensions
-      const blastOffset = roomDimEnd;
-      const insY = blastOffset + 15;
-      const opsY = insY + 25;
-      const calcY = opsY + 45;
-      // Holding mode has more calculated result lines (7 vs 5)
-      // Freezing mode adds 2 extra lines (freezing time, critical zone)
-      const calcLines = results.isHolding ? 7 : results.isFreezing ? 7 : 5;
-      const refrigY = calcY + 20 + calcLines * 9;
-      
-      // Insulation
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Insulation', 20, insY);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Type: ${inputs.insulationType}`, 25, insY + 10);
-      doc.text(`Thickness: ${inputs.insulationThickness}mm`, 25, insY + 19);
-      
-      // Operating Conditions
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Operating Conditions', 20, opsY);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Ambient Temperature: ${inputs.ambientTemp}°C`, 25, opsY + 10);
-      doc.text(`Target Temperature: ${inputs.targetTemp}°C`, 25, opsY + 19);
-      doc.text(`Product Temperature: ${inputs.productTemp}°C`, 25, opsY + 28);
-      doc.text(`Product Mass: ${inputs.productMass}kg`, 25, opsY + 37);
-      doc.text(`Pull-down Time: ${inputs.loadingTimeHours} hours`, 25, opsY + 46);
-      
-      // Calculated Results
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Calculated Results', 20, calcY);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      const safetyPct = inputs.jobType === 'C90_FREEZER' ? 25 : inputs.jobType === 'C60_FREEZER' ? 20 : 15;
-      if (results.isHolding) {
-        doc.text(`Total Load: ${results.total.toFixed(2)} kW`, 25, calcY + 10);
-        doc.text(`Transmission: ${results.transmission.toFixed(2)} kW`, 25, calcY + 19);
-        doc.text(`Product: ${results.product.toFixed(2)} kW`, 25, calcY + 28);
-        doc.text(`Infiltration: ${results.infiltration.toFixed(2)} kW (RH×Recovery adj.)`, 25, calcY + 37);
-        doc.text(`Defrost (${inputs.holdDefrostCyclesPerDay}x${inputs.holdDefrostDurationMin}min): ${results.defrost.toFixed(2)} kW`, 25, calcY + 46);
-        doc.text(`Internal Load: ${results.internal.toFixed(2)} kW`, 25, calcY + 55);
-        doc.text(`Safety Margin (${safetyPct}%): ${(results.total * safetyPct / 100).toFixed(2)} kW`, 25, calcY + 64);
-      } else if (results.isFreezing) {
-        doc.text(`Total Load: ${results.total.toFixed(2)} kW`, 25, calcY + 10);
-        doc.text(`Transmission Load: ${results.transmission.toFixed(2)} kW`, 25, calcY + 19);
-        doc.text(`Product Load: ${results.product.toFixed(2)} kW`, 25, calcY + 28);
-        doc.text(`Infiltration Load: ${results.infiltration.toFixed(2)} kW`, 25, calcY + 37);
-        doc.text(`Core Freezing Time: ${results.freezingTimeHours.toFixed(1)} hrs`, 25, calcY + 46);
-        doc.text(`Critical Zone Transit: ${results.criticalZoneHours.toFixed(2)} hrs`, 25, calcY + 55);
-        doc.text(`Safety Margin (${safetyPct}%): ${(results.total * safetyPct / 100).toFixed(2)} kW`, 25, calcY + 64);
-      } else {
-        doc.text(`Total Load: ${results.total.toFixed(2)} kW`, 25, calcY + 10);
-        doc.text(`Transmission Load: ${results.transmission.toFixed(2)} kW`, 25, calcY + 19);
-        doc.text(`Product Load: ${results.product.toFixed(2)} kW`, 25, calcY + 28);
-        doc.text(`Infiltration Load: ${results.infiltration.toFixed(2)} kW`, 25, calcY + 37);
-        doc.text(`Safety Margin (${safetyPct}%): ${(results.total * safetyPct / 100).toFixed(2)} kW`, 25, calcY + 46);
-      }
-      
-      // Refrigerants
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Recommended Refrigerants', 20, refrigY);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text('• R-744 (CO2) - Low GWP', 25, refrigY + 10);
-      doc.text('• R-290 (Propane) - Low GWP', 25, refrigY + 19);
-      
-      // AI Advice if available
-      if (aiAdvice) {
-        doc.addPage();
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('AI Technical Advice', 20, 20);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        
-        const splitText = doc.splitTextToSize(aiAdvice, 170);
-        doc.text(splitText, 20, 35);
-      }
-      
-      // Footer with Sources
-      doc.setFontSize(8);
-      doc.setTextColor(128);
-      doc.text('Generated by HEVACRAZ Digital Toolkit', 20, 280);
-      
-      // Sources Section
-      doc.setTextColor(100);
-      doc.text('References & Sources:', 20, 250);
-      doc.setFontSize(9);
-      doc.text('1. SANS 5001-1 - South African National Standard for Refrigeration', 20, 258);
-      doc.text('2. ASHRAE Fundamentals - American Society of Heating, Refrigerating and Air-Conditioning Engineers', 20, 265);
-      doc.text('3. Manufacturer Equipment Data - Specific unit specifications', 20, 272);
-      doc.text('4. SANS 10142-1 - Wiring of Premises (Electrical Requirements)', 20, 278);
-      
-      // Equipment Sizing (Right Column)
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Equipment Sizing', 105, 172);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Compressor: ${equipmentSpecs.compressorSize}`, 110, 182);
-      doc.text(`Evaporator: ${equipmentSpecs.evaporatorSize}`, 110, 189);
-      doc.text(`Expansion: ${equipmentSpecs.valveType}`, 110, 196);
-      doc.text(`Size: ${equipmentSpecs.txvSize}`, 110, 203);
-      doc.text(`Liquid Line: ${equipmentSpecs.liquidLine}`, 110, 210);
-      doc.text(`Suction Line: ${equipmentSpecs.suctionLine}`, 110, 217);
-      doc.text(`Est. Pipe Length: ${equipmentSpecs.estimatedPipeLength}m`, 110, 224);
-      
-      // Save
-      doc.save(`HEVACRAZ_Sizing_Report_${Date.now()}.pdf`);
-    });
+    // Save
+    doc.save(`HEVACRAZ_Sizing_Report_${Date.now()}.pdf`);
   };
 
   const results = useMemo(() => {
@@ -390,20 +449,13 @@ const SizingTool: React.FC = () => {
     const uValue = (INSULATION_U_VALUES[inputs.insulationType as keyof typeof INSULATION_U_VALUES] || 0.022) / (inputs.insulationThickness / 1000);
     const tempDiff = inputs.ambientTemp - inputs.targetTemp;
     const productTempDiff = inputs.productTemp - inputs.targetTemp;
-    
-    // Job type specific multipliers
-    const jobTypeMultipliers: Record<JobType, { infiltration: number; product: number; safety: number }> = {
-      C40_FREEZER: { infiltration: 1.2, product: 1.1, safety: 1.15 },
-      C60_FREEZER: { infiltration: 1.3, product: 1.15, safety: 1.20 },
-      C90_FREEZER: { infiltration: 1.5, product: 1.2, safety: 1.25 },
-      COLD_ROOM: { infiltration: 1.0, product: 1.0, safety: 1.15 },
-      FREEZER_ROOM: { infiltration: 1.1, product: 1.05, safety: 1.15 }
-    };
-    
-    const multipliers = jobTypeMultipliers[inputs.jobType as JobType] || jobTypeMultipliers.COLD_ROOM;
-    
+
+    const multipliers = JOB_TYPE_MULTIPLIERS[inputs.jobType as JobType] || JOB_TYPE_MULTIPLIERS.COLD_ROOM;
+
     const transmissionLoad = area * uValue * tempDiff;
-    const productLoad = (inputs.productMass * inputs.productCp * productTempDiff) / (inputs.loadingTimeHours * 3600);
+    const loadingTimeSeconds = Math.max(inputs.loadingTimeHours, 0.1) * 3600;
+    const rawProductLoad = (inputs.productMass * inputs.productCp * productTempDiff) / loadingTimeSeconds;
+    const productLoad = rawProductLoad * multipliers.product;
     const volume = inputs.roomWidth * inputs.roomLength * inputs.roomHeight;
     
     // Base infiltration (W)
@@ -453,8 +505,10 @@ const SizingTool: React.FC = () => {
       ? (4 / inputs.freezeRateCHour) * freezeThicknessFactor
       : 0;
 
-    const totalLoad = (transmissionLoad + (productLoad * multipliers.product * 1000) + infiltrationLoad + defrostLoad + internalLoad) * multipliers.safety;
-    
+    const rawLoad = transmissionLoad + (productLoad * 1000) + infiltrationLoad + defrostLoad + internalLoad;
+    const totalLoad = rawLoad * multipliers.safety;
+    const safetyMarginLoad = totalLoad - rawLoad;
+
     return {
       transmission: transmissionLoad / 1000,
       product: productLoad,
@@ -462,6 +516,8 @@ const SizingTool: React.FC = () => {
       defrost: defrostLoad / 1000,
       internal: internalLoad / 1000,
       total: totalLoad / 1000,
+      safetyMargin: safetyMarginLoad / 1000,
+      safetyPct: (multipliers.safety - 1) * 100,
       rhInfiltrationMultiplier,
       recoveryInfiltrationMultiplier,
       isHolding,
@@ -1127,9 +1183,9 @@ const SizingTool: React.FC = () => {
                 )}
 
                 <div className="grid grid-cols-3 gap-4">
-                  <InputGroup label="Width (m)" value={inputs.roomWidth} onChange={(v: number) => setInputs({...inputs, roomWidth: v})} />
-                  <InputGroup label="Length (m)" value={inputs.roomLength} onChange={(v: number) => setInputs({...inputs, roomLength: v})} />
-                  <InputGroup label="Height (m)" value={inputs.roomHeight} onChange={(v: number) => setInputs({...inputs, roomHeight: v})} />
+                  <InputGroup label="Width (m)" value={inputs.roomWidth} min={0.1} onChange={(v: number) => setInputs({...inputs, roomWidth: v})} />
+                  <InputGroup label="Length (m)" value={inputs.roomLength} min={0.1} onChange={(v: number) => setInputs({...inputs, roomLength: v})} />
+                  <InputGroup label="Height (m)" value={inputs.roomHeight} min={0.1} onChange={(v: number) => setInputs({...inputs, roomHeight: v})} />
                 </div>
                 
                 <div className="space-y-4 pt-4 border-t border-gray-100">
@@ -1178,9 +1234,9 @@ const SizingTool: React.FC = () => {
                   <InputGroup label="Ambient Temp (°C)" value={inputs.ambientTemp} onChange={(v: number) => setInputs({...inputs, ambientTemp: v})} />
                   <InputGroup label="Target Temp (°C)" value={inputs.targetTemp} onChange={(v: number) => setInputs({...inputs, targetTemp: v})} />
                   <InputGroup label="Product Temp (°C)" value={inputs.productTemp} onChange={(v: number) => setInputs({...inputs, productTemp: v})} />
-                  <InputGroup label="Pull-down Time (hrs)" value={inputs.loadingTimeHours} onChange={(v: number) => setInputs({...inputs, loadingTimeHours: v})} />
-                  <InputGroup label="Product Mass (kg)" value={inputs.productMass} onChange={(v: number) => setInputs({...inputs, productMass: v})} />
-                  <InputGroup label="Product Cp (kJ/kg·K)" value={inputs.productCp} onChange={(v: number) => setInputs({...inputs, productCp: v})} />
+                  <InputGroup label="Pull-down Time (hrs)" value={inputs.loadingTimeHours} min={0.1} onChange={(v: number) => setInputs({...inputs, loadingTimeHours: v})} />
+                  <InputGroup label="Product Mass (kg)" value={inputs.productMass} min={0} onChange={(v: number) => setInputs({...inputs, productMass: v})} />
+                  <InputGroup label="Product Cp (kJ/kg·K)" value={inputs.productCp} min={0} onChange={(v: number) => setInputs({...inputs, productCp: v})} />
                 </div>
               </div>
             )}
@@ -1215,7 +1271,7 @@ const SizingTool: React.FC = () => {
                           <BreakdownLine label="Internal (lights/fans/occ.)" value={results.internal} />
                         </>
                       )}
-                      <BreakdownLine label={`Safety Margin (${inputs.jobType === 'C90_FREEZER' ? '25' : inputs.jobType === 'C60_FREEZER' ? '20' : '15'}%)`} value={results.total * (inputs.jobType === 'C90_FREEZER' ? 0.25 : inputs.jobType === 'C60_FREEZER' ? 0.20 : 0.15)} />
+                      <BreakdownLine label={`Safety Margin (${results.safetyPct.toFixed(0)}%)`} value={results.safetyMargin} />
                     </div>
                   </div>
                   {results.isFreezing ? (
@@ -1306,9 +1362,9 @@ const SizingTool: React.FC = () => {
                     <p className="pl-4">ΔT = {inputs.ambientTemp}°C - ({inputs.targetTemp}°C) = {inputs.ambientTemp - inputs.targetTemp}°C</p>
                     <p className="pl-4"><strong>Result:</strong> {results.transmission.toFixed(2)} kW</p>
                     
-                    <p className="mt-3"><strong>2. Product Load:</strong> Q = (m × Cp × ΔT) / t</p>
+                    <p className="mt-3"><strong>2. Product Load:</strong> Q = (m × Cp × ΔT) / t × Job Multiplier</p>
                     <p className="pl-4">Where: m = Mass (kg), Cp = Specific heat (kJ/kg·K), ΔT = Temp difference, t = Time (s)</p>
-                    <p className="pl-4">Q = ({inputs.productMass}kg × {inputs.productCp}kJ × {inputs.productTemp - inputs.targetTemp}°C) / ({inputs.loadingTimeHours}h × 3600s)</p>
+                    <p className="pl-4">Q = ({inputs.productMass}kg × {inputs.productCp}kJ × {inputs.productTemp - inputs.targetTemp}°C) / ({inputs.loadingTimeHours}h × 3600s) × {(JOB_TYPE_MULTIPLIERS[inputs.jobType as JobType] || JOB_TYPE_MULTIPLIERS.COLD_ROOM).product.toFixed(2)}</p>
                     <p className="pl-4"><strong>Result:</strong> {results.product.toFixed(2)} kW</p>
                     
                     <p className="mt-3"><strong>3. Infiltration Load:</strong> Q = V × ACH × ΔT / 3600</p>
@@ -1316,7 +1372,7 @@ const SizingTool: React.FC = () => {
                     <p className="pl-4">V = {inputs.roomWidth}m × {inputs.roomLength}m × {inputs.roomHeight}m = {(inputs.roomWidth * inputs.roomLength * inputs.roomHeight).toFixed(1)} m³</p>
                     {results.isHolding ? (
                       <>
-                        <p className="pl-4">Base: {((inputs.roomWidth * inputs.roomLength * inputs.roomHeight) * 10 * (() => { const m = { C40_FREEZER: 1.2, C60_FREEZER: 1.3, C90_FREEZER: 1.5, COLD_ROOM: 1.0, FREEZER_ROOM: 1.1 }[inputs.jobType as JobType] || 1.0; return m; })() * (inputs.ambientTemp - inputs.targetTemp) / 3600).toFixed(2)} kW</p>
+                        <p className="pl-4">Base: {((inputs.roomWidth * inputs.roomLength * inputs.roomHeight) * 10 * (JOB_TYPE_MULTIPLIERS[inputs.jobType as JobType] || JOB_TYPE_MULTIPLIERS.COLD_ROOM).infiltration * (inputs.ambientTemp - inputs.targetTemp) / 3600).toFixed(2)} kW</p>
                         <p className="pl-4">RH multiplier: {results.rhInfiltrationMultiplier.toFixed(2)} × Recovery multiplier: {results.recoveryInfiltrationMultiplier.toFixed(2)}</p>
                         <p className="pl-4"><strong>Adjusted Result:</strong> {results.infiltration.toFixed(2)} kW</p>
                       </>
@@ -1357,7 +1413,7 @@ const SizingTool: React.FC = () => {
                     )}
 
                     <p className="mt-3"><strong>{results.isHolding ? '4' : results.isFreezing ? '4' : '3b'}. Total with Safety:</strong> Q_total = ΣQ × Safety Factor</p>
-                    <p className="pl-4">Safety Factor: {inputs.jobType === 'C90_FREEZER' ? '25%' : inputs.jobType === 'C60_FREEZER' ? '20%' : '15%'}</p>
+                    <p className="pl-4">Safety Factor: {results.safetyPct.toFixed(0)}% (adds {results.safetyMargin.toFixed(2)} kW)</p>
                     <p className="pl-4 font-bold">Final Total: {results.total.toFixed(2)} kW</p>
                   </div>
                 </div>
@@ -1752,13 +1808,18 @@ const SizingTool: React.FC = () => {
   );
 };
 
-const InputGroup = ({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) => (
+const InputGroup = ({ label, value, onChange, min }: { label: string; value: number; onChange: (v: number) => void; min?: number }) => (
   <div className="space-y-2">
     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>
-    <input 
-      type="number" 
-      value={value} 
-      onChange={e => onChange(Number(e.target.value))}
+    <input
+      type="number"
+      value={value}
+      min={min}
+      onChange={e => {
+        const parsed = Number(e.target.value);
+        const next = Number.isFinite(parsed) ? parsed : 0;
+        onChange(min !== undefined ? Math.max(min, next) : next);
+      }}
       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
     />
   </div>
