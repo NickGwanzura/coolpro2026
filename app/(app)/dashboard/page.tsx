@@ -129,11 +129,11 @@ export default function DashboardPage() {
                 trend: `${approvedCocs} approved`
             },
             {
-                label: 'Rewards Points',
-                value: '—',
-                icon: Gift,
+                label: 'Refrigerant Recovered',
+                value: `${refrigerantLogs.filter(l => l.actionType === 'Recovery').reduce((sum, l) => sum + l.amount, 0).toFixed(1)} kg`,
+                icon: Droplets,
                 color: 'emerald',
-                trend: 'Coming soon'
+                trend: 'Recent recovery logs'
             },
             {
                 label: 'Certifications',
@@ -143,7 +143,7 @@ export default function DashboardPage() {
                 trend: expiringCerts > 0 ? `${expiringCerts} expiring soon` : `${validCerts} active`
             },
         ];
-    }, [plannerJobs, cocRequests, certificateRecords, dateRange]);
+    }, [plannerJobs, cocRequests, certificateRecords, dateRange, refrigerantLogs]);
 
     // Vendor KPIs — computed from the vendor's own reorders, compliance applications, and ledger
     const vendorStats = useMemo(() => {

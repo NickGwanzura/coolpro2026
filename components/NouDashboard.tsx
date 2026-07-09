@@ -23,8 +23,8 @@ import {
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/components/ui/Toast';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
-import { useCourses, useReorders, useVerifications, useSupplierApplications, useSupplierLedger, useSupplierComplianceApplications, useTechnicians } from '@/lib/api';
-import type { SupplierQuotaStatus } from '@/types/index';
+import { useCourses, useReorders, useVerifications, useSupplierApplications, useSupplierLedger, useSupplierComplianceApplications, useTechnicians, useGasLogs } from '@/lib/api';
+import type { SupplierQuotaStatus, NOUDiscrepancyAlert, NOUGreyMarketAlert } from '@/types/index';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -77,6 +77,7 @@ export default function NouDashboard() {
   const { data: supplierApplications = [] } = useSupplierApplications();
   const { data: supplierLedger = [] } = useSupplierLedger();
   const { data: supplierComplianceApplications = [] } = useSupplierComplianceApplications();
+  const { data: gasLogs = [] } = useGasLogs(undefined, undefined, 500);
 
   const accessAllowed = session?.role === 'org_admin';
 
@@ -326,6 +327,82 @@ export default function NouDashboard() {
     };
   }, [supplierComplianceApplications, supplierLedger]);
 
+  // Per-technician purchase vs field-usage reconciliation, drawn from real ledger + gas log data:
+  // vendor-recorded sales (purchasedKg) against what the technician actually logged charging (loggedUsageKg).
+  const technicianReconciliation = useMemo(() => {
+    const byTechnician = new Map<string, { technicianId: string; technicianName: string; province: string; purchasedKg: number; loggedUsageKg: number }>();
+
+    for (const entry of supplierLedger) {
+      if (entry.direction !== 'sale' || !entry.technicianId) continue;
+      const key = entry.technicianId;
+      const existing = byTechnician.get(key) ?? {
+        technicianId: key,
+        technicianName: entry.counterpartyName,
+        province: entry.province,
+        purchasedKg: 0,
+        loggedUsageKg: 0,
+      };
+      existing.purchasedKg += entry.quantityKg;
+      byTechnician.set(key, existing);
+    }
+
+    for (const log of gasLogs) {
+      if (log.actionType !== 'Charge') continue;
+      const key = log.technicianId;
+      const existing = byTechnician.get(key) ?? {
+        technicianId: key,
+        technicianName: log.technicianName,
+        province: techniciansData.find(t => t.id === key)?.province ?? 'Unknown',
+        purchasedKg: 0,
+        loggedUsageKg: 0,
+      };
+      existing.loggedUsageKg += log.amount;
+      byTechnician.set(key, existing);
+    }
+
+    return Array.from(byTechnician.values());
+  }, [supplierLedger, gasLogs, techniciansData]);
+
+  // Discrepancy: technician has both recorded purchases and logged usage, but the two don't
+  // reconcile within a reasonable tolerance — a bookkeeping/reporting mismatch worth investigating.
+  const discrepancyAlerts = useMemo((): NOUDiscrepancyAlert[] => {
+    return technicianReconciliation
+      .filter(t => t.purchasedKg > 0 && t.loggedUsageKg > 0)
+      .map(t => ({ ...t, ratio: t.purchasedKg / t.loggedUsageKg }))
+      .filter(t => t.ratio >= 1.5 || t.ratio <= 0.67)
+      .map(t => ({
+        id: `discrepancy-${t.technicianId}`,
+        technicianId: t.technicianId,
+        technicianName: t.technicianName,
+        province: t.province,
+        purchasedKg: t.purchasedKg,
+        loggedUsageKg: t.loggedUsageKg,
+        ratio: t.ratio,
+        flagReason: t.ratio >= 1.5
+          ? `Purchased ${t.purchasedKg.toFixed(1)} kg but only logged ${t.loggedUsageKg.toFixed(1)} kg of field usage`
+          : `Logged ${t.loggedUsageKg.toFixed(1)} kg of field usage against only ${t.purchasedKg.toFixed(1)} kg of recorded purchases`,
+        action: 'investigate' as const,
+      }))
+      .sort((a, b) => Math.max(b.ratio, 1 / b.ratio) - Math.max(a.ratio, 1 / a.ratio));
+  }, [technicianReconciliation]);
+
+  // Grey market: technician has logged field usage with zero recorded purchases through any
+  // tracked supplier — the refrigerant they charged was never sourced through a compliant channel.
+  const greyMarketAlerts = useMemo((): NOUGreyMarketAlert[] => {
+    return technicianReconciliation
+      .filter(t => t.loggedUsageKg > 0 && t.purchasedKg === 0)
+      .map(t => ({
+        id: `greymarket-${t.technicianId}`,
+        technicianId: t.technicianId,
+        technicianName: t.technicianName,
+        province: t.province,
+        loggedUsageKg: t.loggedUsageKg,
+        alertReason: `Logged ${t.loggedUsageKg.toFixed(1)} kg of refrigerant charged with no matching purchase from a registered supplier`,
+        action: 'investigate' as const,
+      }))
+      .sort((a, b) => b.loggedUsageKg - a.loggedUsageKg);
+  }, [technicianReconciliation]);
+
   if (!session) {
     return (
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
@@ -396,8 +473,8 @@ export default function NouDashboard() {
                   ['Total Refrigerant Purchased (kg)', liveStats.totalPurchasedKg.toLocaleString()],
                   ['Total Refrigerant Recovered (kg)', liveStats.totalRecoveredKg.toLocaleString()],
                   ['Emissions Avoided (CO2-eq tonnes)', String(liveStats.emissionsAvoidedTonnes)],
-                  ['Active Discrepancy Flags', '0'],
-                  ['Grey Market Alerts', '0'],
+                  ['Active Discrepancy Flags', String(discrepancyAlerts.length)],
+                  ['Grey Market Alerts', String(greyMarketAlerts.length)],
                 ];
 
                 kpiData.forEach(([label, val], i) => {
@@ -901,9 +978,28 @@ export default function NouDashboard() {
             </div>
           </div>
 
-          <div className="border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-            No discrepancy alerts detected in the current reporting period.
-          </div>
+          {discrepancyAlerts.length === 0 ? (
+            <div className="border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+              No discrepancy alerts detected in the current reporting period.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {discrepancyAlerts.slice(0, 5).map((alert) => (
+                <div key={alert.id} className="border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-gray-900">{alert.technicianName}</p>
+                      <p className="text-xs text-gray-500">{alert.province}</p>
+                    </div>
+                    <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                      {alert.ratio.toFixed(1)}x ratio
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-700">{alert.flagReason}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </article>
       </section>
 
@@ -1020,9 +1116,28 @@ export default function NouDashboard() {
             </div>
           </div>
 
-          <div className="border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-            No grey market flags detected. Vendor submissions within expected ranges.
-          </div>
+          {greyMarketAlerts.length === 0 ? (
+            <div className="border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+              No grey market flags detected. Vendor submissions within expected ranges.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {greyMarketAlerts.slice(0, 5).map((alert) => (
+                <div key={alert.id} className="border border-rose-200 bg-rose-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-gray-900">{alert.technicianName}</p>
+                      <p className="text-xs text-gray-500">{alert.province}</p>
+                    </div>
+                    <span className="inline-flex rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-800">
+                      {alert.loggedUsageKg.toFixed(1)} kg
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-700">{alert.alertReason}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </article>
 
         <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">

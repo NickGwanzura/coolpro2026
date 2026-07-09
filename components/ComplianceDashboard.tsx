@@ -2,9 +2,9 @@
 
 import React, { useMemo } from 'react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Download, ShieldCheck, TrendingDown, TrendingUp } from 'lucide-react';
+import { Download, ShieldCheck, AlertTriangle, TrendingDown, TrendingUp } from 'lucide-react';
 import OccupationalAccidentSection from './OccupationalAccidentSection';
-import { useReorders, useTechnicians } from '@/lib/api';
+import { useReorders, useTechnicians, useGasLogs } from '@/lib/api';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
 
 const NATURAL_REFRIGERANTS = new Set(['R-290', 'R-600a', 'R-744', 'R-717', 'R-1270']);
@@ -39,6 +39,22 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, unit, trend, positive, 
 const ComplianceDashboard: React.FC = () => {
   const { data: reorders = [] } = useReorders();
   const { data: technicians = [] } = useTechnicians();
+  const leakLookbackFrom = useMemo(() => {
+    const from = new Date();
+    from.setDate(from.getDate() - 30);
+    return from.toISOString();
+  }, []);
+  const { data: gasLogs = [] } = useGasLogs(leakLookbackFrom, undefined, 100);
+
+  // Leak Repair entries logged via the Field Toolkit in the last 30 days, most recent first.
+  const leakAlerts = useMemo(
+    () =>
+      gasLogs
+        .filter(log => log.actionType === 'Leak Repair')
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 5),
+    [gasLogs]
+  );
 
   // Compute last 6 months of refrigerant volume from reorders
   const usageData = useMemo(() => {
@@ -212,14 +228,30 @@ const ComplianceDashboard: React.FC = () => {
           {/* Alerts */}
           <div className="bg-gray-900 text-white p-6 rounded-2xl shadow-lg">
             <h4 className="text-base font-semibold mb-4">Critical Leak Alerts</h4>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-400" />
-                <p>
-                  No active leak alerts. Leak reports will appear here when submitted via the Field Toolkit.
-                </p>
+            {leakAlerts.length === 0 ? (
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-400" />
+                  <p>
+                    No active leak alerts in the last 30 days. Leak reports appear here when submitted via the Field Toolkit.
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                {leakAlerts.map((log) => (
+                  <div key={log.id} className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                      <div>
+                        <p className="font-semibold text-white">{log.technicianName} · {log.amount} kg {log.refrigerantType}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{log.clientName} · {new Date(log.timestamp).toLocaleDateString('en-ZW')}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Top Performers */}
