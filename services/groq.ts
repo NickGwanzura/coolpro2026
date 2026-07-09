@@ -10,21 +10,9 @@ const getGroqClient = (): Groq | null => {
 };
 
 export const getTechnicalAdvice = async (prompt: string): Promise<string> => {
-  // If no API key, return mock advice
+  // Return a clear setup message when the technical AI service is not configured.
   if (!API_KEY) {
-    return `AI Technical Verification (Demo Mode)
-
-Based on your sizing calculation:
-
-1. Recommended Compressor Capacity: 3.5-4.5 kW at -10°C SST for medium temperature, 2.5-3.5 kW at 0°C SST for low temperature applications
-
-2. Evaporator Recommendation: Direct expansion coil with 12-15 m² surface area for reach-in cabinets. Forced air unit cooler with 8-10 m² for walk-in units.
-
-3. Low-GWP Natural Refrigerant Options:
-   - R-290 (Propane): Excellent efficiency (COP 3.5-4.5), 3 GWP. Suitable for small to medium cabinets under 500kg charge. flammable but safe with proper containment.
-   - R-744 (CO2 Transcritical): 1 GWP. Best for medium to large installations with proper system design. Higher operating pressures (up to 100 bar).
-
-Note: This is demo advice. Set GROQ_API_KEY in environment to enable live AI verification.`;
+    return 'AI technical verification is currently unavailable. Configure GROQ_API_KEY to enable live sizing advice.';
   }
 
   try {

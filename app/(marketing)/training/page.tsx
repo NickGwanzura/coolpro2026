@@ -537,7 +537,7 @@ export default function TrainingPage() {
                               className="group/btn mt-6 inline-flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold text-white transition-all duration-200 hover:brightness-110 shadow-sm hover:shadow-md"
                               style={{ backgroundColor: isFull ? '#6B7280' : '#D97706' }}
                             >
-                              {isFull ? 'Join Waitlist' : 'Reserve Seat'} <span className="text-white/70">(Mock)</span>
+                              {isFull ? 'Join Waitlist' : 'Reserve Seat'}
                               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover/btn:translate-x-1" />
                             </Link>
                           </article>

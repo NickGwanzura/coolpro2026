@@ -194,7 +194,7 @@ export default function VerifyTechnicianPage() {
     }, 300);
   };
 
-  const demoQueries = {
+  const suggestedQueries = {
     registration: technicians.slice(0, 4).map((item) => item.registrationNumber),
     name: technicians.slice(0, 4).map((item) => item.name),
     certificate: availableCertificates.slice(0, 4).map((item) => item.certificateNumber),
@@ -336,7 +336,7 @@ export default function VerifyTechnicianPage() {
           <div className="mt-6 border-t border-slate-100 pt-6">
             <p className="mb-3 text-sm text-slate-500">Try a {searchMode} search (from live registry):</p>
             <div className="flex flex-wrap gap-2">
-              {demoQueries[searchMode].map((entry) => (
+              {suggestedQueries[searchMode].map((entry) => (
                 <button
                   key={entry}
                   onClick={() => setSearchQuery(entry)}

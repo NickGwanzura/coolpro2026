@@ -25,7 +25,7 @@ export default function SuppliersPage() {
                 <p className="max-w-3xl text-sm leading-6 text-gray-600">
                     {isVendor
                         ? 'Track refrigerant purchases, sales to client accounts, and the reports you still need to file to the NOU.'
-                        : 'Review supplier applications, see approved partners, and keep the demo supply-chain flow aligned across roles.'}
+                        : 'Review supplier applications, see approved partners, and keep supply-chain records aligned across roles.'}
                 </p>
             </div>
 

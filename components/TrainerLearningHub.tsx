@@ -102,7 +102,7 @@ export default function TrainerLearningHub({ session }: { session: UserSession }
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Upcoming Trainings" value={summary.upcoming} hint="Sessions still ahead on the calendar" icon={CalendarDays} />
         <MetricCard label="Seats Open" value={summary.seatsRemaining} hint="Remaining trainer-managed seats" icon={Users} />
-        <MetricCard label="Expected Revenue" value={`$${summary.expectedRevenue}`} hint="Mock value from booked seats" icon={Ticket} />
+        <MetricCard label="Expected Revenue" value={`$${summary.expectedRevenue}`} hint="Projected from booked seats" icon={Ticket} />
         <MetricCard label="Active Provinces" value={summary.provinces} hint="Regions with scheduled trainings" icon={MapPin} />
       </section>
 
@@ -112,7 +112,7 @@ export default function TrainerLearningHub({ session }: { session: UserSession }
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Training calendar</p>
             <h2 className="mt-2 text-2xl font-bold text-gray-900">Upcoming sessions with venue and fees</h2>
             <p className="mt-2 text-sm leading-6 text-gray-600">
-              Anything you add here also appears in the public landing-page training schedule. Payment stays mocked for now.
+              Anything you add here also appears in the public landing-page training schedule.
             </p>
           </div>
 

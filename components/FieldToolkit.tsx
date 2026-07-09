@@ -876,7 +876,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                     value={formData.pesepayTransactionId}
                     onChange={(e) => setFormData({ ...formData, pesepayTransactionId: e.target.value })}
                     className="w-full border border-gray-200 p-3 focus:ring-2 focus:ring-[#D97706] focus:border-transparent outline-none transition-all bg-white"
-                    placeholder="e.g. MOCK-20260331-001"
+                    placeholder="e.g. REC-20260331-001"
                   />
                 </div>
                 <div className="space-y-2">

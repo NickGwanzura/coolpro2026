@@ -205,7 +205,7 @@ const SizingTool: React.FC = () => {
       doc.text('Technician', 20, 42);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Name: ${user?.name || 'Demo Technician'}`, 25, 52);
+      doc.text(`Name: ${user?.name || 'Technician'}`, 25, 52);
       
       // Job Type & Processing Mode
       doc.setFontSize(14);

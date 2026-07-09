@@ -220,7 +220,7 @@ export default function FieldScheduling() {
                     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                         <div className="border-b border-gray-100 px-5 py-4">
                             <h2 className="text-lg font-bold text-gray-900">Equipment Register</h2>
-                            <p className="text-sm text-gray-500">Mock maintenance view with predictive actions.</p>
+                            <p className="text-sm text-gray-500">Maintenance view with predictive actions.</p>
                         </div>
 
                         <div className="overflow-x-auto">

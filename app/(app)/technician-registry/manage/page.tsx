@@ -10,11 +10,7 @@ import { useRouter } from 'next/navigation';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/components/ui/Toast';
 
-const PENDING_CERT_MOCK = [
-  { id: 'appr-1', tech: 'Tapiwa Moyo', cert: 'Low GWP Refrigerants Safety', date: '2026-02-22', score: '95%', details: 'Written exam covering low GWP refrigerant handling, storage, and safety procedures. 38/40 questions answered correctly.' },
-  { id: 'appr-2', tech: 'John Sithole', cert: 'R-744 Transcritical Systems', date: '2026-02-21', score: '88%', details: 'Practical and theory assessment on CO₂ transcritical system operation. Passed all safety checks. Minor deductions on pressure calculations.' },
-  { id: 'appr-3', tech: 'Sarah Dhlamini', cert: 'Hydrocarbon Safety Specialist', date: '2026-02-21', score: '92%', details: 'Comprehensive hydrocarbon refrigerant safety exam including leak detection, flammability zones, and PPE requirements. 37/40 correct.' },
-];
+const PENDING_CERTIFICATIONS: Array<{ id: string; tech: string; cert: string; date: string; score: string; details: string }> = [];
 
 export default function ManageTechniciansPage() {
   const router = useRouter();
@@ -26,8 +22,8 @@ export default function ManageTechniciansPage() {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [activeTab, setActiveTab] = useState<'technicians' | 'certifications'>('technicians');
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [pendingCerts, setPendingCerts] = useState(PENDING_CERT_MOCK);
-  const [examModal, setExamModal] = useState<typeof PENDING_CERT_MOCK[number] | null>(null);
+  const [pendingCerts, setPendingCerts] = useState(PENDING_CERTIFICATIONS);
+  const [examModal, setExamModal] = useState<typeof PENDING_CERTIFICATIONS[number] | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
   const { data: techniciansData, error: techniciansError, isLoading: techniciansLoading } = useTechnicians();

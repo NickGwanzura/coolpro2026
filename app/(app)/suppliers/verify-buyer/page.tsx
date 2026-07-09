@@ -307,12 +307,6 @@ export default function VerifyBuyerPage() {
                 </div>
             </div>
 
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Demo registry</p>
-                <p className="mt-2 text-sm text-gray-600">
-                    Available registration numbers in the demo: <span className="font-mono text-xs">TEC-2024-001</span>, <span className="font-mono text-xs">TEC-2024-002</span>, <span className="font-mono text-xs">TEC-2024-003</span>. QR tokens: <span className="font-mono text-xs">qr-tendai-moyo-2024</span>, <span className="font-mono text-xs">qr-chiedza-nhamo-2024</span>.
-                </p>
-            </div>
         </div>
     );
 }

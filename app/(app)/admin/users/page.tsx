@@ -67,11 +67,6 @@ function UserRow({ user, isSelf }: { user: AdminUserRecord; isSelf: boolean }) {
               You
             </span>
           )}
-          {user.isDemo && (
-            <span className="shrink-0 border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-500">
-              Demo
-            </span>
-          )}
         </div>
         <p className="mt-0.5 truncate text-xs text-gray-500">{user.email}</p>
         <p className="mt-0.5 text-[11px] text-gray-400">{user.region}</p>

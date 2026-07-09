@@ -473,18 +473,6 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Demo Banner */}
-            {session.isDemo && (
-                <div className="border border-[#D97706]/30 bg-[#D97706]/5 px-4 py-3">
-                    <div className="flex items-center gap-3">
-                        <Award className="h-4 w-4 text-[#D97706] flex-shrink-0" />
-                        <p className="text-sm text-[#44403C]">
-                            Demo mode <span className="font-semibold capitalize">{session.role.replace('_', ' ')}</span> · {session.region}
-                        </p>
-                    </div>
-                </div>
-            )}
-
             {/* KPI Cards */}
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 ${isAdmin ? 'xl:grid-cols-5' : 'lg:grid-cols-4'}`}>
                 {stats.map((stat, index) => {

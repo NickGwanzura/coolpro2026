@@ -39,10 +39,6 @@ export async function loginByEmail(email: string, password?: string): Promise<Us
     return postLogin(body);
 }
 
-export async function login(role: string, region: string): Promise<UserSession> {
-    return postLogin({ role, region });
-}
-
 export async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     if (typeof window !== 'undefined') {
@@ -56,7 +52,6 @@ interface AuthContextType {
     login: (email: string, password?: string) => Promise<void>;
     logout: () => void;
     isLoading: boolean;
-    demo?: (role: string, region: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -97,13 +92,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     };
 
-    const demoLogin = async (role: string, region: string) => {
-        const session = await login(role, region);
-        setUser(session);
-    };
-
     return (
-        <AuthContext.Provider value={{ user, login: handleLogin, logout: handleLogout, isLoading, demo: demoLogin }}>
+        <AuthContext.Provider value={{ user, login: handleLogin, logout: handleLogout, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

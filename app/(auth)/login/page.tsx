@@ -2,38 +2,20 @@
 
 import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../lib/auth';
-import { UserRole } from '../../../types';
-import { Thermometer, Lock, Mail, ArrowRight, MapPin, Building2, PackageSearch, User, GraduationCap } from 'lucide-react';
-
-const DEMO_ROLES: Array<{
-  role: UserRole;
-  label: string;
-  description: string;
-  icon: typeof User;
-}> = [
-  { role: 'org_admin',   label: 'Org Admin',   description: 'Operations, suppliers, and team visibility.', icon: Building2 },
-  { role: 'technician', label: 'Technician',  description: 'Field tools, jobs, and certifications.', icon: Thermometer },
-  { role: 'trainer',    label: 'Trainer',     description: 'Learning flows and assessor tools.', icon: GraduationCap },
-  { role: 'lecturer',   label: 'Lecturer',    description: 'Course delivery and learner management.', icon: GraduationCap },
-  { role: 'vendor',     label: 'Vendor',      description: 'Supplier-facing demo workspace.', icon: PackageSearch },
-];
+import { Lock, Mail, ArrowRight, Building2, PackageSearch } from 'lucide-react';
 
 const inputCls = 'block w-full px-3 py-2.5 rounded-lg bg-white border border-[#E7E5E4] text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:border-[#D97706] focus:ring-1 focus:ring-[#D97706] transition-colors text-sm';
-const REGIONS = ["Harare", "Bulawayo", "Mutare", "Gweru", "Masvingo", "Other"];
-const DEMO_LOGIN_ENABLED = process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === 'true';
 
 function LoginPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, demo } = useAuth();
-  const [manualMode, setManualMode] = useState<'signin' | 'demo' | 'supplier' | null>(null);
+  const { login } = useAuth();
+  const [manualMode, setManualMode] = useState<'signin' | 'supplier' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [selectedRegion, setSelectedRegion] = useState('Harare');
 
   const isSupplierFlow = searchParams.get('flow') === 'supplier';
   const activeMode = manualMode ?? (isSupplierFlow ? 'supplier' : 'signin');
@@ -58,20 +40,6 @@ function LoginPageContent() {
       redirectAfterLogin();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed.';
-      setFieldErrors({ form: message });
-      setIsLoading(false);
-    }
-  };
-
-  const handleDemoAccess = async (role: UserRole) => {
-    if (!demo) return;
-    setIsLoading(true);
-    setFieldErrors({});
-    try {
-      await demo(role, selectedRegion);
-      redirectAfterLogin();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Demo login failed.';
       setFieldErrors({ form: message });
       setIsLoading(false);
     }
@@ -113,7 +81,7 @@ function LoginPageContent() {
             {tabs.map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setManualMode(tab.id as 'signin' | 'demo' | 'supplier')}
+                onClick={() => setManualMode(tab.id as 'signin' | 'supplier')}
                 className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
                   activeMode === tab.id
                     ? 'border-[#D97706] text-[#1C1917]'
@@ -128,67 +96,7 @@ function LoginPageContent() {
           <div className="p-6 space-y-5">
             {activeMode === 'signin' && (
               <div className="space-y-5">
-                {DEMO_LOGIN_ENABLED && (
-                  <>
-                    {/* Demo personas — instant access, no password. Never shown in production. */}
-                    <div>
-                      <div className="mb-3 border border-[#FED7AA] bg-[#FFF7ED] px-3 py-2.5 text-sm text-[#9A3412]">
-                        <strong className="font-semibold text-[#7C2D12]">Demo access</strong> — pick a persona below to log in instantly. No password required.
-                      </div>
-
-                      {fieldErrors.form && (
-                        <div className="mb-3 border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
-                          {fieldErrors.form}
-                        </div>
-                      )}
-
-                      <div className="mb-3 space-y-1.5">
-                        <label className="block text-[10px] font-semibold uppercase tracking-wide text-[#78716C]">
-                          Operating Region
-                        </label>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A8A29E]" />
-                          <select
-                            value={selectedRegion}
-                            onChange={(e) => setSelectedRegion(e.target.value)}
-                            className={`${inputCls} pl-9`}
-                          >
-                            {REGIONS.map((r) => (
-                              <option key={r} value={r}>{r}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {DEMO_ROLES.map(({ role, label, icon: Icon }) => (
-                          <button
-                            key={role}
-                            type="button"
-                            onClick={() => handleDemoAccess(role)}
-                            disabled={isLoading}
-                            className="rounded-lg group inline-flex items-center gap-2 border border-[#E7E5E4] bg-white px-3 py-2.5 text-left text-sm hover:border-[#D97706] hover:bg-[#FFF7ED] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <span className="flex h-7 w-7 items-center justify-center bg-[#D97706]/10 text-[#D97706] flex-shrink-0">
-                              <Icon className="h-3.5 w-3.5" />
-                            </span>
-                            <span className="font-semibold text-[#1C1917] truncate">{label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="relative flex items-center">
-                      <div className="flex-grow border-t border-[#E7E5E4]" />
-                      <span className="flex-shrink mx-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A8A29E]">
-                        Or use your account
-                      </span>
-                      <div className="flex-grow border-t border-[#E7E5E4]" />
-                    </div>
-                  </>
-                )}
-
-                {!DEMO_LOGIN_ENABLED && fieldErrors.form && (
+                {fieldErrors.form && (
                   <div className="border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
                     {fieldErrors.form}
                   </div>

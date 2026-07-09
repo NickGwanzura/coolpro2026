@@ -52,7 +52,7 @@ export default function FieldSchedulingPage() {
                             <Gauge className="h-3.5 w-3.5" />
                             Equipment
                         </div>
-                        <p className="mt-1 text-sm font-semibold text-gray-900">Mock fleet view</p>
+                        <p className="mt-1 text-sm font-semibold text-gray-900">Equipment register</p>
                     </div>
                     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">

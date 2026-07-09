@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Clock, MapPin, User, Download, Plus, X, Search, ClipboardCheck } from 'lucide-react';
 import { OccupationalAccident, SeverityCategories, RootCauseCategories } from '../types';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
+import { useAuth } from '@/lib/auth';
 
 interface InvestigationData {
     rootCause: keyof typeof RootCauseCategories;
@@ -19,36 +20,9 @@ interface OccupationalAccidentSectionProps {
 
 const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = ({
     isAdmin = false,
-    initialAccidents = [
-        {
-            id: 'demo1',
-            date: '2026-01-15',
-            jobSite: 'Harare Central Hospital',
-            clientName: 'Ministry of Health',
-            severity: 'Low',
-            description: 'Minor slip on wet floor during routine maintenance. No injury.',
-            technicianName: 'John Moyo'
-        },
-        {
-            id: 'demo2',
-            date: '2026-02-02',
-            jobSite: 'Bulawayo Industrial Park',
-            clientName: 'Delta Corporation',
-            severity: 'Medium',
-            description: 'Small refrigerant leak detected in compressor room B. Repaired immediately.',
-            technicianName: 'Sarah Miller'
-        },
-        {
-            id: 'demo3',
-            date: '2026-02-18',
-            jobSite: 'Mutare Logistics Hub',
-            clientName: 'Swift Transport',
-            severity: 'High',
-            description: 'Power surge damaged control panel. Sparking observed. Replacement required.',
-            technicianName: 'Peter Dube'
-        }
-    ]
+    initialAccidents = []
 }) => {
+    const { user } = useAuth();
     const [accidents, setAccidents] = useState<OccupationalAccident[]>(initialAccidents);
     const [showForm, setShowForm] = useState(false);
     const [selectedAccident, setSelectedAccident] = useState<OccupationalAccident | null>(null);
@@ -92,7 +66,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
         const newAccident: OccupationalAccident = {
             id: Math.random().toString(36).substr(2, 9),
             ...formData,
-            technicianName: 'Demo Technician' // In a real app, this would come from session
+            technicianName: user?.name ?? 'Unassigned technician'
         };
         setAccidents([newAccident, ...accidents]);
         setShowForm(false);
