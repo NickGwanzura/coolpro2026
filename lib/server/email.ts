@@ -189,6 +189,59 @@ export async function sendApprovalEmail(input: {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Admin operational notices
+// ---------------------------------------------------------------------------
+
+function adminNoticeEmailHtml(input: { name: string; title: string; message: string; action?: string }): string {
+  const name = escapeHtml(input.name);
+  const title = escapeHtml(input.title);
+  const message = escapeHtml(input.message);
+  const action = input.action ? escapeHtml(input.action) : null;
+
+  return emailShell(`
+    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Platform update</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">${title}</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">Hello ${name},</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 12px 0 0;">${message}</p>
+    ${action ? `<div style="margin-top: 18px; border-left: 3px solid ${BRAND.amber}; background: ${BRAND.soft}; padding: 12px 14px; color: ${BRAND.ink}; font-size: 14px; line-height: 1.6;"><strong>Action:</strong> ${action}</div>` : ''}
+  `, input.title);
+}
+
+/** Sends a branded operational update to an administrator. */
+export async function sendAdminNoticeEmail(input: {
+  email: string;
+  name: string;
+  title: string;
+  message: string;
+  action?: string;
+}): Promise<{ sent: boolean }> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set — admin notice not sent:', input.email);
+    return { sent: false };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: input.email,
+      subject: `HEVACRAZ update: ${input.title}`,
+      html: adminNoticeEmailHtml(input),
+    });
+
+    if (error) {
+      console.error('[email] Resend rejected admin notice:', error.message);
+      return { sent: false };
+    }
+
+    return { sent: true };
+  } catch (err) {
+    console.error('[email] Failed to send admin notice:', err instanceof Error ? err.message : err);
+    return { sent: false };
+  }
+}
+
 function contactNotificationHtml(input: {
   name: string;
   email: string;
