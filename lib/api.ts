@@ -79,8 +79,8 @@ async function patch<T>(url: string, body: unknown): Promise<T> {
 // Courses
 // ---------------------------------------------------------------------------
 
-export function useCourses() {
-  return useSWR<ManagedCourse[]>('/api/courses', fetcher);
+export function useCourses(enabled = true) {
+  return useSWR<ManagedCourse[]>(enabled ? '/api/courses' : null, fetcher);
 }
 
 export function useCourse(id: string | undefined) {
@@ -171,8 +171,8 @@ export async function deleteCourseMaterial(courseId: string, r2Key: string): Pro
 // Exam submissions
 // ---------------------------------------------------------------------------
 
-export function useExamSubmissions() {
-  return useSWR<ExamSubmission[]>('/api/exam-submissions', fetcher);
+export function useExamSubmissions(enabled = true) {
+  return useSWR<ExamSubmission[]>(enabled ? '/api/exam-submissions' : null, fetcher);
 }
 
 export async function gradeExamSubmission(
@@ -324,8 +324,8 @@ export async function rejectSupplierApplication(id: string, notes?: string): Pro
 // Supplier compliance applications
 // ---------------------------------------------------------------------------
 
-export function useSupplierComplianceApplications() {
-  return useSWR<SupplierComplianceApplication[]>('/api/supplier-compliance-applications', fetcher);
+export function useSupplierComplianceApplications(enabled = true) {
+  return useSWR<SupplierComplianceApplication[]>(enabled ? '/api/supplier-compliance-applications' : null, fetcher);
 }
 
 export async function createSupplierComplianceApplication(
@@ -524,8 +524,8 @@ export function useEquipmentRecords() {
 // Training sessions (DB-backed)
 // ---------------------------------------------------------------------------
 
-export function useTrainingSessions() {
-  return useSWR<TrainingSession[]>('/api/training-sessions', fetcher);
+export function useTrainingSessions(enabled = true) {
+  return useSWR<TrainingSession[]>(enabled ? '/api/training-sessions' : null, fetcher);
 }
 
 export async function createTrainingSession(
@@ -540,8 +540,8 @@ export async function createTrainingSession(
 // Trainer certificate requests (DB-backed)
 // ---------------------------------------------------------------------------
 
-export function useCertificateRequests() {
-  return useSWR<TrainerCertificateRequest[]>('/api/certificate-requests', fetcher);
+export function useCertificateRequests(enabled = true) {
+  return useSWR<TrainerCertificateRequest[]>(enabled ? '/api/certificate-requests' : null, fetcher);
 }
 
 export async function createCertificateRequest(

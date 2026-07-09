@@ -3,7 +3,21 @@
 import { CSSProperties, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { mutate } from 'swr';
-import { useSupplierApplications, useTechnicians, useReorders, useGasUsage, usePlannerJobs, useGasLogs, useCocRequests } from '@/lib/api';
+import {
+    useSupplierApplications,
+    useTechnicians,
+    useReorders,
+    useGasUsage,
+    usePlannerJobs,
+    useGasLogs,
+    useCocRequests,
+    useSupplierComplianceApplications,
+    useSupplierLedger,
+    useCourses,
+    useExamSubmissions,
+    useTrainingSessions,
+    useCertificateRequests,
+} from '@/lib/api';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import {            ClipboardCheck,
     Award,
@@ -26,6 +40,11 @@ import {            ClipboardCheck,
     FileText,
     ExternalLink,
     Fuel,
+    BookOpen,
+    GraduationCap,
+    Package,
+    ShieldCheck,
+    Receipt,
 } from 'lucide-react';
 import Link from 'next/link';
 import OccupationalAccidentSection from '@/components/OccupationalAccidentSection';
@@ -38,13 +57,23 @@ export default function DashboardPage() {
     const [dateRange, setDateRange] = useState('today');
     const [regionFilter, setRegionFilter] = useState('all');
     const isAdmin = session?.role === 'org_admin';
-    
+    const isTechnician = session?.role === 'technician';
+    const isVendor = session?.role === 'vendor';
+    const isTrainerOrLecturer = session?.role === 'trainer' || session?.role === 'lecturer';
+    const isStudent = session?.role === 'student';
+
     const { data: supplierApplications = [] } = useSupplierApplications(isAdmin);
     const { data: technicians = [] } = useTechnicians(undefined, isAdmin);
-    const { data: reorders = [] } = useReorders(isAdmin);
+    const { data: reorders = [] } = useReorders(isAdmin || isVendor);
     const { data: plannerJobs = [] } = usePlannerJobs();
     const { data: gasLogsData } = useGasLogs(undefined, undefined, 50);
     const { data: cocRequests = [] } = useCocRequests();
+    const { data: complianceApps = [] } = useSupplierComplianceApplications(isVendor);
+    const { data: vendorLedger = [] } = useSupplierLedger(undefined, isVendor);
+    const { data: managedCourses = [] } = useCourses(isTrainerOrLecturer || isStudent);
+    const { data: examSubmissions = [] } = useExamSubmissions(isTrainerOrLecturer);
+    const { data: trainingSessions = [] } = useTrainingSessions(isTrainerOrLecturer);
+    const { data: certRequests = [] } = useCertificateRequests(isTrainerOrLecturer);
 
     // Derive refrigerant logs from Gas Logs API (DB-backed) rather than localStorage
     const refrigerantLogs = useMemo(() => (gasLogsData ?? []) as RefrigerantLog[], [gasLogsData]);
@@ -115,6 +144,116 @@ export default function DashboardPage() {
             },
         ];
     }, [plannerJobs, cocRequests, certificateRecords, dateRange]);
+
+    // Vendor KPIs — computed from the vendor's own reorders, compliance applications, and ledger
+    const vendorStats = useMemo(() => {
+        const pendingReorders = reorders.filter(r => r.status === 'pending_hevacraz' || r.status === 'pending_nou').length;
+        const approvedReorders = reorders.filter(r => r.status === 'approved');
+        const approvedKg = approvedReorders.reduce((sum, r) => sum + r.quantityKg, 0);
+        const pendingCompliance = complianceApps.filter(a => a.status === 'submitted' || a.status === 'under-review').length;
+        const approvedCompliance = complianceApps.filter(a => a.status === 'approved').length;
+        const ledgerTotalUsd = vendorLedger.reduce((sum, entry) => sum + entry.totalValueUsd, 0);
+
+        return [
+            {
+                label: 'Pending Reorders',
+                value: String(pendingReorders),
+                icon: Package,
+                color: 'amber',
+                trend: 'Awaiting HEVACRAZ or NOU review'
+            },
+            {
+                label: 'Approved Volume',
+                value: `${approvedKg.toLocaleString()} kg`,
+                icon: Droplets,
+                color: 'blue',
+                trend: `${approvedReorders.length} approved reorders`
+            },
+            {
+                label: 'Compliance Certificates',
+                value: String(approvedCompliance),
+                icon: ShieldCheck,
+                color: 'emerald',
+                trend: pendingCompliance > 0 ? `${pendingCompliance} pending review` : 'All up to date'
+            },
+            {
+                label: 'Ledger Value',
+                value: `$${ledgerTotalUsd.toLocaleString()}`,
+                icon: Receipt,
+                color: 'purple',
+                trend: `${vendorLedger.length} logged transactions`
+            },
+        ];
+    }, [reorders, complianceApps, vendorLedger]);
+
+    // Trainer / Lecturer KPIs — computed from the trainer's own courses, sessions, and submissions
+    const trainerStats = useMemo(() => {
+        const approvedCourses = managedCourses.filter(c => c.status === 'approved').length;
+        const pendingCourses = managedCourses.filter(c => c.status === 'pending_nou' || c.status === 'draft').length;
+        const pendingGrading = examSubmissions.filter(s => s.status === 'pending').length;
+        const upcomingSessions = trainingSessions.filter(s => s.status === 'scheduled' || s.status === 'open').length;
+        const pendingCertRequests = certRequests.filter(r => r.status === 'submitted-for-admin-approval').length;
+
+        return [
+            {
+                label: 'Approved Courses',
+                value: String(approvedCourses),
+                icon: BookOpen,
+                color: 'blue',
+                trend: pendingCourses > 0 ? `${pendingCourses} awaiting approval` : 'All courses approved'
+            },
+            {
+                label: 'Pending Grading',
+                value: String(pendingGrading),
+                icon: ClipboardCheck,
+                color: 'amber',
+                trend: `${examSubmissions.length} total submissions`
+            },
+            {
+                label: 'Upcoming Sessions',
+                value: String(upcomingSessions),
+                icon: GraduationCap,
+                color: 'emerald',
+                trend: `${trainingSessions.length} sessions scheduled`
+            },
+            {
+                label: 'Certificate Requests',
+                value: String(pendingCertRequests),
+                icon: Award,
+                color: 'purple',
+                trend: 'Awaiting admin approval'
+            },
+        ];
+    }, [managedCourses, examSubmissions, trainingSessions, certRequests]);
+
+    // Student KPIs — computed from available/approved courses and certification records
+    const studentStats = useMemo(() => {
+        const availableCourses = managedCourses.filter(c => c.status === 'approved').length;
+        const nowMs = Date.now();
+        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+        const activeCerts = certificateRecords.filter(c => new Date(c.expiryDate).getTime() > nowMs).length;
+        const expiringSoon = certificateRecords.filter(c => {
+            const expiry = new Date(c.expiryDate).getTime();
+            return expiry > nowMs && expiry <= nowMs + thirtyDaysMs;
+        }).length;
+
+        return [
+            {
+                label: 'Available Courses',
+                value: String(availableCourses),
+                icon: BookOpen,
+                color: 'blue',
+                trend: 'Open for enrollment'
+            },
+            {
+                label: 'Certifications',
+                value: String(activeCerts),
+                icon: Award,
+                color: 'purple',
+                trend: expiringSoon > 0 ? `${expiringSoon} expiring soon` : 'Up to date'
+            },
+        ];
+    }, [managedCourses, certificateRecords]);
 
     const adminMetrics = useMemo(() => {
         const now = Date.now();
@@ -236,7 +375,11 @@ export default function DashboardPage() {
         );
     }
 
-    const stats = isAdmin ? adminStats : technicianStats;
+    const stats = isAdmin ? adminStats
+        : isVendor ? vendorStats
+        : isTrainerOrLecturer ? trainerStats
+        : isStudent ? studentStats
+        : technicianStats;
     type QuickAction = {
         href: string;
         title: string;
@@ -326,6 +469,99 @@ export default function DashboardPage() {
             detail: 'Manage COCs',
             icon: Award,
             iconClassName: 'bg-amber-100 text-amber-600',
+        },
+    ];
+
+    const vendorQuickActions: QuickAction[] = [
+        {
+            href: '/suppliers/reorder',
+            title: 'Reorder Gas',
+            detail: 'Submit a new refrigerant reorder',
+            icon: Package,
+            iconClassName: 'bg-amber-100 text-amber-600',
+        },
+        {
+            href: '/supplier-compliance',
+            title: 'Compliance',
+            detail: 'Distribution & NOU reporting certificates',
+            icon: ShieldCheck,
+            iconClassName: 'bg-emerald-100 text-emerald-600',
+        },
+        {
+            href: '/suppliers/verify-buyer',
+            title: 'Verify Buyer',
+            detail: 'Confirm technician registration before sale',
+            icon: Users,
+            iconClassName: 'bg-sky-100 text-sky-600',
+        },
+        {
+            href: '/rewards',
+            title: 'Rewards',
+            detail: 'Vendor rewards & coverage',
+            icon: Gift,
+            iconClassName: 'bg-purple-100 text-purple-600',
+        },
+    ];
+
+    const trainerQuickActions: QuickAction[] = [
+        {
+            href: '/learn/manage',
+            title: 'Manage Courses',
+            detail: 'Author and submit courses for approval',
+            icon: BookOpen,
+            iconClassName: 'bg-blue-100 text-blue-600',
+        },
+        {
+            href: '/technician-registry',
+            title: 'Technician Registry',
+            detail: 'Look up registered technicians',
+            icon: Users,
+            iconClassName: 'bg-sky-100 text-sky-600',
+        },
+        {
+            href: '/certifications',
+            title: 'Certificate Requests',
+            detail: 'Submit exam results for admin approval',
+            icon: Award,
+            iconClassName: 'bg-amber-100 text-amber-600',
+        },
+        {
+            href: '/whatgas',
+            title: 'WhatGas Registry',
+            detail: 'Refrigerant reference for course content',
+            icon: Droplets,
+            iconClassName: 'bg-cyan-100 text-cyan-600',
+        },
+    ];
+
+    const studentQuickActions: QuickAction[] = [
+        {
+            href: '/learn',
+            title: 'My Learning',
+            detail: 'Enrolled courses & exams',
+            icon: BookOpen,
+            iconClassName: 'bg-blue-100 text-blue-600',
+        },
+        {
+            href: '/certifications',
+            title: 'Certifications',
+            detail: 'View issued certificates',
+            icon: Award,
+            iconClassName: 'bg-amber-100 text-amber-600',
+        },
+        {
+            href: '/whatgas',
+            title: 'WhatGas Registry',
+            detail: 'Refrigerant reference lookup',
+            icon: Droplets,
+            iconClassName: 'bg-cyan-100 text-cyan-600',
+        },
+        {
+            href: '/safety',
+            title: 'Safety Center',
+            detail: 'Guidance and safety resources',
+            icon: ShieldAlert,
+            iconClassName: 'bg-red-100 text-red-600',
         },
     ];
 
@@ -583,7 +819,12 @@ export default function DashboardPage() {
                     {isAdmin ? 'Admin Quick Actions' : 'Quick Actions'}
                 </h2>
                 <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isAdmin ? 'lg:grid-cols-3 xl:grid-cols-6' : 'lg:grid-cols-4'}`}>
-                    {(isAdmin ? adminQuickActions : technicianQuickActions).map((action) => {
+                    {(isAdmin ? adminQuickActions
+                        : isVendor ? vendorQuickActions
+                        : isTrainerOrLecturer ? trainerQuickActions
+                        : isStudent ? studentQuickActions
+                        : technicianQuickActions
+                    ).map((action) => {
                         const Icon = action.icon;
 
                         return (
@@ -606,7 +847,7 @@ export default function DashboardPage() {
                             </Link>
                         );
                     })}
-                    {!isAdmin && (
+                    {!isAdmin && !isVendor && (
                         <div className="rounded-lg flex items-center gap-3 p-4 border border-red-200 bg-red-50 hover:bg-red-100 transition-colors group cursor-pointer">
                             <div className="p-2 bg-red-100 text-red-600">
                                 <ShieldAlert className="h-5 w-5" />
@@ -621,8 +862,240 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* ── Vendor-only sections ── */}
+            {isVendor && (
+                <>
+                    {/* Reorder Queue */}
+                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
+                            <div>
+                                <h2 className="text-base font-semibold text-[#1C1917]">Recent Reorders</h2>
+                                <p className="text-xs text-[#78716C] mt-0.5">Your submitted gas reorder requests</p>
+                            </div>
+                            <Link href="/suppliers/reorder" className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97706] hover:text-[#b45309]">
+                                View all <ChevronRight className="h-3 w-3" />
+                            </Link>
+                        </div>
+                        {reorders.length === 0 ? (
+                            <div className="px-6 py-10 text-center">
+                                <Package className="h-8 w-8 text-[#D1C5C0] mx-auto mb-3" />
+                                <p className="text-sm text-[#78716C]">No reorders submitted yet.</p>
+                                <Link
+                                    href="/suppliers/reorder"
+                                    className="mt-4 inline-flex items-center gap-2 bg-[#D97706] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b45309]"
+                                >
+                                    Submit a Reorder
+                                    <ArrowRight className="h-4 w-4" />
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-[#E7E5E4]">
+                                {reorders.slice(0, 5).map((reorder) => {
+                                    const statusColors: Record<string, string> = {
+                                        pending_hevacraz: 'bg-amber-50 text-amber-700 border-amber-200',
+                                        pending_nou: 'bg-amber-50 text-amber-700 border-amber-200',
+                                        approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                        rejected: 'bg-red-50 text-red-700 border-red-200',
+                                    };
+                                    return (
+                                        <div key={reorder.id} className="px-6 py-4 hover:bg-[#FAFAF9] transition-colors">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <p className="text-sm font-semibold text-[#1C1917]">{reorder.gasType} · {reorder.quantityKg} kg</p>
+                                                        <span className={`inline-flex border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColors[reorder.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                                                            {reorder.status.replace('_', ' ')}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-[#78716C] mt-1">{reorder.purpose}</p>
+                                                </div>
+                                                <span className="text-xs text-[#A8A29E] shrink-0">{new Date(reorder.createdAt).toLocaleDateString('en-ZW')}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Compliance Applications */}
+                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
+                            <div>
+                                <h2 className="text-base font-semibold text-[#1C1917]">Compliance Certificates</h2>
+                                <p className="text-xs text-[#78716C] mt-0.5">Distribution compliance & NOU reporting status</p>
+                            </div>
+                            <Link href="/supplier-compliance" className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97706] hover:text-[#b45309]">
+                                Manage <ChevronRight className="h-3 w-3" />
+                            </Link>
+                        </div>
+                        {complianceApps.length === 0 ? (
+                            <div className="px-6 py-10 text-center">
+                                <ShieldCheck className="h-8 w-8 text-[#D1C5C0] mx-auto mb-3" />
+                                <p className="text-sm text-[#78716C]">No compliance applications submitted yet.</p>
+                                <Link href="/supplier-compliance" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#D97706]">
+                                    Apply for compliance certificate <ArrowRight className="h-3 w-3" />
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-[#E7E5E4]">
+                                {complianceApps.slice(0, 5).map((app) => (
+                                    <div key={app.id} className="px-6 py-4 hover:bg-[#FAFAF9] transition-colors flex items-center justify-between gap-4">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-[#1C1917]">{app.certificateType.replace(/-/g, ' ')}</p>
+                                            <p className="text-xs text-[#78716C] mt-0.5">{app.monthCoverage} · {app.sitesCovered} sites</p>
+                                        </div>
+                                        <span className="inline-flex border border-[#E7E5E4] bg-white px-2 py-0.5 text-xs font-semibold text-[#44403C] shrink-0">
+                                            {app.status.replace('-', ' ')}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+
+            {/* ── Trainer / Lecturer-only sections ── */}
+            {isTrainerOrLecturer && (
+                <>
+                    {/* Grading Queue */}
+                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
+                            <div>
+                                <h2 className="text-base font-semibold text-[#1C1917]">Grading Queue</h2>
+                                <p className="text-xs text-[#78716C] mt-0.5">Student exam submissions awaiting review</p>
+                            </div>
+                            <Link href="/learn/manage" className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97706] hover:text-[#b45309]">
+                                Manage <ChevronRight className="h-3 w-3" />
+                            </Link>
+                        </div>
+                        {examSubmissions.filter(s => s.status === 'pending').length === 0 ? (
+                            <div className="px-6 py-10 text-center">
+                                <ClipboardCheck className="h-8 w-8 text-[#D1C5C0] mx-auto mb-3" />
+                                <p className="text-sm text-[#78716C]">No submissions awaiting grading.</p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-[#E7E5E4]">
+                                {examSubmissions.filter(s => s.status === 'pending').slice(0, 5).map((sub) => (
+                                    <div key={sub.id} className="px-6 py-4 hover:bg-[#FAFAF9] transition-colors flex items-center justify-between gap-4">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-[#1C1917] truncate">{sub.studentName}</p>
+                                            <p className="text-xs text-[#78716C] mt-0.5">{sub.courseTitle}</p>
+                                        </div>
+                                        <span className="text-xs text-[#A8A29E] shrink-0">{new Date(sub.submittedAt).toLocaleDateString('en-ZW')}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Courses + Training Sessions */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
+                                <div>
+                                    <h2 className="text-base font-semibold text-[#1C1917]">My Courses</h2>
+                                    <p className="text-xs text-[#78716C] mt-0.5">Authored courses & approval status</p>
+                                </div>
+                                <Link href="/learn/manage" className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97706] hover:text-[#b45309]">
+                                    Manage <ChevronRight className="h-3 w-3" />
+                                </Link>
+                            </div>
+                            <div className="divide-y divide-[#E7E5E4]">
+                                {managedCourses.length === 0 ? (
+                                    <div className="px-6 py-8 text-center">
+                                        <BookOpen className="h-8 w-8 text-[#D1C5C0] mx-auto mb-2" />
+                                        <p className="text-sm text-[#78716C]">No courses created yet.</p>
+                                        <Link href="/learn/manage" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#D97706]">
+                                            Create a course <ArrowRight className="h-3 w-3" />
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    managedCourses.slice(0, 5).map((course) => {
+                                        const statusColors: Record<string, string> = {
+                                            draft: 'bg-gray-50 text-gray-600 border-gray-200',
+                                            pending_nou: 'bg-amber-50 text-amber-700 border-amber-200',
+                                            approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                            rejected: 'bg-red-50 text-red-700 border-red-200',
+                                        };
+                                        return (
+                                            <div key={course.id} className="px-6 py-4 hover:bg-[#FAFAF9] flex items-center justify-between gap-4">
+                                                <p className="text-sm font-semibold text-[#1C1917] truncate">{course.title}</p>
+                                                <span className={`inline-flex border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shrink-0 ${statusColors[course.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                                                    {course.status.replace('_', ' ')}
+                                                </span>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
+                                <div>
+                                    <h2 className="text-base font-semibold text-[#1C1917]">Training Sessions</h2>
+                                    <p className="text-xs text-[#78716C] mt-0.5">Upcoming and past sessions</p>
+                                </div>
+                            </div>
+                            <div className="divide-y divide-[#E7E5E4]">
+                                {trainingSessions.length === 0 ? (
+                                    <div className="px-6 py-8 text-center">
+                                        <GraduationCap className="h-8 w-8 text-[#D1C5C0] mx-auto mb-2" />
+                                        <p className="text-sm text-[#78716C]">No training sessions scheduled.</p>
+                                    </div>
+                                ) : (
+                                    trainingSessions.slice(0, 5).map((sessionItem) => (
+                                        <div key={sessionItem.id} className="px-6 py-4 hover:bg-[#FAFAF9]">
+                                            <p className="text-sm font-semibold text-[#1C1917] truncate">{sessionItem.title}</p>
+                                            <p className="text-xs text-[#78716C] mt-0.5">{sessionItem.venue} · {new Date(sessionItem.startDate).toLocaleDateString('en-ZW')} · {sessionItem.seatsRemaining}/{sessionItem.seats} seats left</p>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* ── Student-only sections ── */}
+            {isStudent && (
+                <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
+                        <div>
+                            <h2 className="text-base font-semibold text-[#1C1917]">Available Courses</h2>
+                            <p className="text-xs text-[#78716C] mt-0.5">Approved courses open for enrollment</p>
+                        </div>
+                        <Link href="/learn" className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97706] hover:text-[#b45309]">
+                            Browse all <ChevronRight className="h-3 w-3" />
+                        </Link>
+                    </div>
+                    <div className="divide-y divide-[#E7E5E4]">
+                        {managedCourses.length === 0 ? (
+                            <div className="px-6 py-10 text-center">
+                                <BookOpen className="h-8 w-8 text-[#D1C5C0] mx-auto mb-3" />
+                                <p className="text-sm text-[#78716C]">No courses available yet. Check back soon.</p>
+                            </div>
+                        ) : (
+                            managedCourses.slice(0, 5).map((course) => (
+                                <div key={course.id} className="px-6 py-4 hover:bg-[#FAFAF9] transition-colors flex items-center justify-between gap-4">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-[#1C1917] truncate">{course.title}</p>
+                                        <p className="text-xs text-[#78716C] mt-0.5 line-clamp-1">{course.description}</p>
+                                    </div>
+                                    <Link href="/learn" className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97706] shrink-0">
+                                        Open <ArrowRight className="h-3 w-3" />
+                                    </Link>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* ── Technician-only sections ── */}
-            {!isAdmin && (
+            {isTechnician && (
                 <>
                     {/* Recent Jobs */}
                     <div className="rounded-lg bg-white border border-[#E7E5E4]">
