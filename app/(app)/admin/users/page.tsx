@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
-import { Search, ShieldCheck, AlertCircle, Users2 } from 'lucide-react';
+import { Search, ShieldCheck, AlertCircle, Users2, UserPlus } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useAdminUsers, updateAdminUser } from '@/lib/api';
 import type { AdminUserRecord } from '@/types/index';
@@ -127,12 +128,21 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">System Users</h1>
-        <p className="mt-1 text-gray-500">
-          Every account on the platform, across every role. Use the tabs below to filter by role.
-          Change a role or status here to take effect immediately.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">System Users</h1>
+          <p className="mt-1 text-gray-500">
+            Every account on the platform, across every role. Use the tabs below to filter by role.
+            Change a role or status here to take effect immediately.
+          </p>
+        </div>
+        <Link
+          href="/admin/invites"
+          className="inline-flex shrink-0 items-center justify-center gap-2 bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+        >
+          <UserPlus className="h-4 w-4" />
+          Invite users
+        </Link>
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
