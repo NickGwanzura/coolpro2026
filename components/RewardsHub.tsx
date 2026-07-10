@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { ArrowRight, Building2 } from 'lucide-react';
 import { useSupplierApplications, useRewardSummary, useRewardRedemptions, createRewardRedemption, reviewRewardRedemption } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
-import { TECHNICIAN_REWARDS } from '@/constants/rewards';
+import { TECHNICIAN_REWARDS, VENDOR_REWARDS } from '@/constants/rewards';
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium' }).format(new Date(value));
@@ -64,10 +64,14 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
 
   const rewardCatalogSummary = useMemo(() => {
     return {
-      totalRewards: TECHNICIAN_REWARDS.length,
+      totalRewards: TECHNICIAN_REWARDS.length + VENDOR_REWARDS.length,
       activeVendors: new Set(TECHNICIAN_REWARDS.map(reward => reward.vendor)).size,
-      totalPointsExposure: TECHNICIAN_REWARDS.reduce((sum, reward) => sum + reward.points, 0),
-      premiumRewards: TECHNICIAN_REWARDS.filter(reward => reward.points >= 500).length,
+      totalPointsExposure:
+        TECHNICIAN_REWARDS.reduce((sum, reward) => sum + reward.points, 0) +
+        VENDOR_REWARDS.reduce((sum, reward) => sum + reward.points, 0),
+      premiumRewards:
+        TECHNICIAN_REWARDS.filter(reward => reward.points >= 500).length +
+        VENDOR_REWARDS.filter(reward => reward.points >= 500).length,
     };
   }, []);
 
@@ -97,7 +101,12 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
               {pendingRedemptions.map(redemption => (
                 <div key={redemption.id} className="flex flex-col gap-3 border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="font-semibold text-gray-900">{redemption.rewardTitle}</p>
+                    <p className="font-semibold text-gray-900">
+                      {redemption.rewardTitle}
+                      <span className="ml-2 inline-flex rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600">
+                        {redemption.userRole}
+                      </span>
+                    </p>
                     <p className="text-sm text-gray-500">
                       {redemption.userName} · {redemption.pointsCost} pts · requested {formatDate(redemption.requestedAt)}
                     </p>
@@ -130,12 +139,28 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
               <h3 className="text-lg font-semibold text-gray-900">Reward catalog overview</h3>
               <p className="text-sm text-gray-500">All live rewards currently available across the network</p>
             </div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Technician catalog</p>
             <div className="space-y-3">
               {TECHNICIAN_REWARDS.map(reward => (
                 <div key={reward.id} className="flex items-center justify-between border border-gray-200 bg-gray-50 px-4 py-4">
                   <div>
                     <p className="font-semibold text-gray-900">{reward.title}</p>
                     <p className="text-sm text-gray-500">{reward.vendor}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-gray-900">{reward.points}</p>
+                    <p className="text-xs uppercase tracking-wide text-gray-400">points</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-wide text-gray-400">Vendor catalog</p>
+            <div className="space-y-3">
+              {VENDOR_REWARDS.map(reward => (
+                <div key={reward.id} className="flex items-center justify-between border border-gray-200 bg-gray-50 px-4 py-4">
+                  <div>
+                    <p className="font-semibold text-gray-900">{reward.title}</p>
+                    <p className="text-sm text-gray-500">{reward.detail}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold text-gray-900">{reward.points}</p>

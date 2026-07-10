@@ -1,78 +1,41 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Award, CheckCircle2, FileBadge2, Gift, ShieldCheck } from 'lucide-react';
-import { useSupplierLedger, useSupplierComplianceApplications } from '@/lib/api';
+import { useSupplierComplianceApplications, useRewardSummary, useRewardRedemptions, createRewardRedemption } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
+import { VENDOR_REWARDS } from '@/constants/rewards';
 import type { UserSession } from '@/lib/auth';
-
-const VENDOR_REWARDS = [
-    {
-        id: 'vendor-reward-1',
-        title: 'NOU Filing Fee Credit',
-        points: 300,
-        detail: 'Offset one compliance filing cycle after consistent reporting.',
-    },
-    {
-        id: 'vendor-reward-2',
-        title: 'Preferred Supplier Badge Renewal',
-        points: 550,
-        detail: 'Priority review for compliant suppliers with zero late filings.',
-    },
-    {
-        id: 'vendor-reward-3',
-        title: 'Audit Preparation Pack',
-        points: 220,
-        detail: 'Digital templates for NOU and client-facing reporting packs.',
-    },
-    {
-        id: 'vendor-reward-4',
-        title: 'Certificate Processing Discount',
-        points: 450,
-        detail: 'Discount on the next supplier certificate of compliance application.',
-    },
-] as const;
 
 function formatDate(value: string) {
     return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium' }).format(new Date(value));
 }
 
 export default function VendorRewardsPanel({ session }: { session: UserSession }) {
-    const { data: allLedgerEntries = [] } = useSupplierLedger();
+    const { success, error: toastError } = useToast();
     const { data: allComplianceApplications = [] } = useSupplierComplianceApplications();
-
-    const supplierLedger = useMemo(() => {
-        return allLedgerEntries.filter(entry => entry.supplierEmail === session.email);
-    }, [allLedgerEntries, session.email]);
+    const { data: summary } = useRewardSummary();
+    const { data: redemptions = [] } = useRewardRedemptions();
+    const [redeemingId, setRedeemingId] = useState<string | null>(null);
 
     const supplierComplianceApplications = useMemo(() => {
         return allComplianceApplications.filter(entry => entry.supplierEmail === session.email);
     }, [allComplianceApplications, session.email]);
 
-    const rewardsSummary = useMemo(() => {
-        const compliantSales = supplierLedger.filter(
-            entry => entry.direction === 'sale' && entry.reportedToNou && entry.clientReported
-        );
-        const pendingFilings = supplierLedger.filter(
-            entry => entry.direction === 'sale' && (!entry.reportedToNou || !entry.clientReported)
-        );
-        const approvedCertificates = supplierComplianceApplications.filter(entry => entry.status === 'approved');
-        const submittedCertificates = supplierComplianceApplications.filter(
-            entry => entry.status === 'submitted' || entry.status === 'under-review'
-        );
-        const totalPoints =
-            compliantSales.length * 35 +
-            approvedCertificates.length * 180 +
-            submittedCertificates.length * 60;
+    const availablePoints = summary?.availablePoints ?? 0;
 
-        return {
-            compliantSales,
-            pendingFilings,
-            approvedCertificates,
-            submittedCertificates,
-            totalPoints,
-        };
-    }, [supplierComplianceApplications, supplierLedger]);
+    const handleRedeem = async (rewardId: string) => {
+        setRedeemingId(rewardId);
+        try {
+            await createRewardRedemption(rewardId);
+            success('Redemption requested — an admin will review it shortly.');
+        } catch (e) {
+            toastError(e instanceof Error ? e.message : 'Failed to submit redemption request.');
+        } finally {
+            setRedeemingId(null);
+        }
+    };
 
     return (
         <div className="space-y-8">
@@ -91,38 +54,49 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
                         </div>
                         <div className="border border-white/10 bg-white/10 p-6 text-center backdrop-blur">
                             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Available points</p>
-                            <p className="mt-3 text-5xl font-bold text-emerald-300">{rewardsSummary.totalPoints}</p>
+                            <p className="mt-3 text-5xl font-bold text-emerald-300">{availablePoints}</p>
+                            {summary && summary.reservedPoints > 0 && (
+                                <p className="mt-1 text-[10px] text-slate-400">{summary.reservedPoints} pts reserved in pending redemptions</p>
+                            )}
                         </div>
                     </div>
                 </div>
             </section>
 
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MetricCard
-                    label="Compliant Sales"
-                    value={rewardsSummary.compliantSales.length}
-                    hint="Filed to NOU and shared with technicians"
-                    icon={ShieldCheck}
-                />
-                <MetricCard
-                    label="Pending Filings"
-                    value={rewardsSummary.pendingFilings.length}
-                    hint="Sales still missing one or more compliance steps"
-                    icon={FileBadge2}
-                />
-                <MetricCard
-                    label="Approved Certificates"
-                    value={rewardsSummary.approvedCertificates.length}
-                    hint="Supplier compliance certificates granted"
-                    icon={CheckCircle2}
-                />
-                <MetricCard
-                    label="Reward Options"
-                    value={VENDOR_REWARDS.length}
-                    hint="Vendor-specific compliance rewards available"
-                    icon={Gift}
-                />
+                {(summary?.breakdown ?? []).map(item => (
+                    <MetricCard
+                        key={item.label}
+                        label={item.label}
+                        value={item.count}
+                        hint={`${item.pointsEach} pts each · ${item.totalPoints} pts earned`}
+                        icon={item.label.startsWith('Compliant') ? ShieldCheck : item.label.startsWith('Approved') ? CheckCircle2 : FileBadge2}
+                    />
+                ))}
             </section>
+
+            {redemptions.length > 0 && (
+                <section>
+                    <h2 className="mb-4 text-lg font-semibold text-gray-900">My Redemption Requests</h2>
+                    <div className="space-y-2">
+                        {redemptions.slice(0, 5).map(redemption => {
+                            const statusStyles: Record<string, string> = {
+                                requested: 'bg-amber-50 text-amber-700',
+                                fulfilled: 'bg-emerald-50 text-emerald-700',
+                                rejected: 'bg-rose-50 text-rose-700',
+                            };
+                            return (
+                                <div key={redemption.id} className="flex items-center justify-between border border-gray-200 bg-white p-3 text-sm">
+                                    <span className="font-medium text-gray-700">{redemption.rewardTitle}</span>
+                                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusStyles[redemption.status]}`}>
+                                        {redemption.status}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
 
             <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
                 <article className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
@@ -135,20 +109,35 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
                     </div>
 
                     <div className="space-y-3">
-                        {VENDOR_REWARDS.map((reward) => (
-                            <div key={reward.id} className="border border-gray-200 bg-gray-50 p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <p className="font-semibold text-gray-900">{reward.title}</p>
-                                        <p className="mt-1 text-sm text-gray-500">{reward.detail}</p>
+                        {VENDOR_REWARDS.map((reward) => {
+                            const canRedeem = availablePoints >= reward.points;
+                            return (
+                                <div key={reward.id} className="border border-gray-200 bg-gray-50 p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="font-semibold text-gray-900">{reward.title}</p>
+                                            <p className="mt-1 text-sm text-gray-500">{reward.detail}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xl font-bold text-gray-900">{reward.points}</p>
+                                            <p className="text-xs uppercase tracking-[0.18em] text-gray-400">points</p>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-xl font-bold text-gray-900">{reward.points}</p>
-                                        <p className="text-xs uppercase tracking-[0.18em] text-gray-400">points</p>
-                                    </div>
+                                    <button
+                                        disabled={!canRedeem || redeemingId === reward.id}
+                                        onClick={() => handleRedeem(reward.id)}
+                                        className={`mt-3 inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold transition-all ${
+                                            canRedeem
+                                                ? 'bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50'
+                                                : 'cursor-not-allowed bg-gray-100 text-gray-400'
+                                        }`}
+                                    >
+                                        {redeemingId === reward.id ? 'Requesting…' : 'Redeem'}
+                                        <Gift className="h-4 w-4" />
+                                    </button>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </article>
 

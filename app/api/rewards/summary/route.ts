@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readSessionFromRequest } from '@/lib/server/auth';
-import { computeTechnicianRewardSummary } from '@/lib/server/rewards';
+import { computeTechnicianRewardSummary, computeVendorRewardSummary } from '@/lib/server/rewards';
 
 export async function GET(req: Request) {
   const session = readSessionFromRequest(req);
@@ -11,6 +11,11 @@ export async function GET(req: Request) {
 
   if (session.role === 'technician') {
     const summary = await computeTechnicianRewardSummary(session.id);
+    return NextResponse.json(summary);
+  }
+
+  if (session.role === 'vendor') {
+    const summary = await computeVendorRewardSummary(session.id, session.email);
     return NextResponse.json(summary);
   }
 

@@ -4,8 +4,8 @@ import { db } from '@/db/client';
 import { rewardRedemptions } from '@/db/schema/index';
 import { readSessionFromRequest, requireRole } from '@/lib/server/auth';
 import { checkRateLimit } from '@/lib/server/rate-limit';
-import { computeTechnicianRewardSummary } from '@/lib/server/rewards';
-import { TECHNICIAN_REWARDS } from '@/constants/rewards';
+import { computeTechnicianRewardSummary, computeVendorRewardSummary } from '@/lib/server/rewards';
+import { TECHNICIAN_REWARDS, VENDOR_REWARDS } from '@/constants/rewards';
 import type { RewardRedemption } from '@/types/index';
 
 const RATE_LIMIT = 10;
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician']);
+    session = requireRole(req, ['technician', 'vendor']);
   } catch (e) {
     return e as Response;
   }
@@ -58,12 +58,15 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => ({})) as { rewardId?: string };
-  const reward = TECHNICIAN_REWARDS.find(r => r.id === body.rewardId);
+  const catalog = session.role === 'vendor' ? VENDOR_REWARDS : TECHNICIAN_REWARDS;
+  const reward = catalog.find(r => r.id === body.rewardId);
   if (!reward) {
     return NextResponse.json({ error: 'Unknown rewardId' }, { status: 400 });
   }
 
-  const summary = await computeTechnicianRewardSummary(session.id);
+  const summary = session.role === 'vendor'
+    ? await computeVendorRewardSummary(session.id, session.email)
+    : await computeTechnicianRewardSummary(session.id);
   if (summary.availablePoints < reward.points) {
     return NextResponse.json(
       { error: `Not enough points. Available: ${summary.availablePoints}, required: ${reward.points}.` },
