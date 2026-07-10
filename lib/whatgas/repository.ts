@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { refrigerants, whatgasSyncLogs } from '@/db/schema/index';
 
@@ -121,7 +121,13 @@ const HIGH_GWP_THRESHOLD = 1000;
 function buildFilterConditions(filters: RefrigerantFilters) {
   const conditions = [];
   if (filters.q) {
-    conditions.push(ilike(refrigerants.searchText, `%${filters.q.toLowerCase()}%`));
+    // search_text stores codes with their original punctuation ("r-22", "r-1234yf"), but
+    // technicians overwhelmingly type refrigerant codes without the hyphen ("R22", "R1234yf").
+    // Strip hyphens/spaces from both sides so either form matches.
+    const normalizedQuery = filters.q.toLowerCase().replace(/[-\s]/g, '');
+    conditions.push(
+      sql`replace(replace(${refrigerants.searchText}, '-', ''), ' ', '') ILIKE ${`%${normalizedQuery}%`}`
+    );
   }
   if (filters.isHFC !== undefined) conditions.push(eq(refrigerants.isHFC, filters.isHFC));
   if (filters.isHCFC !== undefined) conditions.push(eq(refrigerants.isHCFC, filters.isHCFC));

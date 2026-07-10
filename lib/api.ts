@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR, { mutate } from 'swr';
+import useSWRInfinite from 'swr/infinite';
 import type {
   ManagedCourse,
   CourseAttachment,
@@ -607,6 +608,20 @@ function buildRefrigerantQuery(params: RefrigerantFilterParams): string {
 export function useRefrigerants(params: RefrigerantFilterParams = {}) {
   const qs = buildRefrigerantQuery(params);
   return useSWR<RefrigerantListResponse>(`/api/refrigerants${qs ? `?${qs}` : ''}`, fetcher);
+}
+
+// Paged "load more" browsing (e.g. the refrigerant catalogue). Unlike useRefrigerants with a
+// growing pageSize, this advances the page number per "load more" click, so it never runs
+// into the API's MAX_PAGE_SIZE cap — a fixed page size stays well under it regardless of how
+// many pages get loaded. Changing q/filters starts a fresh page series automatically since
+// they're part of the SWRInfinite key.
+export function useRefrigerantsInfinite(params: Omit<RefrigerantFilterParams, 'page' | 'pageSize'> = {}, pageSize = 24) {
+  const getKey = (pageIndex: number, previousPageData: RefrigerantListResponse | null) => {
+    if (previousPageData && previousPageData.data.length === 0) return null;
+    const qs = buildRefrigerantQuery({ ...params, page: pageIndex + 1, pageSize });
+    return `/api/refrigerants?${qs}`;
+  };
+  return useSWRInfinite<RefrigerantListResponse>(getKey, fetcher);
 }
 
 export function useRefrigerant(id: number | null | undefined) {

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Search, FlaskConical, Loader2 } from 'lucide-react';
-import { useRefrigerants } from '@/lib/api';
+import { useRefrigerantsInfinite } from '@/lib/api';
 import { refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 
 const SAFETY_BADGE_STYLES: Record<string, string> = {
@@ -34,17 +34,14 @@ const PAGE_SIZE = 24;
 export default function RefrigerantCataloguePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<Partial<Record<FilterKey, boolean>>>({});
-  const [loadedPages, setLoadedPages] = useState(1);
 
-  const { data, isLoading } = useRefrigerants({
-    q: searchTerm || undefined,
-    page: 1,
-    pageSize: PAGE_SIZE * loadedPages,
-    ...filters,
-  });
+  const { data: pages, size, setSize, isLoading } = useRefrigerantsInfinite(
+    { q: searchTerm || undefined, ...filters },
+    PAGE_SIZE
+  );
 
   const toggleFilter = (key: FilterKey) => {
-    setLoadedPages(1);
+    setSize(1);
     setFilters((prev) => {
       const next = { ...prev };
       if (next[key]) delete next[key];
@@ -53,8 +50,9 @@ export default function RefrigerantCataloguePage() {
     });
   };
 
-  const refrigerants = data?.data ?? [];
-  const hasMore = data ? refrigerants.length < data.total : false;
+  const refrigerants = pages ? pages.flatMap((p) => p.data) : [];
+  const total = pages?.[0]?.total ?? 0;
+  const hasMore = refrigerants.length < total;
 
   return (
     <div className="space-y-6">
@@ -73,7 +71,7 @@ export default function RefrigerantCataloguePage() {
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setLoadedPages(1);
+              setSize(1);
             }}
             placeholder="Search by name, ASHRAE code, formula, CAS number, or trade name — e.g. R22, Freon 22, HCFC-22"
             className="w-full border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-blue-300 focus:bg-white"
@@ -94,7 +92,7 @@ export default function RefrigerantCataloguePage() {
         </div>
       </div>
 
-      {isLoading && loadedPages === 1 && (
+      {isLoading && size === 1 && (
         <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
           <Loader2 className="h-5 w-5 animate-spin" /> Loading refrigerants…
         </div>
@@ -148,12 +146,12 @@ export default function RefrigerantCataloguePage() {
       {hasMore && (
         <div className="flex justify-center pt-2">
           <button
-            onClick={() => setLoadedPages((p) => p + 1)}
+            onClick={() => setSize((s) => s + 1)}
             disabled={isLoading}
             className="rounded-lg inline-flex items-center gap-2 border border-gray-200 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Load more ({refrigerants.length} of {data?.total})
+            Load more ({refrigerants.length} of {total})
           </button>
         </div>
       )}
