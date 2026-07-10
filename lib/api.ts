@@ -36,7 +36,9 @@ import type {
 	  OcrScanRecord,
 	  CocRequest,
 	  Installation,
+	  RewardRedemption,
 } from '@/types/index';
+import type { TechnicianRewardSummary } from '@/lib/server/rewards';
 
 async function fetcher<T>(url: string): Promise<T> {
   const res = await fetch(url, { credentials: 'include' });
@@ -853,5 +855,32 @@ export async function updateInstallation(
 ): Promise<Installation> {
   const result = await patch<Installation>(`/api/installations/${id}`, body);
   await mutate('/api/installations');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Rewards (DB-backed points summary + redemptions)
+// ---------------------------------------------------------------------------
+
+export function useRewardSummary(technicianId?: string, enabled = true) {
+  const url = technicianId ? `/api/rewards/summary?technicianId=${encodeURIComponent(technicianId)}` : '/api/rewards/summary';
+  return useSWR<TechnicianRewardSummary>(enabled ? url : null, fetcher);
+}
+
+export function useRewardRedemptions(enabled = true) {
+  return useSWR<RewardRedemption[]>(enabled ? '/api/rewards/redemptions' : null, fetcher);
+}
+
+export async function createRewardRedemption(rewardId: string): Promise<RewardRedemption> {
+  const result = await post<RewardRedemption>('/api/rewards/redemptions', { rewardId });
+  await mutate('/api/rewards/redemptions');
+  await mutate((key) => typeof key === 'string' && key.startsWith('/api/rewards/summary'));
+  return result;
+}
+
+export async function reviewRewardRedemption(id: string, action: 'approve' | 'reject', notes?: string): Promise<RewardRedemption> {
+  const result = await post<RewardRedemption>(`/api/rewards/redemptions/${id}/${action}`, notes ? { notes } : undefined);
+  await mutate('/api/rewards/redemptions');
+  await mutate((key) => typeof key === 'string' && key.startsWith('/api/rewards/summary'));
   return result;
 }

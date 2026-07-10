@@ -487,6 +487,24 @@ export interface RewardItem {
   image: string;
 }
 
+export type RewardRedemptionStatus = 'requested' | 'fulfilled' | 'rejected';
+
+export interface RewardRedemption {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userRole: string;
+  rewardId: string;
+  rewardTitle: string;
+  pointsCost: number;
+  status: RewardRedemptionStatus;
+  requestedAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  notes?: string;
+}
+
 // Technician Registry Types
 export interface Technician {
   id: string;

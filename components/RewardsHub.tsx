@@ -1,79 +1,48 @@
 'use client';
 
-import { useMemo } from 'react';
-import Link from 'next/link';
-import { ArrowRight, Building2, ShieldCheck, Tag, Truck } from 'lucide-react';
-import { useSupplierApplications, useSupplierLedger } from '@/lib/api';
-import type { RewardItem, SupplierQuotaStatus } from '@/types/index';
-
-const REWARDS: RewardItem[] = [
-  {
-    id: '1',
-    title: 'Digital Manifold Set 10% Discount',
-    points: 500,
-    vendor: 'Fieldpiece',
-    image: 'https://picsum.photos/seed/tool1/400/300',
-  },
-  {
-    id: '2',
-    title: 'Refillable Nitrogen Tank Voucher',
-    points: 300,
-    vendor: 'GasCo',
-    image: 'https://picsum.photos/seed/gas/400/300',
-  },
-  {
-    id: '3',
-    title: 'Safe Handling PPE Kit',
-    points: 200,
-    vendor: 'CoolSafe',
-    image: 'https://picsum.photos/seed/ppe/400/300',
-  },
-  {
-    id: '4',
-    title: 'Transcritical CO2 Advanced Training',
-    points: 1000,
-    vendor: 'Global HVAC Academy',
-    image: 'https://picsum.photos/seed/train/400/300',
-  },
-];
+import { useMemo, useState } from 'react';
+import { ArrowRight, Building2 } from 'lucide-react';
+import { useSupplierApplications, useRewardSummary, useRewardRedemptions, createRewardRedemption, reviewRewardRedemption } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
+import { TECHNICIAN_REWARDS } from '@/constants/rewards';
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium' }).format(new Date(value));
 }
 
-const supplierQuotaStyles: Record<SupplierQuotaStatus, string> = {
-  'within-quota': 'bg-emerald-50 text-emerald-700',
-  'near-limit': 'bg-amber-50 text-amber-700',
-  exceeded: 'bg-rose-50 text-rose-700',
-};
-
 export default function RewardsHub({ adminView = false }: { adminView?: boolean }) {
-  const currentPoints = 850;
+  const { success, error: toastError } = useToast();
   const { data: supplierApplications = [] } = useSupplierApplications(adminView);
-  const { data: supplierLedger = [] } = useSupplierLedger(undefined, adminView);
+  const { data: summary } = useRewardSummary(undefined, !adminView);
+  const { data: redemptions = [] } = useRewardRedemptions();
+  const [redeemingId, setRedeemingId] = useState<string | null>(null);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
 
-  const approvedSupplierRows = useMemo(() => {
-    const approved = supplierApplications.filter(app => app.status === 'approved');
-    return approved.map(app => {
-      const totalSalesKg = supplierLedger
-        .filter(e => e.supplierId === app.id && e.direction === 'sale')
-        .reduce((sum, e) => sum + e.quantityKg, 0);
-      const importQuotaKg = 3000;
-      const usagePercent = importQuotaKg > 0 ? (totalSalesKg / importQuotaKg) * 100 : 0;
-      const quotaStatus: SupplierQuotaStatus =
-        usagePercent >= 100 ? 'exceeded' : usagePercent >= 85 ? 'near-limit' : 'within-quota';
-      return {
-        id: app.id,
-        name: app.companyName,
-        province: app.province,
-        refrigerants: app.refrigerantsSupplied,
-        totalSalesKg,
-        importQuotaKg,
-        usagePercent,
-        quotaStatus,
-      };
-    });
-  }, [supplierApplications, supplierLedger]);
+  const currentPoints = summary?.availablePoints ?? 0;
+
+  const handleRedeem = async (rewardId: string) => {
+    setRedeemingId(rewardId);
+    try {
+      await createRewardRedemption(rewardId);
+      success('Redemption requested — an admin will review it shortly.');
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Failed to submit redemption request.');
+    } finally {
+      setRedeemingId(null);
+    }
+  };
+
+  const handleReview = async (id: string, action: 'approve' | 'reject') => {
+    setReviewingId(id);
+    try {
+      await reviewRewardRedemption(id, action);
+      success(action === 'approve' ? 'Redemption fulfilled.' : 'Redemption rejected.');
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Failed to update redemption.');
+    } finally {
+      setReviewingId(null);
+    }
+  };
 
   const supplierStats = useMemo(() => {
     const pending = supplierApplications.filter(
@@ -93,23 +62,66 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
     };
   }, [supplierApplications]);
 
-  const rewardSummary = useMemo(() => {
+  const rewardCatalogSummary = useMemo(() => {
     return {
-      totalRewards: REWARDS.length,
-      activeVendors: new Set(REWARDS.map(reward => reward.vendor)).size,
-      totalPointsExposure: REWARDS.reduce((sum, reward) => sum + reward.points, 0),
-      premiumRewards: REWARDS.filter(reward => reward.points >= 500).length,
+      totalRewards: TECHNICIAN_REWARDS.length,
+      activeVendors: new Set(TECHNICIAN_REWARDS.map(reward => reward.vendor)).size,
+      totalPointsExposure: TECHNICIAN_REWARDS.reduce((sum, reward) => sum + reward.points, 0),
+      premiumRewards: TECHNICIAN_REWARDS.filter(reward => reward.points >= 500).length,
     };
   }, []);
+
+  const pendingRedemptions = useMemo(() => redemptions.filter(r => r.status === 'requested'), [redemptions]);
 
   if (adminView) {
     return (
       <div className="space-y-6">
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <OverviewCard label="Active rewards" value={rewardSummary.totalRewards} />
-          <OverviewCard label="Participating vendors" value={rewardSummary.activeVendors} />
-          <OverviewCard label="Premium rewards" value={rewardSummary.premiumRewards} />
-          <OverviewCard label="Points exposure" value={rewardSummary.totalPointsExposure} />
+          <OverviewCard label="Active rewards" value={rewardCatalogSummary.totalRewards} />
+          <OverviewCard label="Participating vendors" value={rewardCatalogSummary.activeVendors} />
+          <OverviewCard label="Premium rewards" value={rewardCatalogSummary.premiumRewards} />
+          <OverviewCard label="Points exposure" value={rewardCatalogSummary.totalPointsExposure} />
+        </section>
+
+        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Redemption queue</h3>
+            <p className="text-sm text-gray-500">Technician redemption requests awaiting fulfillment</p>
+          </div>
+          {pendingRedemptions.length === 0 ? (
+            <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+              No redemption requests awaiting review.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingRedemptions.map(redemption => (
+                <div key={redemption.id} className="flex flex-col gap-3 border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-gray-900">{redemption.rewardTitle}</p>
+                    <p className="text-sm text-gray-500">
+                      {redemption.userName} · {redemption.pointsCost} pts · requested {formatDate(redemption.requestedAt)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleReview(redemption.id, 'approve')}
+                      disabled={reviewingId === redemption.id}
+                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      Fulfill
+                    </button>
+                    <button
+                      onClick={() => handleReview(redemption.id, 'reject')}
+                      disabled={reviewingId === redemption.id}
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-100 disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
@@ -119,7 +131,7 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
               <p className="text-sm text-gray-500">All live rewards currently available across the network</p>
             </div>
             <div className="space-y-3">
-              {REWARDS.map(reward => (
+              {TECHNICIAN_REWARDS.map(reward => (
                 <div key={reward.id} className="flex items-center justify-between border border-gray-200 bg-gray-50 px-4 py-4">
                   <div>
                     <p className="font-semibold text-gray-900">{reward.title}</p>
@@ -186,12 +198,15 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
             <div className="text-center md:text-left">
               <h3 className="text-2xl font-bold sm:text-3xl">Your Rewards Balance</h3>
               <p className="mt-2 text-gray-400">
-                Earn points by completing training and logging low-leak installs.
+                Earn points by passing exams, completing jobs, and logging responsible refrigerant handling.
               </p>
             </div>
             <div className="min-w-[180px] border border-white/10 bg-white/10 p-6 text-center backdrop-blur-md">
               <span className="text-4xl font-bold leading-none text-blue-400 sm:text-5xl">{currentPoints}</span>
               <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Points Available</p>
+              {summary && summary.reservedPoints > 0 && (
+                <p className="mt-1 text-[10px] text-gray-500">{summary.reservedPoints} pts reserved in pending redemptions</p>
+              )}
             </div>
           </div>
         </div>
@@ -200,26 +215,46 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
       {/* How to Earn Points */}
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">How to Earn Points</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { action: 'Complete a training module', points: '+50 pts', color: 'bg-blue-50 text-blue-700' },
-            { action: 'Pass a certification exam', points: '+200 pts', color: 'bg-purple-50 text-purple-700' },
-            { action: 'Log a low-leak installation', points: '+100 pts', color: 'bg-emerald-50 text-emerald-700' },
-            { action: 'Submit a field safety report', points: '+75 pts', color: 'bg-amber-50 text-amber-700' },
-          ].map(item => (
-            <article key={item.action} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm flex items-center gap-3">
-              <span className={`shrink-0 rounded px-2 py-1 text-xs font-bold ${item.color}`}>{item.points}</span>
-              <p className="text-sm font-medium text-gray-700">{item.action}</p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {(summary?.breakdown ?? []).map(item => (
+            <article key={item.label} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <span className="inline-block rounded bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">+{item.pointsEach} pts each</span>
+              <p className="mt-2 text-sm font-medium text-gray-700">{item.label}</p>
+              <p className="mt-1 text-xs text-gray-400">{item.count} logged · {item.totalPoints} pts earned</p>
             </article>
           ))}
         </div>
       </section>
 
+      {/* My Redemptions */}
+      {redemptions.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">My Redemption Requests</h2>
+          <div className="space-y-2">
+            {redemptions.slice(0, 5).map(redemption => {
+              const statusStyles: Record<string, string> = {
+                requested: 'bg-amber-50 text-amber-700',
+                fulfilled: 'bg-emerald-50 text-emerald-700',
+                rejected: 'bg-rose-50 text-rose-700',
+              };
+              return (
+                <div key={redemption.id} className="flex items-center justify-between border border-gray-200 bg-white p-3 text-sm">
+                  <span className="font-medium text-gray-700">{redemption.rewardTitle}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusStyles[redemption.status]}`}>
+                    {redemption.status}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Redeemable Rewards */}
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Redeem Rewards</h2>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {REWARDS.map((reward) => {
+          {TECHNICIAN_REWARDS.map((reward) => {
             const canRedeem = currentPoints >= reward.points;
             return (
               <article
@@ -243,14 +278,15 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
                       {reward.points} <span className="text-xs font-medium uppercase text-gray-400">Pts</span>
                     </div>
                     <button
-                      disabled={!canRedeem}
+                      disabled={!canRedeem || redeemingId === reward.id}
+                      onClick={() => handleRedeem(reward.id)}
                       className={`inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold transition-all ${
                         canRedeem
-                          ? 'bg-gray-900 text-white hover:bg-gray-800'
+                          ? 'bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50'
                           : 'cursor-not-allowed bg-gray-100 text-gray-400'
                       }`}
                     >
-                      Redeem
+                      {redeemingId === reward.id ? 'Requesting…' : 'Redeem'}
                       <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
