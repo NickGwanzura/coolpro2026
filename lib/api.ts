@@ -304,7 +304,7 @@ export function useSupplierApplications(enabled = true) {
 }
 
 export async function createSupplierApplication(
-  body: Omit<SupplierRegistration, 'id' | 'status' | 'submittedAt'> & { password: string }
+  body: Omit<SupplierRegistration, 'id' | 'status' | 'submittedAt' | 'registrationNumber'> & { password: string }
 ): Promise<SupplierApplicationRecord> {
   const result = await post<SupplierApplicationRecord>('/api/supplier-applications', body);
   await mutate('/api/supplier-applications');
@@ -402,7 +402,7 @@ export async function rejectStudentApplication(id: string, notes?: string): Prom
 
 export type TechnicianApplicationInput = Omit<
   TechnicianApplication,
-  'id' | 'status' | 'submittedAt' | 'reviewedAt' | 'reviewedBy' | 'reviewNote' | 'approvedTechnicianId'
+  'id' | 'status' | 'submittedAt' | 'reviewedAt' | 'reviewedBy' | 'reviewNote' | 'approvedTechnicianId' | 'registrationNumber'
 > & { password: string };
 
 export function useTechnicianApplications() {

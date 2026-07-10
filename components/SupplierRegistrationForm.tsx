@@ -24,7 +24,6 @@ const SUPPLIER_TYPES: Array<SupplierRegistration['supplierType']> = [
 type SupplierFormState = {
   companyName: string;
   tradingName: string;
-  registrationNumber: string;
   supplierType: SupplierRegistration['supplierType'];
   contactName: string;
   email: string;
@@ -45,7 +44,6 @@ type SupplierFormState = {
 const INITIAL: SupplierFormState = {
   companyName: '',
   tradingName: '',
-  registrationNumber: '',
   supplierType: 'distributor',
   contactName: '',
   email: '',
@@ -84,7 +82,7 @@ export default function SupplierRegistrationForm() {
     event.preventDefault();
     if (submitting || !form.agree) return;
 
-    if (!form.companyName || !form.registrationNumber || !form.contactName || !form.email || !form.phone) {
+    if (!form.companyName || !form.contactName || !form.email || !form.phone) {
       setError('Please complete the required company and contact fields.');
       return;
     }
@@ -107,7 +105,6 @@ export default function SupplierRegistrationForm() {
       const record = await createSupplierApplication({
         companyName: form.companyName.trim(),
         tradingName: form.tradingName.trim() || undefined,
-        registrationNumber: form.registrationNumber.trim(),
         supplierType: form.supplierType,
         contactName: form.contactName.trim(),
         email: form.email.trim().toLowerCase(),
@@ -201,14 +198,6 @@ export default function SupplierRegistrationForm() {
                 placeholder="Optional"
               />
             </Field>
-            <Field label="Registration number" required>
-              <Input
-                value={form.registrationNumber}
-                onChange={(v) => update('registrationNumber', v)}
-                required
-                placeholder="CR 123/2026"
-              />
-            </Field>
             <Field label="Supplier type" required>
               <Select
                 value={form.supplierType}
@@ -223,6 +212,10 @@ export default function SupplierRegistrationForm() {
               </Select>
             </Field>
           </div>
+          <p className="text-xs text-gray-500">
+            Your HEVACRAZ supplier registration number is issued automatically once your application is
+            submitted — you don&apos;t need to supply one.
+          </p>
         </fieldset>
 
         <fieldset className="space-y-5 pt-5 border-t" style={{ borderColor: BORDER }}>

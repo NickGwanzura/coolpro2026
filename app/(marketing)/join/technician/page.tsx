@@ -26,7 +26,6 @@ const REFRIGERANTS = ['R-290', 'R-32', 'R-744', 'R-410A', 'R-134a', 'R-22'];
 type FormState = {
   name: string;
   nationalId: string;
-  registrationNumber: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -45,7 +44,6 @@ type FormState = {
 const INITIAL: FormState = {
   name: '',
   nationalId: '',
-  registrationNumber: '',
   email: '',
   password: '',
   confirmPassword: '',
@@ -123,7 +121,6 @@ export default function JoinTechnicianPage() {
       const record = await createTechnicianApplication({
         name: form.name.trim(),
         nationalId: form.nationalId.trim(),
-        registrationNumber: form.registrationNumber.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
         contactNumber: form.contactNumber.trim(),
@@ -258,14 +255,6 @@ export default function JoinTechnicianPage() {
                         placeholder="12-3456789A12"
                       />
                     </Field>
-                    <Field label="Registration number" required>
-                      <Input
-                        value={form.registrationNumber}
-                        onChange={(v) => update('registrationNumber', v)}
-                        required
-                        placeholder="ZIM/TECH/2026/001"
-                      />
-                    </Field>
                     <Field label="Years of experience">
                       <Input
                         type="number"
@@ -311,6 +300,10 @@ export default function JoinTechnicianPage() {
                   </div>
                   <p className="text-xs text-gray-500">
                     This will be your sign-in password once your registration is approved. Minimum 8 characters.
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Your HEVACRAZ registration number is issued automatically once your application is
+                    submitted — you don&apos;t need to supply one.
                   </p>
                 </fieldset>
 

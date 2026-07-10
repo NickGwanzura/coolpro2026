@@ -6,6 +6,7 @@ import { requireRole } from '@/lib/server/auth';
 import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
 import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
+import { generateTechnicianRegistrationNumber } from '@/lib/server/registration-number';
 import { SITE_URL } from '@/lib/site-url';
 import type { TechnicianApplication } from '@/types/index';
 
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Partial<TechnicianApplication> & { password?: string };
 
   const required: Array<keyof TechnicianApplication> = [
-    'name', 'nationalId', 'registrationNumber', 'email',
+    'name', 'nationalId', 'email',
     'contactNumber', 'province', 'district', 'specialization',
   ];
   for (const key of required) {
@@ -85,17 +86,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
   }
 
-  const regNo = String(body.registrationNumber).trim();
-
   const [duplicate] = await db
     .select({ id: technicianApplications.id, status: technicianApplications.status })
     .from(technicianApplications)
     .where(
       and(
-        or(
-          eq(technicianApplications.registrationNumber, regNo),
-          eq(technicianApplications.email, email),
-        ),
+        eq(technicianApplications.email, email),
         or(
           eq(technicianApplications.status, 'submitted'),
           eq(technicianApplications.status, 'under-review'),
@@ -106,19 +102,20 @@ export async function POST(req: Request) {
 
   if (duplicate) {
     return NextResponse.json(
-      { error: 'An application with this email or registration number is already under review.' },
+      { error: 'An application with this email is already under review.' },
       { status: 409 },
     );
   }
 
   const passwordHash = await hashPassword(body.password!);
+  const registrationNumber = await generateTechnicianRegistrationNumber();
 
   const [inserted] = await db
     .insert(technicianApplications)
     .values({
       name: String(body.name).trim(),
       nationalId: String(body.nationalId).trim(),
-      registrationNumber: regNo,
+      registrationNumber,
       email,
       passwordHash,
       contactNumber: String(body.contactNumber).trim(),

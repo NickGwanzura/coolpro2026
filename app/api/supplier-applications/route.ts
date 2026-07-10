@@ -6,6 +6,7 @@ import { readSessionFromRequest } from '@/lib/server/auth';
 import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
 import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
+import { generateSupplierRegistrationNumber } from '@/lib/server/registration-number';
 import { SITE_URL } from '@/lib/site-url';
 import type { SupplierRegistration } from '@/types/index';
 
@@ -86,38 +87,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
   }
 
-  const registrationNumber = (body.registrationNumber ?? '').trim();
-
-  if (registrationNumber || email) {
-    const dupes = await db
-      .select({ id: supplierApplications.id, status: supplierApplications.status })
-      .from(supplierApplications)
-      .where(
-        and(
-          or(
-            registrationNumber
-              ? eq(supplierApplications.registrationNumber, registrationNumber)
-              : undefined,
-            eq(supplierApplications.email, email),
-          ),
-          or(
-            eq(supplierApplications.status, 'submitted'),
-            eq(supplierApplications.status, 'under-review'),
-            eq(supplierApplications.status, 'approved'),
-          ),
+  const dupes = await db
+    .select({ id: supplierApplications.id, status: supplierApplications.status })
+    .from(supplierApplications)
+    .where(
+      and(
+        eq(supplierApplications.email, email),
+        or(
+          eq(supplierApplications.status, 'submitted'),
+          eq(supplierApplications.status, 'under-review'),
+          eq(supplierApplications.status, 'approved'),
         ),
-      )
-      .limit(1);
+      ),
+    )
+    .limit(1);
 
-    if (dupes.length > 0) {
-      return NextResponse.json(
-        { error: 'A supplier with this email or registration number already has an active application.' },
-        { status: 409 },
-      );
-    }
+  if (dupes.length > 0) {
+    return NextResponse.json(
+      { error: 'A supplier with this email already has an active application.' },
+      { status: 409 },
+    );
   }
 
   const passwordHash = await hashPassword(body.password!);
+  const registrationNumber = await generateSupplierRegistrationNumber();
 
   const [inserted] = await db
     .insert(supplierApplications)
