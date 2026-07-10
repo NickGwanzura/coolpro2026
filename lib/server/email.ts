@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import { SITE_URL } from '@/lib/site-url';
 
-const FROM_ADDRESS = process.env.EMAIL_FROM ?? 'HEVACRAZ <noreply@zimhvacregistry.org>';
+const FROM_ADDRESS = process.env.EMAIL_FROM ?? 'NOU / HEVACRAZ <noreply@zimhvacregistry.org>';
 const CONTACT_TO_ADDRESS = process.env.CONTACT_TO_EMAIL ?? 'info@hevacraz.co.zw';
 const BRAND = {
   ink: '#1C1917',
@@ -21,17 +21,20 @@ function getResendClient(): Resend | null {
   return _resend;
 }
 
-function emailShell(bodyHtml: string, preview = 'HEVACRAZ / National Ozone Unit Zimbabwe'): string {
+// Every email in this app renders through emailShell, so the NOU / HEVACRAZ header banner
+// (logo + brand line) and footer are guaranteed to appear on every outbound message —
+// this is the single point of control for that requirement.
+function emailShell(bodyHtml: string, preview = 'NOU / HEVACRAZ Zimbabwe HVAC Compliance Registry'): string {
   return `
     <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent;">
       ${escapeHtml(preview)}
     </div>
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff;">
       <div style="background: ${BRAND.ink}; padding: 28px 24px; text-align: center;">
-        <img src="${SITE_URL}/logos/hevacraz-logo.jpeg" alt="HEVACRAZ" width="40" height="40"
+        <img src="${SITE_URL}/logos/hevacraz-logo.jpeg" alt="NOU / HEVACRAZ" width="40" height="40"
              style="border-radius: 6px; display: block; margin: 0 auto 12px;" />
         <p style="color: ${BRAND.amber}; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; margin: 0;">
-          HEVACRAZ &middot; National Ozone Unit
+          NOU / HEVACRAZ &middot; National Ozone Unit Zimbabwe
         </p>
         <p style="color: #ffffff; font-size: 20px; font-weight: 750; margin: 8px 0 0;">
           Zimbabwe HVAC Compliance Registry
@@ -42,7 +45,7 @@ function emailShell(bodyHtml: string, preview = 'HEVACRAZ / National Ozone Unit 
       </div>
       <div style="padding: 22px 24px; text-align: center; background: ${BRAND.soft};">
         <p style="color: ${BRAND.muted}; font-size: 11px; line-height: 1.7; margin: 0;">
-          HEVACRAZ &middot; <a href="mailto:info@hevacraz.co.zw" style="color: ${BRAND.muted};">info@hevacraz.co.zw</a><br />
+          NOU / HEVACRAZ &middot; <a href="mailto:info@hevacraz.co.zw" style="color: ${BRAND.muted};">info@hevacraz.co.zw</a><br />
           National Ozone Unit &middot; <a href="mailto:nou@environment.gov.zw" style="color: ${BRAND.muted};">nou@environment.gov.zw</a><br />
           <a href="${SITE_URL}" style="color: ${BRAND.amber}; font-weight: 700; text-decoration: none;">${SITE_URL.replace(/^https?:\/\//, '')}</a>
         </p>
@@ -79,7 +82,7 @@ function inviteEmailHtml(input: { inviteUrl: string; role: string; invitedBy: st
     <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
       This invite expires in 7 days. If you didn't expect this, you can ignore this email.
     </p>
-  `, 'You have been invited to the HEVACRAZ / NOU Zimbabwe registry.');
+  `, 'You have been invited to the NOU / HEVACRAZ Zimbabwe registry.');
 }
 
 /**
@@ -103,7 +106,7 @@ export async function sendInviteEmail(input: {
     const { error } = await resend.emails.send({
       from: FROM_ADDRESS,
       to: input.email,
-      subject: "You've been invited to HEVACRAZ / NOU Zimbabwe",
+      subject: "You've been invited to NOU / HEVACRAZ Zimbabwe",
       html: inviteEmailHtml(input),
     });
 
@@ -149,7 +152,7 @@ function approvalEmailHtml(input: {
     <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
       If you didn't apply for this account, you can ignore this email.
     </p>
-  `, 'Your HEVACRAZ application has been approved.');
+  `, 'Your NOU / HEVACRAZ application has been approved.');
 }
 
 /**
@@ -173,7 +176,7 @@ export async function sendApprovalEmail(input: {
     const { error } = await resend.emails.send({
       from: FROM_ADDRESS,
       to: input.email,
-      subject: 'Your HEVACRAZ ' + input.role.replace('_', ' ') + ' application has been approved',
+      subject: 'Your NOU / HEVACRAZ ' + input.role.replace('_', ' ') + ' application has been approved',
       html: approvalEmailHtml({ ...input, loginUrl }),
     });
 
@@ -226,7 +229,7 @@ export async function sendAdminNoticeEmail(input: {
     const { error } = await resend.emails.send({
       from: FROM_ADDRESS,
       to: input.email,
-      subject: `HEVACRAZ update: ${input.title}`,
+      subject: `NOU / HEVACRAZ update: ${input.title}`,
       html: adminNoticeEmailHtml(input),
     });
 
@@ -262,7 +265,7 @@ function contactNotificationHtml(input: {
       <p style="margin: 0; color: ${BRAND.ink}; font-size: 14px;"><strong>Topic:</strong> ${subject}</p>
     </div>
     <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">${message}</p>
-  `, `New HEVACRAZ website enquiry from ${input.name}.`);
+  `, `New NOU / HEVACRAZ website enquiry from ${input.name}.`);
 }
 
 function contactConfirmationHtml(input: {
@@ -282,7 +285,7 @@ function contactConfirmationHtml(input: {
        style="display: inline-block; margin-top: 18px; background: ${BRAND.amber}; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 22px; border-radius: 4px;">
       Visit contact page
     </a>
-  `, 'HEVACRAZ received your message.');
+  `, 'NOU / HEVACRAZ received your message.');
 }
 
 export async function sendContactEmails(input: {
@@ -302,7 +305,7 @@ export async function sendContactEmails(input: {
       from: FROM_ADDRESS,
       to: CONTACT_TO_ADDRESS,
       replyTo: input.email,
-      subject: `HEVACRAZ website enquiry: ${input.subject}`,
+      subject: `NOU / HEVACRAZ website enquiry: ${input.subject}`,
       html: contactNotificationHtml(input),
     });
 
@@ -314,7 +317,7 @@ export async function sendContactEmails(input: {
     const confirmation = await resend.emails.send({
       from: FROM_ADDRESS,
       to: input.email,
-      subject: 'HEVACRAZ received your message',
+      subject: 'NOU / HEVACRAZ received your message',
       html: contactConfirmationHtml(input),
     });
 
