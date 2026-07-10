@@ -5,6 +5,8 @@ import { studentApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
+import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
+import { SITE_URL } from '@/lib/site-url';
 import type { StudentApplication } from '@/types/index';
 
 const SIGNUP_RATE_LIMIT = 5;
@@ -116,6 +118,14 @@ export async function POST(req: Request) {
       status: 'submitted',
     })
     .returning();
+
+  // Notify admins that a new applicant is awaiting review — best-effort, never blocks signup
+  notifyAdminsOfNewApplication({
+    applicantName: `${inserted.firstName} ${inserted.lastName}`.trim(),
+    applicantEmail: inserted.email,
+    roleLabel: 'student',
+    reviewPath: `${SITE_URL}/admin/applications`,
+  }).catch(() => {});
 
   return NextResponse.json(toStudentApplication(inserted), { status: 201 });
 }

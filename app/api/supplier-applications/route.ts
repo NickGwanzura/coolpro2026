@@ -5,6 +5,8 @@ import { supplierApplications } from '@/db/schema/index';
 import { readSessionFromRequest } from '@/lib/server/auth';
 import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
+import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
+import { SITE_URL } from '@/lib/site-url';
 import type { SupplierRegistration } from '@/types/index';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -141,6 +143,14 @@ export async function POST(req: Request) {
       createdAt: new Date(),
     })
     .returning();
+
+  // Notify admins that a new applicant is awaiting review — best-effort, never blocks signup
+  notifyAdminsOfNewApplication({
+    applicantName: inserted.contactName,
+    applicantEmail: inserted.email,
+    roleLabel: 'supplier',
+    reviewPath: `${SITE_URL}/admin/applications`,
+  }).catch(() => {});
 
   return NextResponse.json(toSupplierRegistration(inserted), { status: 201 });
 }
