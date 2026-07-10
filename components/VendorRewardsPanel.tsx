@@ -52,7 +52,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
                                 with registered technicians, and completing supplier compliance applications.
                             </p>
                         </div>
-                        <div className="border border-white/10 bg-white/10 p-6 text-center backdrop-blur">
+                        <div className="rounded-lg border border-white/10 bg-white/10 p-6 text-center backdrop-blur">
                             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Available points</p>
                             <p className="mt-3 text-5xl font-bold text-emerald-300">{availablePoints}</p>
                             {summary && summary.reservedPoints > 0 && (
@@ -86,7 +86,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
                                 rejected: 'bg-rose-50 text-rose-700',
                             };
                             return (
-                                <div key={redemption.id} className="flex items-center justify-between border border-gray-200 bg-white p-3 text-sm">
+                                <div key={redemption.id} className="rounded-lg flex items-center justify-between border border-gray-200 bg-white p-3 text-sm">
                                     <span className="font-medium text-gray-700">{redemption.rewardTitle}</span>
                                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusStyles[redemption.status]}`}>
                                         {redemption.status}
@@ -112,7 +112,7 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
                         {VENDOR_REWARDS.map((reward) => {
                             const canRedeem = availablePoints >= reward.points;
                             return (
-                                <div key={reward.id} className="border border-gray-200 bg-gray-50 p-4">
+                                <div key={reward.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <p className="font-semibold text-gray-900">{reward.title}</p>
@@ -158,12 +158,12 @@ export default function VendorRewardsPanel({ session }: { session: UserSession }
 
                     <div className="space-y-3">
                         {supplierComplianceApplications.length === 0 ? (
-                            <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
                                 No supplier certificate applications yet. Submit one from the compliance module to start earning certificate rewards.
                             </div>
                         ) : (
                             supplierComplianceApplications.slice(0, 3).map((application) => (
-                                <div key={application.id} className="border border-gray-200 bg-gray-50 p-4">
+                                <div key={application.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <p className="font-semibold text-gray-900">{application.certificateType.replace(/-/g, ' ')}</p>

@@ -724,7 +724,7 @@ export default function DashboardPage() {
                     return (
                         <div
                             key={index}
-                            className="bg-white p-6 border border-[#E7E5E4]"
+                            className="rounded-lg bg-white p-6 border border-[#E7E5E4]"
                         >
                             <div className="flex items-center justify-between">
                                 <div className={`p-2.5 ${colorClasses[stat.color]}`}>
@@ -757,14 +757,14 @@ export default function DashboardPage() {
                         <div className="flex flex-wrap gap-3">
                             <Link
                                 href="/nou-dashboard"
-                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#D97706] hover:bg-[#b45309] transition-colors"
+                                className="rounded-lg inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#D97706] hover:bg-[#b45309] transition-colors"
                             >
                                 Open NOU Dashboard
                                 <ArrowRight className="h-4 w-4" />
                             </Link>
                             <Link
                                 href="/suppliers"
-                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold border border-[#E7E5E4] bg-white text-[#44403C] hover:bg-[#FAFAF9] transition-colors"
+                                className="rounded-lg inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold border border-[#E7E5E4] bg-white text-[#44403C] hover:bg-[#FAFAF9] transition-colors"
                             >
                                 <Plus className="h-4 w-4" />
                                 Supplier Management
@@ -789,7 +789,7 @@ export default function DashboardPage() {
 
                     <div className="mt-6 space-y-3">
                         {supplierSummary.latestApplications.length === 0 ? (
-                            <div className="border border-dashed border-[#E7E5E4] bg-[#FAFAF9] p-4 text-sm text-[#78716C]">
+                            <div className="rounded-lg border border-dashed border-[#E7E5E4] bg-[#FAFAF9] p-4 text-sm text-[#78716C]">
                                 No supplier applications are waiting for review yet.
                             </div>
                         ) : (
@@ -802,7 +802,7 @@ export default function DashboardPage() {
                                                 {application.province} · {application.supplierType.replace('-', ' ')}
                                             </p>
                                         </div>
-                                        <span className="inline-flex border border-[#E7E5E4] bg-white px-2 py-0.5 text-xs font-semibold text-[#44403C]">
+                                        <span className="inline-flex rounded-full border border-[#E7E5E4] bg-white px-2 py-0.5 text-xs font-semibold text-[#44403C]">
                                             {application.status.replace('-', ' ')}
                                         </span>
                                     </div>
@@ -831,7 +831,7 @@ export default function DashboardPage() {
                             <Link
                                 key={action.href}
                                 href={action.href}
-                                className="flex items-center gap-3 p-4 border border-[#E7E5E4] bg-[#FAFAF9] hover:bg-white hover:border-[#D97706]/30 transition-colors group"
+                                className="rounded-lg flex items-center gap-3 p-4 border border-[#E7E5E4] bg-[#FAFAF9] hover:bg-white hover:border-[#D97706]/30 transition-colors group"
                             >
                                 <div
                                     className={`p-2 ${action.iconClassName}`}
@@ -866,7 +866,7 @@ export default function DashboardPage() {
             {isVendor && (
                 <>
                     {/* Reorder Queue */}
-                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                    <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                             <div>
                                 <h2 className="text-base font-semibold text-[#1C1917]">Recent Reorders</h2>
@@ -882,7 +882,7 @@ export default function DashboardPage() {
                                 <p className="text-sm text-[#78716C]">No reorders submitted yet.</p>
                                 <Link
                                     href="/suppliers/reorder"
-                                    className="mt-4 inline-flex items-center gap-2 bg-[#D97706] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b45309]"
+                                    className="rounded-lg mt-4 inline-flex items-center gap-2 bg-[#D97706] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b45309]"
                                 >
                                     Submit a Reorder
                                     <ArrowRight className="h-4 w-4" />
@@ -903,7 +903,7 @@ export default function DashboardPage() {
                                                 <div className="min-w-0">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <p className="text-sm font-semibold text-[#1C1917]">{reorder.gasType} · {reorder.quantityKg} kg</p>
-                                                        <span className={`inline-flex border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColors[reorder.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                                                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColors[reorder.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
                                                             {reorder.status.replace('_', ' ')}
                                                         </span>
                                                     </div>
@@ -919,7 +919,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Compliance Applications */}
-                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                    <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                             <div>
                                 <h2 className="text-base font-semibold text-[#1C1917]">Compliance Certificates</h2>
@@ -945,7 +945,7 @@ export default function DashboardPage() {
                                             <p className="text-sm font-semibold text-[#1C1917]">{app.certificateType.replace(/-/g, ' ')}</p>
                                             <p className="text-xs text-[#78716C] mt-0.5">{app.monthCoverage} · {app.sitesCovered} sites</p>
                                         </div>
-                                        <span className="inline-flex border border-[#E7E5E4] bg-white px-2 py-0.5 text-xs font-semibold text-[#44403C] shrink-0">
+                                        <span className="inline-flex rounded-full border border-[#E7E5E4] bg-white px-2 py-0.5 text-xs font-semibold text-[#44403C] shrink-0">
                                             {app.status.replace('-', ' ')}
                                         </span>
                                     </div>
@@ -960,7 +960,7 @@ export default function DashboardPage() {
             {isTrainerOrLecturer && (
                 <>
                     {/* Grading Queue */}
-                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                    <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                             <div>
                                 <h2 className="text-base font-semibold text-[#1C1917]">Grading Queue</h2>
@@ -992,7 +992,7 @@ export default function DashboardPage() {
 
                     {/* Courses + Training Sessions */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                        <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                                 <div>
                                     <h2 className="text-base font-semibold text-[#1C1917]">My Courses</h2>
@@ -1022,7 +1022,7 @@ export default function DashboardPage() {
                                         return (
                                             <div key={course.id} className="px-6 py-4 hover:bg-[#FAFAF9] flex items-center justify-between gap-4">
                                                 <p className="text-sm font-semibold text-[#1C1917] truncate">{course.title}</p>
-                                                <span className={`inline-flex border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shrink-0 ${statusColors[course.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                                                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shrink-0 ${statusColors[course.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
                                                     {course.status.replace('_', ' ')}
                                                 </span>
                                             </div>
@@ -1032,7 +1032,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
 
-                        <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                        <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                                 <div>
                                     <h2 className="text-base font-semibold text-[#1C1917]">Training Sessions</h2>
@@ -1061,7 +1061,7 @@ export default function DashboardPage() {
 
             {/* ── Student-only sections ── */}
             {isStudent && (
-                <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                         <div>
                             <h2 className="text-base font-semibold text-[#1C1917]">Available Courses</h2>
@@ -1098,7 +1098,7 @@ export default function DashboardPage() {
             {isTechnician && (
                 <>
                     {/* Recent Jobs */}
-                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                    <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                             <div>
                                 <h2 className="text-base font-semibold text-[#1C1917]">Recent Jobs</h2>
@@ -1114,7 +1114,7 @@ export default function DashboardPage() {
                                 <p className="text-sm text-[#78716C]">No jobs recorded yet. Use the Field Toolkit or Job Planner to log work.</p>
                                 <Link
                                     href="/job-planner"
-                                    className="mt-4 inline-flex items-center gap-2 bg-[#D97706] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b45309]"
+                                    className="rounded-lg mt-4 inline-flex items-center gap-2 bg-[#D97706] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b45309]"
                                 >
                                     Open Job Planner
                                     <ArrowRight className="h-4 w-4" />
@@ -1135,7 +1135,7 @@ export default function DashboardPage() {
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <p className="text-sm font-semibold text-[#1C1917] truncate">{job.clientName}</p>
-                                                        <span className={`inline-flex border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColors[job.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                                                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColors[job.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
                                                             {job.status.replace('-', ' ')}
                                                         </span>
                                                     </div>
@@ -1180,7 +1180,7 @@ export default function DashboardPage() {
                                                     {job.status === 'completed' && (
                                                         <Link
                                                             href={`/jobs/request-coc?jobId=${job.id}`}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors"
+                                                            className="rounded-lg inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors"
                                                         >
                                                             <FileText className="h-3.5 w-3.5" />
                                                             CoC
@@ -1205,7 +1205,7 @@ export default function DashboardPage() {
                     {/* Upcoming Schedule + Certifications */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Upcoming Scheduled Jobs */}
-                        <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                        <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                                 <div>
                                     <h2 className="text-base font-semibold text-[#1C1917]">Upcoming Schedule</h2>
@@ -1246,7 +1246,7 @@ export default function DashboardPage() {
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2 flex-wrap">
                                                             <p className="text-sm font-semibold text-[#1C1917] truncate">{job.clientName}</p>
-                                                            <span className={`inline-flex border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColors[job.status]}`}>
+                                                            <span className={`inline-flex rounded-full border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColors[job.status]}`}>
                                                                 {statusLabel}
                                                             </span>
                                                         </div>
@@ -1259,7 +1259,7 @@ export default function DashboardPage() {
                                                         <span className="text-xs font-semibold text-[#44403C] hidden sm:block">{job.scheduledDate}</span>
                                                         <Link
                                                             href="/job-planner"
-                                                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#D97706] bg-[#D97706]/5 border border-[#D97706]/20 hover:bg-[#D97706]/10 transition-colors opacity-0 group-hover:opacity-100"
+                                                            className="rounded-lg inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#D97706] bg-[#D97706]/5 border border-[#D97706]/20 hover:bg-[#D97706]/10 transition-colors opacity-0 group-hover:opacity-100"
                                                                                 >
                                                             Open <ArrowRight className="h-3 w-3" />
                                                         </Link>
@@ -1273,7 +1273,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Certification Status */}
-                        <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                        <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                                 <div>
                                     <h2 className="text-base font-semibold text-[#1C1917]">Certifications</h2>
@@ -1329,7 +1329,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Refrigerant Activity */}
-                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                    <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                             <div>
                                 <h2 className="text-base font-semibold text-[#1C1917]">Refrigerant Activity</h2>
@@ -1387,7 +1387,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Gas Usage by Job Type */}
-                    <div className="rounded-lg bg-white border border-[#E7E5E4]">
+                    <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
                             <div>
                                 <h2 className="text-base font-semibold text-[#1C1917]">Gas Usage by Job Type</h2>

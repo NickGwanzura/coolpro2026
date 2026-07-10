@@ -93,13 +93,13 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
             <p className="text-sm text-gray-500">Technician redemption requests awaiting fulfillment</p>
           </div>
           {pendingRedemptions.length === 0 ? (
-            <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
               No redemption requests awaiting review.
             </div>
           ) : (
             <div className="space-y-3">
               {pendingRedemptions.map(redemption => (
-                <div key={redemption.id} className="flex flex-col gap-3 border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div key={redemption.id} className="rounded-lg flex flex-col gap-3 border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold text-gray-900">
                       {redemption.rewardTitle}
@@ -142,7 +142,7 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Technician catalog</p>
             <div className="space-y-3">
               {TECHNICIAN_REWARDS.map(reward => (
-                <div key={reward.id} className="flex items-center justify-between border border-gray-200 bg-gray-50 px-4 py-4">
+                <div key={reward.id} className="rounded-lg flex items-center justify-between border border-gray-200 bg-gray-50 px-4 py-4">
                   <div>
                     <p className="font-semibold text-gray-900">{reward.title}</p>
                     <p className="text-sm text-gray-500">{reward.vendor}</p>
@@ -157,7 +157,7 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
             <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-wide text-gray-400">Vendor catalog</p>
             <div className="space-y-3">
               {VENDOR_REWARDS.map(reward => (
-                <div key={reward.id} className="flex items-center justify-between border border-gray-200 bg-gray-50 px-4 py-4">
+                <div key={reward.id} className="rounded-lg flex items-center justify-between border border-gray-200 bg-gray-50 px-4 py-4">
                   <div>
                     <p className="font-semibold text-gray-900">{reward.title}</p>
                     <p className="text-sm text-gray-500">{reward.detail}</p>
@@ -187,12 +187,12 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
             </div>
             <div className="mt-5 space-y-3">
               {supplierStats.approved.length === 0 ? (
-                <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
                   No approved suppliers yet.
                 </div>
               ) : (
                 supplierStats.approved.map((supplier) => (
-                  <div key={supplier.id} className="border border-gray-200 bg-gray-50 p-4">
+                  <div key={supplier.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-semibold text-gray-900">{supplier.companyName}</p>
@@ -226,7 +226,7 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
                 Earn points by passing exams, completing jobs, and logging responsible refrigerant handling.
               </p>
             </div>
-            <div className="min-w-[180px] border border-white/10 bg-white/10 p-6 text-center backdrop-blur-md">
+            <div className="min-w-[180px] rounded-lg border border-white/10 bg-white/10 p-6 text-center backdrop-blur-md">
               <span className="text-4xl font-bold leading-none text-blue-400 sm:text-5xl">{currentPoints}</span>
               <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Points Available</p>
               {summary && summary.reservedPoints > 0 && (
@@ -263,7 +263,7 @@ export default function RewardsHub({ adminView = false }: { adminView?: boolean 
                 rejected: 'bg-rose-50 text-rose-700',
               };
               return (
-                <div key={redemption.id} className="flex items-center justify-between border border-gray-200 bg-white p-3 text-sm">
+                <div key={redemption.id} className="rounded-lg flex items-center justify-between border border-gray-200 bg-white p-3 text-sm">
                   <span className="font-medium text-gray-700">{redemption.rewardTitle}</span>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusStyles[redemption.status]}`}>
                     {redemption.status}

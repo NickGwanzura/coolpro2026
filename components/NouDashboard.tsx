@@ -760,7 +760,7 @@ export default function NouDashboard() {
 
           <div className="space-y-4">
             {refrigerantBreakdown.length === 0 ? (
-              <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+              <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
                 No approved refrigerant purchases recorded yet.
               </div>
             ) : (
@@ -797,7 +797,7 @@ export default function NouDashboard() {
               const hasData = monthlyTrends.some(p => p.purchasedKg > 0 || p.usedKg > 0);
               if (!hasData) {
                 return (
-                  <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                  <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
                     No approved reorders or vendor sales in the last 6 months.
                   </div>
                 );
@@ -849,25 +849,25 @@ export default function NouDashboard() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-4">
-            <div className="border border-gray-200 bg-gray-50 p-3">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <p className="text-xs uppercase tracking-[0.14em] text-gray-400">Submitted</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{supplierStatusCounts.submitted}</p>
             </div>
-            <div className="border border-gray-200 bg-gray-50 p-3">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <p className="text-xs uppercase tracking-[0.14em] text-gray-400">In review</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{supplierStatusCounts.underReview}</p>
             </div>
-            <div className="border border-gray-200 bg-gray-50 p-3">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <p className="text-xs uppercase tracking-[0.14em] text-gray-400">Approved</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{supplierStatusCounts.approved}</p>
             </div>
-            <div className="border border-gray-200 bg-gray-50 p-3">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <p className="text-xs uppercase tracking-[0.14em] text-gray-400">Rejected</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{supplierStatusCounts.rejected}</p>
             </div>
           </div>
 
-          <div className="mt-5 border border-amber-100 bg-amber-50/60 p-4">
+          <div className="mt-5 rounded-lg border border-amber-100 bg-amber-50/60 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-amber-900">Applications awaiting review</p>
@@ -882,13 +882,13 @@ export default function NouDashboard() {
 
             <div className="mt-4 space-y-3">
               {supplierReviewQueue.length === 0 ? (
-                <div className="border border-dashed border-amber-200 bg-white p-4 text-sm text-amber-900">
+                <div className="rounded-lg border border-dashed border-amber-200 bg-white p-4 text-sm text-amber-900">
                   No supplier applications are waiting right now. New submissions from the supplier
                   registration flow will appear here automatically.
                 </div>
               ) : (
                 supplierReviewQueue.slice(0, 3).map((application) => (
-                  <div key={application.id} className="border border-amber-100 bg-white p-4">
+                  <div key={application.id} className="rounded-lg border border-amber-100 bg-white p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="font-semibold text-gray-900">{application.companyName}</p>
@@ -922,7 +922,7 @@ export default function NouDashboard() {
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-gray-200">
+          <div className="rounded-lg overflow-x-auto border border-gray-200">
            <div className="min-w-[500px]">
             <div className="grid grid-cols-[1.5fr_1fr_1fr_0.9fr] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
               <span>Supplier</span>
@@ -979,13 +979,13 @@ export default function NouDashboard() {
           </div>
 
           {discrepancyAlerts.length === 0 ? (
-            <div className="border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
               No discrepancy alerts detected in the current reporting period.
             </div>
           ) : (
             <div className="space-y-3">
               {discrepancyAlerts.slice(0, 5).map((alert) => (
-                <div key={alert.id} className="border border-amber-200 bg-amber-50 p-4">
+                <div key={alert.id} className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-gray-900">{alert.technicianName}</p>
@@ -1014,21 +1014,21 @@ export default function NouDashboard() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="border border-gray-200 bg-gray-50 p-4">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-gray-400">Technician-linked sales</p>
               <p className="mt-2 text-3xl font-bold text-gray-900">{vendorReportingSummary.technicianLinkedSales.length}</p>
             </div>
-            <div className="border border-gray-200 bg-gray-50 p-4">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-gray-400">Reported to NOU</p>
               <p className="mt-2 text-3xl font-bold text-gray-900">{vendorReportingSummary.totalReportedKg} kg</p>
             </div>
-            <div className="border border-gray-200 bg-gray-50 p-4">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-gray-400">Pending vendor filings</p>
               <p className="mt-2 text-3xl font-bold text-gray-900">{vendorReportingSummary.pendingNou}</p>
             </div>
           </div>
 
-          <div className="mt-5 overflow-x-auto border border-gray-200">
+          <div className="mt-5 rounded-lg overflow-x-auto border border-gray-200">
            <div className="min-w-[520px]">
             <div className="grid grid-cols-[1.2fr_1fr_0.8fr_0.8fr] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
               <span>Technician</span>
@@ -1074,19 +1074,19 @@ export default function NouDashboard() {
             </div>
           </div>
 
-          <div className="border border-gray-200 bg-gray-50 p-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
             <p className="text-xs uppercase tracking-[0.14em] text-gray-400">Queue awaiting review</p>
             <p className="mt-2 text-3xl font-bold text-gray-900">{vendorReportingSummary.certificateQueue}</p>
           </div>
 
           <div className="mt-4 space-y-3">
             {supplierComplianceApplications.length === 0 ? (
-              <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+              <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
                 No supplier compliance certificate requests have been submitted yet.
               </div>
             ) : (
               supplierComplianceApplications.slice(0, 4).map((entry) => (
-                <div key={entry.id} className="border border-gray-200 bg-gray-50 p-4">
+                <div key={entry.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-gray-900">{entry.supplierName}</p>
@@ -1117,7 +1117,7 @@ export default function NouDashboard() {
           </div>
 
           {greyMarketAlerts.length === 0 ? (
-            <div className="border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
               No grey market flags detected. Vendor submissions within expected ranges.
             </div>
           ) : (
@@ -1151,12 +1151,12 @@ export default function NouDashboard() {
 
           <div className="space-y-3">
             {topTechnicians.length === 0 ? (
-              <div className="border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+              <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
                 No technicians registered yet.
               </div>
             ) : (
               topTechnicians.map((tech, index) => (
-                <div key={tech.id} className="border border-gray-200 bg-gray-50 p-4">
+                <div key={tech.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-semibold text-gray-900">
