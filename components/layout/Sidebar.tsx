@@ -21,7 +21,7 @@ import {
     WifiOff,
     UserCircle,
     FlaskConical,
-    HeartPulse,
+    ShieldAlert,
     BarChart3,
     Database,
     Cylinder,
@@ -69,7 +69,7 @@ const NAV_SECTIONS: NavSection[] = [
             { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician', 'org_admin'] },
             { name: 'Job Planner', href: '/job-planner', icon: CalendarRange, roles: ['technician'] },
             { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician', 'org_admin'] },
-            { name: 'Health & Wellness', href: '/health-safety', icon: HeartPulse, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
+            { name: 'Safety & Hazards', href: '/health-safety', icon: ShieldAlert, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
         ],
     },
     {
@@ -152,7 +152,7 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
             { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['org_admin'] },
             { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['org_admin'] },
             { name: 'Safety', href: '/safety', icon: ShieldCheck, roles: ['org_admin'] },
-            { name: 'Health & Wellness', href: '/health-safety', icon: HeartPulse, roles: ['org_admin'] },
+            { name: 'Safety & Hazards', href: '/health-safety', icon: ShieldAlert, roles: ['org_admin'] },
         ],
     },
     {
