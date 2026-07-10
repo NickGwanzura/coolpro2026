@@ -19,3 +19,4 @@ export * from './ocr-scans';
 export * from './coc-requests';
 export * from './installations';
 export * from './rewards';
+export * from './accidents';

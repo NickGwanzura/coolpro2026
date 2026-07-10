@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Clock, MapPin, User, Download, Plus, X, Search, ClipboardCheck } from 'lucide-react';
 import { OccupationalAccident, SeverityCategories, RootCauseCategories } from '../types';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
-import { useAuth } from '@/lib/auth';
+import { useOccupationalAccidents, createOccupationalAccident, submitAccidentInvestigation } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface InvestigationData {
     rootCause: keyof typeof RootCauseCategories;
@@ -15,15 +16,15 @@ interface InvestigationData {
 
 interface OccupationalAccidentSectionProps {
     isAdmin?: boolean;
-    initialAccidents?: OccupationalAccident[];
 }
 
 const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = ({
     isAdmin = false,
-    initialAccidents = []
 }) => {
-    const { user } = useAuth();
-    const [accidents, setAccidents] = useState<OccupationalAccident[]>(initialAccidents);
+    const { success, error: toastError } = useToast();
+    const { data: accidents = [] } = useOccupationalAccidents();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isInvestigating, setIsInvestigating] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [selectedAccident, setSelectedAccident] = useState<OccupationalAccident | null>(null);
     const [showInvestigation, setShowInvestigation] = useState(false);
@@ -47,36 +48,41 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
         description: ''
     });
 
-    const handleInvestigationSubmit = (e: React.FormEvent) => {
+    const handleInvestigationSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (selectedAccident) {
-            const updatedAccidents = accidents.map(acc =>
-                acc.id === selectedAccident.id
-                    ? { ...acc, ...investigationData }
-                    : acc
-            );
-            setAccidents(updatedAccidents);
+        if (!selectedAccident) return;
+        setIsInvestigating(true);
+        try {
+            await submitAccidentInvestigation(selectedAccident.id, investigationData);
+            success('Investigation report saved.');
             setShowInvestigation(false);
             setSelectedAccident(null);
+        } catch (err) {
+            toastError(err instanceof Error ? err.message : 'Failed to save investigation report.');
+        } finally {
+            setIsInvestigating(false);
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const newAccident: OccupationalAccident = {
-            id: Math.random().toString(36).substr(2, 9),
-            ...formData,
-            technicianName: user?.name ?? 'Unassigned technician'
-        };
-        setAccidents([newAccident, ...accidents]);
-        setShowForm(false);
-        setFormData({
-            date: new Date().toISOString().split('T')[0],
-            jobSite: '',
-            clientName: '',
-            severity: 'Medium',
-            description: ''
-        });
+        setIsSubmitting(true);
+        try {
+            await createOccupationalAccident(formData);
+            success('Incident report submitted.');
+            setShowForm(false);
+            setFormData({
+                date: new Date().toISOString().split('T')[0],
+                jobSite: '',
+                clientName: '',
+                severity: 'Medium',
+                description: ''
+            });
+        } catch (err) {
+            toastError(err instanceof Error ? err.message : 'Failed to submit incident report.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const getRegionForAccident = (accident: OccupationalAccident) => {
@@ -334,9 +340,10 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                         </div>
                         <button
                             type="submit"
-                            className="w-full rounded-lg py-3 bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                            disabled={isSubmitting}
+                            className="w-full rounded-lg py-3 bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200 disabled:opacity-50"
                         >
-                            Submit Incident Report
+                            {isSubmitting ? 'Submitting…' : 'Submit Incident Report'}
                         </button>
                     </form>
                 </div>
@@ -462,6 +469,7 @@ const OccupationalAccidentSection: React.FC<OccupationalAccidentSectionProps> = 
                     data={investigationData}
                     setData={setInvestigationData}
                     onSubmit={handleInvestigationSubmit}
+                    isSubmitting={isInvestigating}
                 />
             )}
         </div>
@@ -509,7 +517,8 @@ const InvestigationModal = ({
     onClose,
     data,
     setData,
-    onSubmit
+    onSubmit,
+    isSubmitting
 }: {
     accident: OccupationalAccident;
     isOpen: boolean;
@@ -517,6 +526,7 @@ const InvestigationModal = ({
     data: InvestigationData;
     setData: React.Dispatch<React.SetStateAction<InvestigationData>>;
     onSubmit: (e: React.FormEvent) => void;
+    isSubmitting: boolean;
 }) => {
     if (!isOpen) return null;
 
@@ -616,9 +626,10 @@ const InvestigationModal = ({
 
                     <button
                         type="submit"
-                        className="w-full rounded-lg py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+                        disabled={isSubmitting}
+                        className="w-full rounded-lg py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 disabled:opacity-50"
                     >
-                        Save Investigation Report
+                        {isSubmitting ? 'Saving…' : 'Save Investigation Report'}
                     </button>
                 </form>
             </div>

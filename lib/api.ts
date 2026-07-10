@@ -37,6 +37,7 @@ import type {
 	  CocRequest,
 	  Installation,
 	  RewardRedemption,
+	  OccupationalAccident,
 } from '@/types/index';
 import type { TechnicianRewardSummary } from '@/lib/server/rewards';
 
@@ -882,5 +883,31 @@ export async function reviewRewardRedemption(id: string, action: 'approve' | 're
   const result = await post<RewardRedemption>(`/api/rewards/redemptions/${id}/${action}`, notes ? { notes } : undefined);
   await mutate('/api/rewards/redemptions');
   await mutate((key) => typeof key === 'string' && key.startsWith('/api/rewards/summary'));
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Occupational Accidents (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useOccupationalAccidents() {
+  return useSWR<OccupationalAccident[]>('/api/occupational-accidents', fetcher);
+}
+
+export async function createOccupationalAccident(
+  body: Pick<OccupationalAccident, 'date' | 'jobSite' | 'clientName' | 'severity' | 'description'> &
+    Partial<Pick<OccupationalAccident, 'refrigerantInvolved' | 'nearMissFlag' | 'nouNotified'>>,
+): Promise<OccupationalAccident> {
+  const result = await post<OccupationalAccident>('/api/occupational-accidents', body);
+  await mutate('/api/occupational-accidents');
+  return result;
+}
+
+export async function submitAccidentInvestigation(
+  id: string,
+  body: Pick<OccupationalAccident, 'rootCause' | 'investigationDate' | 'investigatorName' | 'correctiveActions' | 'preventiveMeasures' | 'status'>,
+): Promise<OccupationalAccident> {
+  const result = await post<OccupationalAccident>(`/api/occupational-accidents/${id}/investigate`, body);
+  await mutate('/api/occupational-accidents');
   return result;
 }
