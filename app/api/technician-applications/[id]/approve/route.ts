@@ -66,6 +66,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       employmentStatus: app.employmentStatus as 'employed' | 'self-employed' | 'unemployed',
       employer: app.employer,
       refrigerantsHandled: (app.refrigerantsHandled as string[]) ?? [],
+      surveyData: app.surveyData ?? null,
       registrationDate: today.toISOString().split('T')[0],
       expiryDate: expiry.toISOString().split('T')[0],
       status: 'active',

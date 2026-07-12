@@ -28,6 +28,7 @@ function toTechnician(row: typeof technicians.$inferSelect): Technician {
     status: row.status as Technician['status'],
     lastRenewalDate: row.lastRenewalDate ?? undefined,
     nextRenewalDate: row.nextRenewalDate ?? undefined,
+    surveyData: (row.surveyData as Technician['surveyData']) ?? undefined,
   };
 }
 

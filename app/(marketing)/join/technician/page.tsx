@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { ZIMBABWE_PROVINCES, TECHNICIAN_SPECIALIZATIONS } from '@/constants/registry';
 import { createTechnicianApplication } from '@/lib/api';
-import type { TechnicianApplication, TechnicianApplicationCertification } from '@/types/index';
+import type { TechnicianApplication, TechnicianApplicationCertification, TechnicianSurveyData } from '@/types/index';
 
 const ACCENT = '#1E40AF';
 const ACCENT_TINT = 'rgba(30,64,175,0.10)';
@@ -38,6 +38,7 @@ type FormState = {
   yearsExperience: number;
   refrigerantsHandled: string[];
   certifications: TechnicianApplicationCertification[];
+  surveyData: TechnicianSurveyData;
   agree: boolean;
 };
 
@@ -56,8 +57,79 @@ const INITIAL: FormState = {
   yearsExperience: 0,
   refrigerantsHandled: [],
   certifications: [],
+  surveyData: {},
   agree: false,
 };
+
+const GENDER_OPTIONS: { value: NonNullable<TechnicianSurveyData['gender']>; label: string }[] = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+];
+
+const AGE_GROUP_OPTIONS: { value: NonNullable<TechnicianSurveyData['ageGroup']>; label: string }[] = [
+  { value: 'under_25', label: 'Under 25' },
+  { value: '25_34', label: '25–34' },
+  { value: '35_44', label: '35–44' },
+  { value: '45_54', label: '45–54' },
+  { value: '55_64', label: '55–64' },
+  { value: '65_plus', label: '65+' },
+];
+
+const EDUCATION_LEVEL_OPTIONS: { value: NonNullable<TechnicianSurveyData['educationLevel']>; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'primary', label: 'Primary' },
+  { value: 'o_level', label: 'O-Level' },
+  { value: 'a_level', label: 'A-Level' },
+  { value: 'vocational', label: 'Vocational' },
+  { value: 'national_certificate', label: 'National Certificate' },
+  { value: 'diploma', label: 'Diploma' },
+  { value: 'degree', label: 'Degree' },
+  { value: 'postgraduate', label: 'Postgraduate' },
+];
+
+const HAS_CERTIFICATION_OPTIONS: { value: NonNullable<TechnicianSurveyData['hasCertification']>; label: string }[] = [
+  { value: 'yes', label: 'Yes' },
+  { value: 'no', label: 'No' },
+  { value: 'studying', label: 'Currently studying' },
+];
+
+const LOAD_SHEDDING_OPTIONS: { value: NonNullable<TechnicianSurveyData['loadSheddingFrequency']>; label: string }[] = [
+  { value: 'never', label: 'Never' },
+  { value: 'rarely', label: 'Rarely' },
+  { value: 'occasionally', label: 'Occasionally' },
+  { value: 'frequently', label: 'Frequently' },
+  { value: 'daily', label: 'Daily' },
+];
+
+const RECOVERY_EQUIPMENT_OPTIONS: { value: NonNullable<TechnicianSurveyData['refrigerantRecoveryEquipmentUse']>; label: string }[] = [
+  { value: 'always', label: 'Always' },
+  { value: 'sometimes', label: 'Sometimes' },
+  { value: 'rarely', label: 'Rarely' },
+  { value: 'never', label: 'Never' },
+  { value: 'no_access', label: 'No access to equipment' },
+];
+
+const PPE_ACCESS_OPTIONS: { value: NonNullable<TechnicianSurveyData['ppeAccess']>; label: string }[] = [
+  { value: 'full_provided', label: 'Fully provided by employer' },
+  { value: 'partial_provided', label: 'Partially provided' },
+  { value: 'self_provided', label: 'I provide my own' },
+  { value: 'none', label: 'No PPE access' },
+];
+
+const ENERGY_EFFICIENT_OPTIONS: { value: NonNullable<TechnicianSurveyData['installsEnergyEfficient']>; label: string }[] = [
+  { value: 'always', label: 'Always' },
+  { value: 'on_request', label: 'On request' },
+  { value: 'sometimes', label: 'Sometimes' },
+  { value: 'rarely', label: 'Rarely' },
+  { value: 'never', label: 'Never' },
+];
+
+const LANGUAGE_OPTIONS: { value: NonNullable<TechnicianSurveyData['preferredLanguage']>; label: string }[] = [
+  { value: 'english', label: 'English' },
+  { value: 'shona', label: 'Shona' },
+  { value: 'ndebele', label: 'Ndebele' },
+];
 
 export default function JoinTechnicianPage() {
   const [form, setForm] = useState<FormState>(INITIAL);
@@ -72,6 +144,9 @@ export default function JoinTechnicianPage() {
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const updateSurvey = <K extends keyof TechnicianSurveyData>(key: K, value: TechnicianSurveyData[K]) =>
+    setForm((f) => ({ ...f, surveyData: { ...f.surveyData, [key]: value } }));
 
   const toggleRefrigerant = (code: string) =>
     setForm((f) => ({
@@ -133,6 +208,7 @@ export default function JoinTechnicianPage() {
         yearsExperience: Number(form.yearsExperience),
         certifications: form.certifications.filter((c) => c.name && c.issuingBody),
         refrigerantsHandled: form.refrigerantsHandled,
+        surveyData: Object.keys(form.surveyData).length > 0 ? form.surveyData : undefined,
       });
       setApplication(record);
     } catch (err) {
@@ -473,6 +549,156 @@ export default function JoinTechnicianPage() {
                   )}
                 </fieldset>
 
+                <fieldset className="space-y-5 pt-5 border-t" style={{ borderColor: BORDER }}>
+                  <div>
+                    <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                      Sector Survey (optional)
+                    </legend>
+                    <p className="mt-2 text-xs text-gray-500">
+                      HEVACRAZ periodically surveys the national technician workforce to understand
+                      access to tools, training, and safety equipment. Answering helps inform sector
+                      support programmes — skip any or all of it if you&apos;d rather not answer.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <Field label="Gender">
+                      <Select
+                        value={form.surveyData.gender ?? ''}
+                        onChange={(v) => updateSurvey('gender', (v || undefined) as TechnicianSurveyData['gender'])}
+                      >
+                        <option value="">Prefer not to answer</option>
+                        {GENDER_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Age group">
+                      <Select
+                        value={form.surveyData.ageGroup ?? ''}
+                        onChange={(v) => updateSurvey('ageGroup', (v || undefined) as TechnicianSurveyData['ageGroup'])}
+                      >
+                        <option value="">Prefer not to answer</option>
+                        {AGE_GROUP_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Education level">
+                      <Select
+                        value={form.surveyData.educationLevel ?? ''}
+                        onChange={(v) => updateSurvey('educationLevel', (v || undefined) as TechnicianSurveyData['educationLevel'])}
+                      >
+                        <option value="">Prefer not to answer</option>
+                        {EDUCATION_LEVEL_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Do you hold a refrigeration/HVAC certification?">
+                      <Select
+                        value={form.surveyData.hasCertification ?? ''}
+                        onChange={(v) => updateSurvey('hasCertification', (v || undefined) as TechnicianSurveyData['hasCertification'])}
+                      >
+                        <option value="">Prefer not to answer</option>
+                        {HAS_CERTIFICATION_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Preferred language">
+                      <Select
+                        value={form.surveyData.preferredLanguage ?? ''}
+                        onChange={(v) => updateSurvey('preferredLanguage', (v || undefined) as TechnicianSurveyData['preferredLanguage'])}
+                      >
+                        <option value="">Prefer not to answer</option>
+                        {LANGUAGE_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Biggest daily challenge">
+                      <Input
+                        value={form.surveyData.biggestDailyChallenge ?? ''}
+                        onChange={(v) => updateSurvey('biggestDailyChallenge', v || undefined)}
+                        placeholder="e.g. power outages, spare parts access"
+                      />
+                    </Field>
+                    <Field label="How often does load shedding affect your work?">
+                      <Select
+                        value={form.surveyData.loadSheddingFrequency ?? ''}
+                        onChange={(v) => updateSurvey('loadSheddingFrequency', (v || undefined) as TechnicianSurveyData['loadSheddingFrequency'])}
+                      >
+                        <option value="">Prefer not to answer</option>
+                        {LOAD_SHEDDING_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="How often do you use refrigerant recovery equipment?">
+                      <Select
+                        value={form.surveyData.refrigerantRecoveryEquipmentUse ?? ''}
+                        onChange={(v) => updateSurvey('refrigerantRecoveryEquipmentUse', (v || undefined) as TechnicianSurveyData['refrigerantRecoveryEquipmentUse'])}
+                      >
+                        <option value="">Prefer not to answer</option>
+                        {RECOVERY_EQUIPMENT_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Access to personal protective equipment (PPE)">
+                      <Select
+                        value={form.surveyData.ppeAccess ?? ''}
+                        onChange={(v) => updateSurvey('ppeAccess', (v || undefined) as TechnicianSurveyData['ppeAccess'])}
+                      >
+                        <option value="">Prefer not to answer</option>
+                        {PPE_ACCESS_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Do you install energy-efficient systems?">
+                      <Select
+                        value={form.surveyData.installsEnergyEfficient ?? ''}
+                        onChange={(v) => updateSurvey('installsEnergyEfficient', (v || undefined) as TechnicianSurveyData['installsEnergyEfficient'])}
+                      >
+                        <option value="">Prefer not to answer</option>
+                        {ENERGY_EFFICIENT_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <ScaleField
+                      label="Confidence with traditional refrigerants"
+                      value={form.surveyData.confidenceTraditionalRefrigerants}
+                      onChange={(v) => updateSurvey('confidenceTraditionalRefrigerants', v)}
+                    />
+                    <ScaleField
+                      label="Confidence with low-GWP refrigerants"
+                      value={form.surveyData.confidenceLowGwpRefrigerants}
+                      onChange={(v) => updateSurvey('confidenceLowGwpRefrigerants', v)}
+                    />
+                    <ScaleField
+                      label="Access to tools"
+                      value={form.surveyData.accessToTools}
+                      onChange={(v) => updateSurvey('accessToTools', v)}
+                    />
+                    <ScaleField
+                      label="Access to spare parts"
+                      value={form.surveyData.accessToSpareParts}
+                      onChange={(v) => updateSurvey('accessToSpareParts', v)}
+                    />
+                    <ScaleField
+                      label="Access to low-GWP refrigerants"
+                      value={form.surveyData.accessToLowGwpRefrigerants}
+                      onChange={(v) => updateSurvey('accessToLowGwpRefrigerants', v)}
+                    />
+                  </div>
+                </fieldset>
+
                 <fieldset className="pt-5 border-t" style={{ borderColor: BORDER }}>
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input
@@ -608,5 +834,53 @@ function Select({
     >
       {children}
     </select>
+  );
+}
+
+function ScaleField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | undefined;
+  onChange: (v: number | undefined) => void;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-2" style={{ color: '#1C1917' }}>
+        {label}
+        <span className="ml-1 text-xs font-normal text-gray-400">(1 = very low, 5 = very high)</span>
+      </label>
+      <div className="grid grid-cols-6 gap-1.5">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(value === n ? undefined : n)}
+            className="py-2.5 text-sm font-semibold border transition-colors rounded-lg"
+            style={{
+              borderColor: value === n ? ACCENT : BORDER,
+              backgroundColor: value === n ? ACCENT_TINT : '#ffffff',
+              color: value === n ? ACCENT : '#1C1917',
+            }}
+          >
+            {n}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => onChange(undefined)}
+          className="py-2.5 text-xs font-semibold border transition-colors rounded-lg"
+          style={{
+            borderColor: value === undefined ? ACCENT : BORDER,
+            backgroundColor: value === undefined ? ACCENT_TINT : '#ffffff',
+            color: value === undefined ? ACCENT : '#9CA3AF',
+          }}
+        >
+          N/A
+        </button>
+      </div>
+    </div>
   );
 }

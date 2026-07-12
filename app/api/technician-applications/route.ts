@@ -32,6 +32,7 @@ function toTechnicianApplication(
     yearsExperience: row.yearsExperience,
     certifications: row.certifications as TechnicianApplication['certifications'],
     refrigerantsHandled: row.refrigerantsHandled as string[],
+    surveyData: (row.surveyData as TechnicianApplication['surveyData']) ?? undefined,
     status: row.status as TechnicianApplication['status'],
     reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
     reviewedBy: row.reviewedBy ?? undefined,
@@ -128,6 +129,7 @@ export async function POST(req: Request) {
       yearsExperience: Number(body.yearsExperience ?? 0),
       certifications: body.certifications ?? [],
       refrigerantsHandled: body.refrigerantsHandled ?? [],
+      surveyData: body.surveyData ?? null,
       status: 'submitted',
     })
     .returning();

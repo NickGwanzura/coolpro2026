@@ -46,6 +46,10 @@ export const technicians = pgTable('technicians', {
   lastRenewalDate: text('last_renewal_date'),
   nextRenewalDate: text('next_renewal_date'),
   qrToken: text('qr_token'),
+  // Full structured survey/census response (self-assessments, obstacles, PPE/EHS access, GPS,
+  // language, sourceSurveyId for import idempotency, etc.) — optional, present for technicians
+  // onboarded via the sector survey or the signup form's optional survey section.
+  surveyData: jsonb('survey_data'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

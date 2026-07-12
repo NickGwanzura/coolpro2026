@@ -281,6 +281,26 @@ export interface TechnicianApplicationCertification {
   certificateNumber?: string;
 }
 
+// Optional sector-survey answers, collected alongside the core technician application.
+// Mirrors the structure of HEVACRAZ's national technician census (self-reported, all optional).
+export interface TechnicianSurveyData {
+  gender?: 'male' | 'female' | 'prefer_not_to_say';
+  ageGroup?: 'under_25' | '25_34' | '35_44' | '45_54' | '55_64' | '65_plus';
+  educationLevel?: 'none' | 'primary' | 'o_level' | 'a_level' | 'vocational' | 'national_certificate' | 'diploma' | 'degree' | 'postgraduate';
+  hasCertification?: 'yes' | 'no' | 'studying';
+  confidenceTraditionalRefrigerants?: number; // 1-5 self-rating
+  confidenceLowGwpRefrigerants?: number; // 1-5 self-rating
+  accessToTools?: number; // 1-5 self-rating
+  accessToSpareParts?: number; // 1-5 self-rating
+  accessToLowGwpRefrigerants?: number; // 1-5 self-rating
+  biggestDailyChallenge?: string;
+  loadSheddingFrequency?: 'never' | 'rarely' | 'occasionally' | 'frequently' | 'daily';
+  refrigerantRecoveryEquipmentUse?: 'always' | 'sometimes' | 'rarely' | 'never' | 'no_access';
+  ppeAccess?: 'full_provided' | 'partial_provided' | 'self_provided' | 'none';
+  installsEnergyEfficient?: 'always' | 'on_request' | 'sometimes' | 'rarely' | 'never';
+  preferredLanguage?: 'english' | 'shona' | 'ndebele';
+}
+
 export interface TechnicianApplication {
   id: string;
   name: string;
@@ -297,6 +317,7 @@ export interface TechnicianApplication {
   yearsExperience: number;
   certifications: TechnicianApplicationCertification[];
   refrigerantsHandled: string[];
+  surveyData?: TechnicianSurveyData;
   status: ApplicationStatus;
   reviewedAt?: string;
   reviewedBy?: string;
@@ -529,6 +550,7 @@ export interface Technician {
   lastRenewalDate?: string;
   nextRenewalDate?: string;
   qrToken?: string;
+  surveyData?: TechnicianSurveyData;
 }
 
 export interface Certification {

@@ -58,6 +58,9 @@ export const technicianApplications = pgTable('technician_applications', {
   yearsExperience: integer('years_experience').notNull().default(0),
   certifications: jsonb('certifications').notNull().default([]),
   refrigerantsHandled: jsonb('refrigerants_handled').notNull().default([]),
+  // Optional sector-survey answers collected alongside the core application (see
+  // app/(marketing)/join/technician/page.tsx) — carried through to technicians.surveyData on approval.
+  surveyData: jsonb('survey_data'),
   status: technicianApplicationStatusEnum('status').notNull().default('submitted'),
   reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
   reviewedBy: text('reviewed_by'),
