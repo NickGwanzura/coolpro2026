@@ -11,6 +11,7 @@ import { sendApplicationReceivedEmail } from '@/lib/server/email';
 import { logEmail } from '@/lib/server/email-log';
 import { recordAuditEvent } from '@/lib/server/audit';
 import { SITE_URL } from '@/lib/site-url';
+import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
 import type { TechnicianApplication } from '@/types/index';
 
 const SIGNUP_RATE_LIMIT = 5;
@@ -62,6 +63,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!SELF_SIGNUP_OPEN.technician) {
+    return NextResponse.json({ error: 'Technician self-registration is currently closed.' }, { status: 403 });
+  }
   if (!checkRateLimit(`technician-application:${getClientIp(req)}`, SIGNUP_RATE_LIMIT, SIGNUP_RATE_WINDOW_MS)) {
     return NextResponse.json({ error: 'Too many applications from this address. Try again later.' }, { status: 429 });
   }

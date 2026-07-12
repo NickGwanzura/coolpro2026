@@ -8,6 +8,7 @@ import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
 import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
 import { generateSupplierRegistrationNumber } from '@/lib/server/registration-number';
 import { SITE_URL } from '@/lib/site-url';
+import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
 import type { SupplierRegistration } from '@/types/index';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -65,6 +66,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!SELF_SIGNUP_OPEN.supplier) {
+    return NextResponse.json({ error: 'Supplier self-registration is currently closed.' }, { status: 403 });
+  }
   if (!checkRateLimit(`supplier-application:${getClientIp(req)}`, SIGNUP_RATE_LIMIT, SIGNUP_RATE_WINDOW_MS)) {
     return NextResponse.json({ error: 'Too many applications from this address. Try again later.' }, { status: 429 });
   }

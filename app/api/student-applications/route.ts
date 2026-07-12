@@ -7,6 +7,7 @@ import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
 import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
 import { SITE_URL } from '@/lib/site-url';
+import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
 import type { StudentApplication } from '@/types/index';
 
 const SIGNUP_RATE_LIMIT = 5;
@@ -51,6 +52,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!SELF_SIGNUP_OPEN.student) {
+    return NextResponse.json({ error: 'Student self-registration is currently closed.' }, { status: 403 });
+  }
   if (!checkRateLimit(`student-application:${getClientIp(req)}`, SIGNUP_RATE_LIMIT, SIGNUP_RATE_WINDOW_MS)) {
     return NextResponse.json({ error: 'Too many applications from this address. Try again later.' }, { status: 429 });
   }

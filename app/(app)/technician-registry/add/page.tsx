@@ -6,6 +6,8 @@ import { ArrowLeft, Save, Plus, X } from 'lucide-react';
 import { ZIMBABWE_PROVINCES, TECHNICIAN_SPECIALIZATIONS } from '@/constants/registry';
 import { useToast } from '@/components/ui/Toast';
 import { createTechnician } from '@/lib/api';
+import { SectorSurveyFields, isSectorSurveyComplete } from '@/components/technician/SectorSurveyFields';
+import type { TechnicianSurveyData } from '@/types/index';
 
 export default function AddTechnicianPage() {
   const router = useRouter();
@@ -37,6 +39,7 @@ export default function AddTechnicianPage() {
       certificateNumber: string;
     }>
   });
+  const [surveyData, setSurveyData] = useState<TechnicianSurveyData>({});
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -124,6 +127,10 @@ export default function AddTechnicianPage() {
       error('Please select a province and district.');
       return;
     }
+    if (!isSectorSurveyComplete(surveyData)) {
+      error('Please complete every Sector Survey question — it is required for every technician added to the registry.');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -150,6 +157,7 @@ export default function AddTechnicianPage() {
         })),
         refrigerantsHandled: [],
         status: 'pending',
+        surveyData,
       });
 
       success(`${created.name} has been added to the registry (pending approval)`);
@@ -343,6 +351,11 @@ export default function AddTechnicianPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Sector Survey */}
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+          <SectorSurveyFields value={surveyData} onChange={setSurveyData} required />
         </div>
 
         {/* Certifications */}

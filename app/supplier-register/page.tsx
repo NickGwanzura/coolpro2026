@@ -1,8 +1,14 @@
 import Link from 'next/link';
 import { ArrowLeft, Factory } from 'lucide-react';
 import SupplierRegistrationForm from '@/components/SupplierRegistrationForm';
+import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
+import { SignupClosedNotice } from '@/components/marketing/SignupClosedNotice';
 
 export default function SupplierRegisterPage() {
+  if (!SELF_SIGNUP_OPEN.supplier) {
+    return <SignupClosedNotice title="Supplier registration is closed" accent="#D97706" />;
+  }
+
   return (
     <div style={{ backgroundColor: '#ffffff' }}>
       <section className="pt-28 sm:pt-32 pb-10">

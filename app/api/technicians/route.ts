@@ -97,6 +97,7 @@ export async function POST(req: Request) {
       registrationDate: body.registrationDate ?? today.toISOString().split('T')[0],
       expiryDate: body.expiryDate ?? expiry.toISOString().split('T')[0],
       status: (body.status ?? 'pending') as 'active' | 'inactive' | 'suspended' | 'pending',
+      surveyData: body.surveyData ?? null,
     })
     .returning();
 

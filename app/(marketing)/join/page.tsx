@@ -9,10 +9,12 @@ import {
   ClipboardCheck,
   Factory,
   GraduationCap,
+  Lock,
   Sparkles,
   UserRoundCheck,
   Wrench,
 } from 'lucide-react';
+import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
 
 type JoinPath = {
   slug: 'student' | 'technician' | 'supplier';
@@ -156,7 +158,9 @@ export default function JoinPage() {
       <section id="join-paths" className="relative -mt-10 pb-16 sm:pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-4 lg:grid-cols-3">
-            {PATHS.map((path) => (
+            {PATHS.map((path) => {
+              const isOpen = SELF_SIGNUP_OPEN[path.slug];
+              return (
               <article
                 key={path.slug}
                 className="flex min-h-full flex-col border bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl sm:p-6"
@@ -170,9 +174,16 @@ export default function JoinPage() {
                     {path.icon}
                     {path.label}
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">
-                    {path.eyebrow}
-                  </span>
+                  {isOpen ? (
+                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                      {path.eyebrow}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 bg-gray-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">
+                      <Lock className="h-3 w-3" />
+                      Closed
+                    </span>
+                  )}
                 </div>
 
                 <h2 className="mt-6 text-2xl font-bold tracking-tight text-[#1C1917]">{path.title}</h2>
@@ -207,14 +218,15 @@ export default function JoinPage() {
                   <Link
                     href={path.href}
                     className="flex h-12 items-center justify-center gap-2 rounded-lg px-5 text-sm font-bold text-white shadow-sm transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                    style={{ backgroundColor: path.accent }}
+                    style={{ backgroundColor: isOpen ? path.accent : '#78716C' }}
                   >
-                    {path.cta}
-                    <ArrowRight className="h-4 w-4" />
+                    {isOpen ? path.cta : 'Registration Closed'}
+                    {isOpen ? <ArrowRight className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                   </Link>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>

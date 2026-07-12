@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { GraduationCap, ArrowLeft, CheckCircle, Upload, ArrowRight, Loader2 } from 'lucide-react';
 import { createStudentApplication } from '@/lib/api';
+import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
+import { SignupClosedNotice } from '@/components/marketing/SignupClosedNotice';
 import type { StudentApplication } from '@/types/index';
 
 const POLYTECHS = [
@@ -26,6 +28,14 @@ const FIELDS_OF_STUDY = [
 ];
 
 export default function JoinStudentPage() {
+  if (!SELF_SIGNUP_OPEN.student) {
+    return <SignupClosedNotice title="Student registration is closed" accent="#5A7D5A" />;
+  }
+
+  return <JoinStudentForm />;
+}
+
+function JoinStudentForm() {
   const [application, setApplication] = useState<StudentApplication | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
