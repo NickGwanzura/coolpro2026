@@ -526,6 +526,52 @@ export interface RewardRedemption {
   notes?: string;
 }
 
+export type MembershipStatus = 'active' | 'expired' | 'suspended' | 'revoked';
+
+// Membership is a distinct entity from technician registration — a technician can be
+// registered without being an active HEVACRAZ member.
+export interface Membership {
+  id: string;
+  technicianId: string;
+  applicationId?: string;
+  membershipNumber: string;
+  membershipType: string;
+  province: string;
+  status: MembershipStatus;
+  startDate: string;
+  expiryDate: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  entityType: 'technician_application' | 'membership';
+  entityId: string;
+  action: string;
+  previousStatus?: string;
+  newStatus?: string;
+  performedBy: string;
+  performedByRole?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export type EmailLogStatus = 'sent' | 'failed';
+
+export interface EmailLogEntry {
+  id: string;
+  emailType: string;
+  recipientEmail: string;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
+  status: EmailLogStatus;
+  errorMessage?: string;
+  sentAt: string;
+}
+
 // Technician Registry Types
 export interface Technician {
   id: string;

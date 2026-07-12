@@ -39,6 +39,9 @@ import type {
 	  Installation,
 	  RewardRedemption,
 	  OccupationalAccident,
+	  Membership,
+	  AuditLogEntry,
+	  EmailLogEntry,
 } from '@/types/index';
 import type { TechnicianRewardSummary } from '@/lib/server/rewards';
 
@@ -422,11 +425,16 @@ export async function approveTechnicianApplication(id: string): Promise<Technici
   const result = await post<TechnicianApplication>(`/api/technician-applications/${id}/approve`);
   await mutate('/api/technician-applications');
   await mutate('/api/technicians');
+  await mutate((key) => typeof key === 'string' && key.startsWith('/api/memberships'));
   return result;
 }
 
-export async function rejectTechnicianApplication(id: string, notes?: string): Promise<TechnicianApplication> {
-  const result = await post<TechnicianApplication>(`/api/technician-applications/${id}/reject`, { notes });
+export async function rejectTechnicianApplication(
+  id: string,
+  payload?: string | { reason?: string; internalNotes?: string; applicantMessage?: string },
+): Promise<TechnicianApplication> {
+  const body = typeof payload === 'string' ? { notes: payload } : (payload ?? {});
+  const result = await post<TechnicianApplication>(`/api/technician-applications/${id}/reject`, body);
   await mutate('/api/technician-applications');
   return result;
 }
@@ -925,4 +933,45 @@ export async function submitAccidentInvestigation(
   const result = await post<OccupationalAccident>(`/api/occupational-accidents/${id}/investigate`, body);
   await mutate('/api/occupational-accidents');
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Memberships (DB-backed)
+// ---------------------------------------------------------------------------
+
+export function useMemberships(params: { province?: string; status?: string; q?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.province) qs.set('province', params.province);
+  if (params.status) qs.set('status', params.status);
+  if (params.q) qs.set('q', params.q);
+  const query = qs.toString();
+  return useSWR<Membership[]>(`/api/memberships${query ? `?${query}` : ''}`, fetcher);
+}
+
+export async function createMembership(body: { technicianId: string; membershipType?: string }): Promise<Membership> {
+  const result = await post<Membership>('/api/memberships', body);
+  await mutate((key) => typeof key === 'string' && key.startsWith('/api/memberships'));
+  return result;
+}
+
+export async function updateMembership(id: string, body: { status?: Membership['status']; renew?: boolean }): Promise<Membership> {
+  const result = await patch<Membership>(`/api/memberships/${id}`, body);
+  await mutate((key) => typeof key === 'string' && key.startsWith('/api/memberships'));
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Audit log / email log (DB-backed, read-only from the client)
+// ---------------------------------------------------------------------------
+
+export function useAuditLog(params: { entityType?: string; entityId?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.entityType) qs.set('entityType', params.entityType);
+  if (params.entityId) qs.set('entityId', params.entityId);
+  const query = qs.toString();
+  return useSWR<AuditLogEntry[]>(query ? `/api/audit-log?${query}` : null, fetcher);
+}
+
+export function useEmailLog() {
+  return useSWR<EmailLogEntry[]>('/api/email-log', fetcher);
 }

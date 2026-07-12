@@ -20,3 +20,6 @@ export * from './coc-requests';
 export * from './installations';
 export * from './rewards';
 export * from './accidents';
+export * from './memberships';
+export * from './audit';
+export * from './email-log';

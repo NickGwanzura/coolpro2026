@@ -7,6 +7,9 @@ import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
 import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
 import { generateTechnicianRegistrationNumber } from '@/lib/server/registration-number';
+import { sendApplicationReceivedEmail } from '@/lib/server/email';
+import { logEmail } from '@/lib/server/email-log';
+import { recordAuditEvent } from '@/lib/server/audit';
 import { SITE_URL } from '@/lib/site-url';
 import type { TechnicianApplication } from '@/types/index';
 
@@ -140,6 +143,27 @@ export async function POST(req: Request) {
     applicantEmail: inserted.email,
     roleLabel: 'technician',
     reviewPath: `${SITE_URL}/admin/applications`,
+  }).catch(() => {});
+
+  // Confirm receipt to the applicant and record the submission — both best-effort, never
+  // block the response the applicant is waiting on.
+  sendApplicationReceivedEmail({ email: inserted.email, name: inserted.name })
+    .then((result) => logEmail({
+      emailType: 'application_received',
+      recipientEmail: inserted.email,
+      relatedEntityType: 'technician_application',
+      relatedEntityId: inserted.id,
+      sent: result.sent,
+    }))
+    .catch(() => {});
+
+  recordAuditEvent({
+    entityType: 'technician_application',
+    entityId: inserted.id,
+    action: 'submitted',
+    newStatus: 'submitted',
+    performedBy: inserted.name,
+    performedByRole: 'applicant',
   }).catch(() => {});
 
   return NextResponse.json(toTechnicianApplication(inserted), { status: 201 });

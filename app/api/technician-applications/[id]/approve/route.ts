@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { technicianApplications, technicians } from '@/db/schema/index';
+import { technicianApplications, technicians, memberships } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { provisionUserFromApplication, ProvisionConflictError } from '@/lib/server/provision-user';
-import { sendApprovalEmail } from '@/lib/server/email';
+import { sendApprovalEmail, sendMembershipConfirmationEmail } from '@/lib/server/email';
+import { logEmail } from '@/lib/server/email-log';
+import { recordAuditEvent } from '@/lib/server/audit';
+import { generateMembershipNumber } from '@/lib/server/membership-number';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -84,12 +87,75 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .where(eq(technicianApplications.id, id))
     .returning();
 
+  // Membership is a separate entity from technician registration — every approval creates
+  // one, valid through 31 December of the year approved (calendar-year membership).
+  const membershipNumber = await generateMembershipNumber();
+  const membershipExpiry = `${today.getFullYear()}-12-31`;
+  const [createdMembership] = await db
+    .insert(memberships)
+    .values({
+      technicianId: createdTechnician.id,
+      applicationId: app.id,
+      membershipNumber,
+      membershipType: 'standard',
+      province: app.province,
+      status: 'active',
+      startDate: today.toISOString().split('T')[0],
+      expiryDate: membershipExpiry,
+      approvedBy: session.name,
+      approvedAt: today,
+    })
+    .returning();
+
+  recordAuditEvent({
+    entityType: 'technician_application',
+    entityId: app.id,
+    action: 'approved',
+    previousStatus: app.status,
+    newStatus: 'approved',
+    performedBy: session.name,
+    performedByRole: session.role,
+  }).catch(() => {});
+
+  recordAuditEvent({
+    entityType: 'membership',
+    entityId: createdMembership.id,
+    action: 'membership_created',
+    newStatus: 'active',
+    performedBy: session.name,
+    performedByRole: session.role,
+    notes: `Created on approval of application ${app.id}`,
+  }).catch(() => {});
+
   // Notify the technician — best-effort, never blocks approval
   sendApprovalEmail({
     email: app.email,
     name: app.name,
     role: 'technician',
-  }).catch(() => {});
+  })
+    .then((result) => logEmail({
+      emailType: 'application_approved',
+      recipientEmail: app.email,
+      relatedEntityType: 'technician_application',
+      relatedEntityId: app.id,
+      sent: result.sent,
+    }))
+    .catch(() => {});
+
+  sendMembershipConfirmationEmail({
+    email: app.email,
+    name: app.name,
+    membershipNumber,
+    expiryDate: membershipExpiry,
+  })
+    .then((result) => logEmail({
+      emailType: 'membership_confirmation',
+      recipientEmail: app.email,
+      relatedEntityType: 'membership',
+      relatedEntityId: createdMembership.id,
+      sent: result.sent,
+    }))
+    .catch(() => {});
 
   return NextResponse.json({
     id: updated.id,
@@ -97,5 +163,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     approvedTechnicianId: updated.approvedTechnicianId,
     reviewedAt: updated.reviewedAt?.toISOString(),
     reviewedBy: updated.reviewedBy,
+    membershipId: createdMembership.id,
+    membershipNumber: createdMembership.membershipNumber,
+    membershipExpiryDate: createdMembership.expiryDate,
   });
 }

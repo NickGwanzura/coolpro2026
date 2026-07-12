@@ -29,6 +29,7 @@ import {
     Recycle,
     RefreshCw,
     UserPlus,
+    Mail,
 } from 'lucide-react';
 import { useAuth, logout } from '@/lib/auth';
 import { useEmergencyMode } from '@/lib/emergencyMode';
@@ -191,6 +192,9 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
             { name: 'Rewards', href: '/rewards', icon: Award, roles: ['org_admin'] },
             { name: 'System Users', href: '/admin/users', icon: Users, roles: ['org_admin'] },
             { name: 'Applications', href: '/admin/applications', icon: ShieldCheck, roles: ['org_admin'] },
+            { name: 'Applicants', href: '/admin/applicants', icon: ClipboardList, roles: ['org_admin'] },
+            { name: 'Memberships', href: '/admin/memberships', icon: Award, roles: ['org_admin'] },
+            { name: 'Email Log', href: '/admin/email-log', icon: Mail, roles: ['org_admin'] },
             { name: 'Invites', href: '/admin/invites', icon: UserPlus, roles: ['org_admin'] },
         ],
     },

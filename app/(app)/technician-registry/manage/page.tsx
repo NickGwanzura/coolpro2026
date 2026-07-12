@@ -5,7 +5,7 @@ import { Search, Filter, Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Chevr
 import { Technician } from '@/types/index';
 import { ZIMBABWE_PROVINCES, TECHNICIAN_SPECIALIZATIONS } from '@/constants/registry';
 import { useClientSession } from '@/lib/useClientSession';
-import { useTechnicians, updateTechnician, deleteTechnician } from '@/lib/api';
+import { useTechnicians, updateTechnician, deleteTechnician, useMemberships } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/components/ui/Toast';
@@ -20,6 +20,7 @@ export default function ManageTechniciansPage() {
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedMembershipStatus, setSelectedMembershipStatus] = useState('');
   const [activeTab, setActiveTab] = useState<'technicians' | 'certifications'>('technicians');
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [pendingCerts, setPendingCerts] = useState(PENDING_CERTIFICATIONS);
@@ -27,6 +28,25 @@ export default function ManageTechniciansPage() {
   const [mutationError, setMutationError] = useState<string | null>(null);
 
   const { data: techniciansData, error: techniciansError, isLoading: techniciansLoading } = useTechnicians();
+  const { data: membershipsData } = useMemberships();
+
+  const membershipByTechnicianId = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof membershipsData>[number]>();
+    for (const m of membershipsData ?? []) {
+      // Prefer the active membership if a technician has more than one record (e.g. renewed).
+      const existing = map.get(m.technicianId);
+      if (!existing || (m.status === 'active' && existing.status !== 'active')) map.set(m.technicianId, m);
+    }
+    return map;
+  }, [membershipsData]);
+
+  const provinceStats = useMemo(() => {
+    const byProvince = new Map<string, number>();
+    for (const t of techniciansData ?? []) {
+      byProvince.set(t.province, (byProvince.get(t.province) ?? 0) + 1);
+    }
+    return [...byProvince.entries()].map(([province, total]) => ({ province, total })).sort((a, b) => b.total - a.total);
+  }, [techniciansData]);
 
   const filteredTechnicians = useMemo(() => {
     const data = techniciansData ?? [];
@@ -38,7 +58,10 @@ export default function ManageTechniciansPage() {
         tech.name.toLowerCase().includes(term) ||
         tech.registrationNumber.toLowerCase().includes(term) ||
         tech.nationalId.toLowerCase().includes(term) ||
-        tech.specialization.toLowerCase().includes(term)
+        tech.specialization.toLowerCase().includes(term) ||
+        (tech.email ?? '').toLowerCase().includes(term) ||
+        tech.contactNumber.toLowerCase().includes(term) ||
+        (membershipByTechnicianId.get(tech.id)?.membershipNumber ?? '').toLowerCase().includes(term)
       );
     }
 
@@ -54,8 +77,16 @@ export default function ManageTechniciansPage() {
       filtered = filtered.filter(tech => tech.status === selectedStatus);
     }
 
+    if (selectedMembershipStatus) {
+      filtered = filtered.filter(tech => {
+        const membership = membershipByTechnicianId.get(tech.id);
+        if (selectedMembershipStatus === 'none') return !membership;
+        return membership?.status === selectedMembershipStatus;
+      });
+    }
+
     return filtered;
-  }, [searchTerm, selectedProvince, selectedSpecialization, selectedStatus, techniciansData]);
+  }, [searchTerm, selectedProvince, selectedSpecialization, selectedStatus, selectedMembershipStatus, techniciansData, membershipByTechnicianId]);
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -261,16 +292,32 @@ export default function ManageTechniciansPage() {
 
       {activeTab === 'technicians' ? (
         <>
+          {/* Province summary */}
+          {provinceStats.length > 0 && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {provinceStats.map((p) => (
+                <button
+                  key={p.province}
+                  onClick={() => setSelectedProvince(selectedProvince === p.province ? '' : p.province)}
+                  className={`p-3 text-left border transition-colors ${selectedProvince === p.province ? 'border-[#5A7D5A] bg-[#5A7D5A]/5' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{p.province}</p>
+                  <p className="mt-1 text-xl font-bold text-gray-900">{p.total}</p>
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Search and Filters */}
           <div className="bg-white border border-gray-200 shadow-sm p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div className="lg:col-span-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search registry..."
-                    aria-label="Search technicians by name, registration number or ID"
+                    placeholder="Search name, email, phone, reg./membership number..."
+                    aria-label="Search technicians by name, email, phone, registration or membership number"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-200 focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent outline-none transition-all"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -302,6 +349,20 @@ export default function ManageTechniciansPage() {
                 <option value="suspended">Suspended</option>
                 <option value="pending">Pending</option>
               </select>
+
+              <select
+                aria-label="Filter by membership status"
+                className="rounded-lg w-full px-3 py-2.5 border border-gray-200 focus:ring-2 focus:ring-[#5A7D5A] focus:border-transparent outline-none transition-all"
+                value={selectedMembershipStatus}
+                onChange={(e) => setSelectedMembershipStatus(e.target.value)}
+              >
+                <option value="">All Memberships</option>
+                <option value="active">Active member</option>
+                <option value="expired">Expired member</option>
+                <option value="suspended">Suspended member</option>
+                <option value="revoked">Revoked member</option>
+                <option value="none">No membership</option>
+              </select>
             </div>
           </div>
 
@@ -329,6 +390,20 @@ export default function ManageTechniciansPage() {
                         <div className="flex items-center gap-1">
                           <span className="text-gray-400">EXP:</span>
                           <span className="text-gray-900">{technician.expiryDate}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-400">MEMBERSHIP:</span>
+                          {membershipByTechnicianId.get(technician.id) ? (
+                            <span className={
+                              membershipByTechnicianId.get(technician.id)?.status === 'active'
+                                ? 'text-emerald-700'
+                                : 'text-gray-500'
+                            }>
+                              {membershipByTechnicianId.get(technician.id)?.status} ({membershipByTechnicianId.get(technician.id)?.membershipNumber})
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 normal-case">None</span>
+                          )}
                         </div>
                       </div>
                     </div>

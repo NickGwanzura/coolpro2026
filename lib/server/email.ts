@@ -288,6 +288,146 @@ function contactConfirmationHtml(input: {
   `, 'NOU / HEVACRAZ received your message.');
 }
 
+// ---------------------------------------------------------------------------
+// Technician application lifecycle emails
+// ---------------------------------------------------------------------------
+
+function applicationReceivedEmailHtml(input: { name: string }): string {
+  const name = escapeHtml(input.name);
+  return emailShell(`
+    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Application received</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Thanks, ${name}</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
+      Your technician registration application has been received and is now in the HEVACRAZ
+      review queue. We'll email you as soon as a decision has been made.
+    </p>
+  `, 'Your HEVACRAZ technician application has been received.');
+}
+
+/** Sent to an applicant immediately after they submit a technician application. */
+export async function sendApplicationReceivedEmail(input: { email: string; name: string }): Promise<{ sent: boolean }> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set — application-received email not sent:', input.email);
+    return { sent: false };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: input.email,
+      subject: 'NOU / HEVACRAZ received your technician application',
+      html: applicationReceivedEmailHtml(input),
+    });
+    if (error) {
+      console.error('[email] Resend rejected application-received email:', error.message);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error('[email] Failed to send application-received email:', err instanceof Error ? err.message : err);
+    return { sent: false };
+  }
+}
+
+function applicationRejectedEmailHtml(input: { name: string; applicantMessage?: string }): string {
+  const name = escapeHtml(input.name);
+  const message = input.applicantMessage ? escapeHtml(input.applicantMessage) : null;
+  return emailShell(`
+    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Application update</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Application not approved</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
+      Hi ${name}, your HEVACRAZ technician registration application was not approved at this time.
+    </p>
+    ${message ? `<div style="margin-top: 18px; border-left: 3px solid ${BRAND.amber}; background: ${BRAND.soft}; padding: 12px 14px; color: ${BRAND.ink}; font-size: 14px; line-height: 1.6;">${message}</div>` : ''}
+    <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
+      If you have questions, contact HEVACRAZ at info@hevacraz.co.zw.
+    </p>
+  `, 'Your NOU / HEVACRAZ technician application was not approved.');
+}
+
+/**
+ * Sent to an applicant when their application is rejected. Only ever carries the optional
+ * applicant-facing message — internal admin notes are a completely separate field on the
+ * application record and must never be passed into this function.
+ */
+export async function sendApplicationRejectedEmail(input: {
+  email: string;
+  name: string;
+  applicantMessage?: string;
+}): Promise<{ sent: boolean }> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set — rejection email not sent:', input.email);
+    return { sent: false };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: input.email,
+      subject: 'Update on your NOU / HEVACRAZ technician application',
+      html: applicationRejectedEmailHtml(input),
+    });
+    if (error) {
+      console.error('[email] Resend rejected rejection email:', error.message);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error('[email] Failed to send rejection email:', err instanceof Error ? err.message : err);
+    return { sent: false };
+  }
+}
+
+function membershipConfirmationEmailHtml(input: { name: string; membershipNumber: string; expiryDate: string }): string {
+  const name = escapeHtml(input.name);
+  const membershipNumber = escapeHtml(input.membershipNumber);
+  const expiryDate = escapeHtml(input.expiryDate);
+  return emailShell(`
+    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Membership confirmed</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Welcome to HEVACRAZ, ${name}</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
+      Your HEVACRAZ membership is now active.
+    </p>
+    <div style="margin-top: 18px; background: ${BRAND.soft}; border: 1px solid ${BRAND.line}; padding: 16px;">
+      <p style="margin: 0 0 8px; color: ${BRAND.ink}; font-size: 14px;"><strong>Membership number:</strong> ${membershipNumber}</p>
+      <p style="margin: 0; color: ${BRAND.ink}; font-size: 14px;"><strong>Valid until:</strong> ${expiryDate}</p>
+    </div>
+  `, `Your HEVACRAZ membership ${membershipNumber} is now active.`);
+}
+
+/** Sent when a membership is created/activated for a technician. */
+export async function sendMembershipConfirmationEmail(input: {
+  email: string;
+  name: string;
+  membershipNumber: string;
+  expiryDate: string;
+}): Promise<{ sent: boolean }> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set — membership confirmation not sent:', input.email);
+    return { sent: false };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: input.email,
+      subject: 'Your NOU / HEVACRAZ membership is active',
+      html: membershipConfirmationEmailHtml(input),
+    });
+    if (error) {
+      console.error('[email] Resend rejected membership confirmation:', error.message);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error('[email] Failed to send membership confirmation:', err instanceof Error ? err.message : err);
+    return { sent: false };
+  }
+}
+
 export async function sendContactEmails(input: {
   name: string;
   email: string;
