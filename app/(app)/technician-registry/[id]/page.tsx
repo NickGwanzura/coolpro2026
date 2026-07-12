@@ -70,7 +70,9 @@ export default function TechnicianDetailsPage() {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'Not set';
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return 'Not set';
     return new Intl.DateTimeFormat('en-ZW', {
       day: 'numeric',
       month: 'short',
