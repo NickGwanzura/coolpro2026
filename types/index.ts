@@ -225,6 +225,20 @@ export interface SupplierRegistration {
   notes?: string;
   status: SupplierRegistrationStatus;
   submittedAt: string;
+  surveyData?: SupplierSurveyData;
+}
+
+// Optional sector-survey answers collected for suppliers — mirrors the technician sector
+// survey's self-reported, self-rating structure, adapted to supply/distribution questions.
+export interface SupplierSurveyData {
+  employeeCountBand?: '1_5' | '6_20' | '21_50' | '51_200' | '200_plus';
+  yearsInOperation?: 'under_1' | '1_3' | '4_10' | '11_20' | '20_plus';
+  recoveryEquipmentAccess?: 'always' | 'sometimes' | 'rarely' | 'never' | 'no_access';
+  storageComplianceConfidence?: number; // 1-5 self-rating
+  lowGwpRegulationConfidence?: number; // 1-5 self-rating
+  loadSheddingFrequency?: 'never' | 'rarely' | 'occasionally' | 'frequently' | 'daily';
+  preferredLanguage?: 'english' | 'shona' | 'ndebele';
+  biggestDistributionChallenge?: string;
 }
 
 export type SupplierLedgerDirection = 'purchase' | 'sale';
@@ -271,6 +285,21 @@ export interface StudentApplication {
   reviewedBy?: string;
   reviewNote?: string;
   submittedAt: string;
+  surveyData?: StudentSurveyData;
+}
+
+// Optional sector-survey answers collected for students — mirrors the technician sector
+// survey's self-reported, self-rating structure, adapted to student-facing questions.
+export interface StudentSurveyData {
+  gender?: 'male' | 'female' | 'prefer_not_to_say';
+  ageGroup?: 'under_25' | '25_34' | '35_44' | '45_54' | '55_64' | '65_plus';
+  preferredLanguage?: 'english' | 'shona' | 'ndebele';
+  practicalEquipmentAccess?: 'full_access' | 'partial_access' | 'no_access';
+  confidenceTheory?: number; // 1-5 self-rating
+  confidenceHandsOn?: number; // 1-5 self-rating
+  internetAccessForCoursework?: 'always' | 'sometimes' | 'rarely' | 'never';
+  careerGoal?: 'technician' | 'trainer' | 'supplier' | 'other';
+  biggestStudyChallenge?: string;
 }
 
 export interface TechnicianApplicationCertification {

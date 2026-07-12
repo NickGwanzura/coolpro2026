@@ -336,6 +336,14 @@ export async function createSupplierApplication(
   return result;
 }
 
+export type AdminCreateSupplierInput = Omit<SupplierRegistration, 'id' | 'status' | 'submittedAt' | 'registrationNumber'>;
+
+export async function adminCreateSupplier(body: AdminCreateSupplierInput): Promise<{ id: string; status: string; registrationNumber: string }> {
+  const result = await post<{ id: string; status: string; registrationNumber: string }>('/api/supplier-applications/admin-create', body);
+  await mutate('/api/supplier-applications');
+  return result;
+}
+
 export async function approveSupplierApplication(id: string): Promise<SupplierApplicationRecord> {
   const result = await post<SupplierApplicationRecord>(`/api/supplier-applications/${id}/approve`);
   await mutate('/api/supplier-applications');
@@ -405,6 +413,14 @@ export function useStudentApplications() {
 
 export async function createStudentApplication(body: StudentApplicationInput): Promise<StudentApplication> {
   const result = await post<StudentApplication>('/api/student-applications', body);
+  await mutate('/api/student-applications');
+  return result;
+}
+
+export type AdminCreateStudentInput = Omit<StudentApplication, 'id' | 'status' | 'submittedAt' | 'reviewedAt' | 'reviewedBy' | 'reviewNote'>;
+
+export async function adminCreateStudent(body: AdminCreateStudentInput): Promise<{ id: string; status: string }> {
+  const result = await post<{ id: string; status: string }>('/api/student-applications/admin-create', body);
   await mutate('/api/student-applications');
   return result;
 }

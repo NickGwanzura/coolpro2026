@@ -1,9 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useStudentApplications } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { Users, Mail, Phone, Search, GraduationCap, Calendar } from 'lucide-react';
+import { Users, Mail, Phone, Search, GraduationCap, Calendar, UserPlus } from 'lucide-react';
 
 const STATUS_BADGE: Record<string, string> = {
     submitted: 'bg-amber-50 text-amber-800 border-amber-200',
@@ -55,6 +56,13 @@ export default function StudentDirectoryPage() {
                         All enrolled students and their application status across the network.
                     </p>
                 </div>
+                <Link
+                    href="/admin/students/add"
+                    className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700"
+                >
+                    <UserPlus className="h-4 w-4" />
+                    Add Student
+                </Link>
             </div>
 
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

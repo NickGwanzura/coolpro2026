@@ -171,10 +171,10 @@ export default function SupplierManagement() {
 
                     <div className="flex flex-wrap gap-3">
                         <Link
-                            href="/supplier-register"
+                            href={canReview ? '/admin/suppliers/add' : '/supplier-register'}
                             className="inline-flex items-center gap-2 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
                         >
-                            Register supplier
+                            {canReview ? 'Add supplier' : 'Register supplier'}
                             <ArrowRight className="h-4 w-4" />
                         </Link>
                         <Link

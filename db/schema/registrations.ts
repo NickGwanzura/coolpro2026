@@ -27,6 +27,7 @@ export const studentApplications = pgTable('student_applications', {
   studentIdNumber: text('student_id_number').notNull(),
   enrolmentYear: integer('enrolment_year').notNull(),
   idDocumentName: text('id_document_name'),
+  surveyData: jsonb('survey_data'),
   status: studentApplicationStatusEnum('status').notNull().default('submitted'),
   reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
   reviewedBy: text('reviewed_by'),

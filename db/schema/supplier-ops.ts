@@ -63,6 +63,7 @@ export const supplierApplications = pgTable('supplier_applications', {
   pesepayMerchantId: text('pesepay_merchant_id'),
   website: text('website'),
   notes: text('notes'),
+  surveyData: jsonb('survey_data'),
   status: supplierApplicationStatusEnum('status').notNull().default('submitted'),
   reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
   reviewedBy: text('reviewed_by'),
