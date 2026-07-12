@@ -245,6 +245,67 @@ export async function sendAdminNoticeEmail(input: {
   }
 }
 
+function platformUpdateEmailHtml(input: {
+  name: string;
+  title: string;
+  intro: string;
+  sections: Array<{ heading: string; body: string }>;
+}): string {
+  const name = escapeHtml(input.name);
+  const title = escapeHtml(input.title);
+  const intro = escapeHtml(input.intro).replace(/\n/g, '<br />');
+  const sectionsHtml = input.sections
+    .map((section) => `
+      <div style="margin-top: 18px;">
+        <p style="color: ${BRAND.ink}; font-size: 15px; font-weight: 750; margin: 0 0 6px;">${escapeHtml(section.heading)}</p>
+        <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">${escapeHtml(section.body).replace(/\n/g, '<br />')}</p>
+      </div>
+    `)
+    .join('');
+
+  return emailShell(`
+    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Platform update</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">${title}</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">Hello ${name},</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 12px 0 0;">${intro}</p>
+    ${sectionsHtml}
+  `, input.title);
+}
+
+/** Sends a multi-section branded platform-update email to an administrator. */
+export async function sendPlatformUpdateEmail(input: {
+  email: string;
+  name: string;
+  title: string;
+  intro: string;
+  sections: Array<{ heading: string; body: string }>;
+}): Promise<{ sent: boolean }> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set — platform update not sent:', input.email);
+    return { sent: false };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: input.email,
+      subject: `NOU / HEVACRAZ update: ${input.title}`,
+      html: platformUpdateEmailHtml(input),
+    });
+
+    if (error) {
+      console.error('[email] Resend rejected platform update:', error.message);
+      return { sent: false };
+    }
+
+    return { sent: true };
+  } catch (err) {
+    console.error('[email] Failed to send platform update:', err instanceof Error ? err.message : err);
+    return { sent: false };
+  }
+}
+
 function contactNotificationHtml(input: {
   name: string;
   email: string;
@@ -424,6 +485,53 @@ export async function sendMembershipConfirmationEmail(input: {
     return { sent: true };
   } catch (err) {
     console.error('[email] Failed to send membership confirmation:', err instanceof Error ? err.message : err);
+    return { sent: false };
+  }
+}
+
+function certificateEmailHtml(input: { name: string; certificateNumber: string }): string {
+  const name = escapeHtml(input.name);
+  const certificateNumber = escapeHtml(input.certificateNumber);
+  return emailShell(`
+    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Certificate of competency</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Your certificate is attached, ${name}</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
+      Your National Certificate of Competency (${certificateNumber}) is attached to this email as a PDF.
+      It carries a QR code that can be scanned at any time to independently verify it on the public
+      HEVACRAZ registry.
+    </p>
+  `, `Your certificate ${certificateNumber} is attached.`);
+}
+
+/** Emails a pre-generated certificate PDF (built client-side with the technician's photo/QR) as an attachment. */
+export async function sendCertificateEmail(input: {
+  email: string;
+  name: string;
+  certificateNumber: string;
+  pdfBase64: string;
+  fileName: string;
+}): Promise<{ sent: boolean }> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set — certificate not sent:', input.email);
+    return { sent: false };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: input.email,
+      subject: `Your NOU / HEVACRAZ certificate — ${input.certificateNumber}`,
+      html: certificateEmailHtml(input),
+      attachments: [{ filename: input.fileName, content: input.pdfBase64, contentType: 'application/pdf' }],
+    });
+    if (error) {
+      console.error('[email] Resend rejected certificate email:', error.message);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error('[email] Failed to send certificate email:', err instanceof Error ? err.message : err);
     return { sent: false };
   }
 }
