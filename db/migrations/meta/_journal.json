@@ -120,6 +120,13 @@
       "when": 1783845110524,
       "tag": "0016_goofy_veda",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1783850721956,
+      "tag": "0017_motionless_baron_strucker",
+      "breakpoints": true
     }
   ]
 }

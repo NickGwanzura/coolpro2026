@@ -1,0 +1,1 @@
+ALTER TABLE "technicians" ADD COLUMN "photo_key" text;

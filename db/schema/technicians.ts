@@ -46,6 +46,9 @@ export const technicians = pgTable('technicians', {
   lastRenewalDate: text('last_renewal_date'),
   nextRenewalDate: text('next_renewal_date'),
   qrToken: text('qr_token'),
+  // Cloudflare R2 object key for the technician's uploaded photo — resolved to a short-lived
+  // presigned URL on read, never stored as a public URL (mirrors the course-materials pattern).
+  photoKey: text('photo_key'),
   // Full structured survey/census response (self-assessments, obstacles, PPE/EHS access, GPS,
   // language, sourceSurveyId for import idempotency, etc.) — optional, present for technicians
   // onboarded via the sector survey or the signup form's optional survey section.

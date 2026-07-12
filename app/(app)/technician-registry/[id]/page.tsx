@@ -2,10 +2,10 @@
 
 import { useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle, AlertTriangle, Clock, MapPin, Phone, Mail, Briefcase, Award, Calendar, FileText, Building2, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertTriangle, Clock, MapPin, Phone, Mail, Briefcase, Award, Calendar, FileText, Building2, Loader2, Camera, User } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { jsPDF } from 'jspdf';
-import { useTechnician } from '@/lib/api';
+import { useTechnician, uploadTechnicianPhoto } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { SITE_URL } from '@/lib/site-url';
 
@@ -31,11 +31,27 @@ async function loadImageAsDataUrl(path: string): Promise<string | null> {
 export default function TechnicianDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const { success, info } = useToast();
+  const { success, info, error: toastError } = useToast();
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [generatingCertificate, setGeneratingCertificate] = useState(false);
+  const [generatingIdCard, setGeneratingIdCard] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : undefined;
   const { data: technician, error, isLoading } = useTechnician(id);
+
+  const handlePhotoSelected = async (file: File) => {
+    if (!id) return;
+    setUploadingPhoto(true);
+    try {
+      await uploadTechnicianPhoto(id, file);
+      success('Photo uploaded');
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : 'Photo upload failed');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   if (isLoading) {
     return <div className="p-8 text-sm text-slate-500">Loading…</div>;
@@ -114,6 +130,35 @@ export default function TechnicianDetailsPage() {
         >
           <ArrowLeft className="h-5 w-5 text-gray-600" />
         </button>
+
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handlePhotoSelected(file);
+            e.target.value = '';
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => photoInputRef.current?.click()}
+          disabled={uploadingPhoto}
+          title="Upload technician photo"
+          className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-50 disabled:cursor-wait"
+        >
+          {technician.photoUrl ? (
+            <img src={technician.photoUrl} alt={technician.name} className="h-full w-full object-cover" />
+          ) : (
+            <User className="mx-auto h-8 w-8 mt-3.5 text-gray-300" />
+          )}
+          <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+            {uploadingPhoto ? <Loader2 className="h-5 w-5 animate-spin text-white" /> : <Camera className="h-5 w-5 text-white" />}
+          </span>
+        </button>
+
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{technician.name}</h1>
           <p className="text-gray-500 mt-1">National RAC Technician Verification and Competency Registry</p>
@@ -443,74 +488,127 @@ export default function TechnicianDetailsPage() {
                 Print Full Profile
               </button>
               <button
-                onClick={() => {
-                  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] });
+                disabled={generatingIdCard}
+                onClick={async () => {
+                  setGeneratingIdCard(true);
+                  try {
+                    const [logoLeft, logoRight, photo] = await Promise.all([
+                      loadImageAsDataUrl(HEVACRAZ_LOGO_PATH),
+                      loadImageAsDataUrl(MOECT_LOGO_PATH),
+                      technician.photoUrl ? loadImageAsDataUrl(technician.photoUrl) : Promise.resolve(null),
+                    ]);
+                    const qrDataUrl = qrCanvasRef.current?.toDataURL('image/png') ?? null;
 
-                  // Card background
-                  doc.setFillColor(15, 23, 42);
-                  doc.rect(0, 0, 85.6, 54, 'F');
+                    const INK: [number, number, number] = [28, 25, 23];
+                    const AMBER: [number, number, number] = [217, 119, 6];
+                    const GREEN: [number, number, number] = [90, 125, 90];
+                    const MUTED: [number, number, number] = [120, 113, 108];
+                    const LINE: [number, number, number] = [229, 224, 219];
+                    const CARD_W = 85.6;
+                    const CARD_H = 54;
 
-                  // Left accent stripe
-                  doc.setFillColor(37, 99, 235);
-                  doc.rect(0, 0, 4, 54, 'F');
+                    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [CARD_W, CARD_H] });
 
-                  // Logo area
-                  doc.setFontSize(6);
-                  doc.setTextColor(156, 163, 175);
-                  doc.text('NATIONAL REFRIGERATION PROGRAMME', 8, 8);
-                  doc.setFontSize(5);
-                  doc.text('REPUBLIC OF ZIMBABWE', 8, 12);
+                    // White premium card background
+                    doc.setFillColor(255, 255, 255);
+                    doc.rect(0, 0, CARD_W, CARD_H, 'F');
+                    doc.setDrawColor(...LINE);
+                    doc.setLineWidth(0.4);
+                    doc.rect(1, 1, CARD_W - 2, CARD_H - 2);
+                    doc.setDrawColor(...AMBER);
+                    doc.setLineWidth(0.6);
+                    doc.line(1, 12, CARD_W - 1, 12);
 
-                  // Divider
-                  doc.setDrawColor(37, 99, 235);
-                  doc.setLineWidth(0.3);
-                  doc.line(8, 15, 77, 15);
+                    // Logos
+                    if (logoLeft) { try { doc.addImage(logoLeft, 'JPEG', 3, 2.5, 7, 7); } catch { /* logo optional */ } }
+                    if (logoRight) { try { doc.addImage(logoRight, 'JPEG', CARD_W - 10, 2.5, 7, 7); } catch { /* logo optional */ } }
 
-                  // Name
-                  doc.setFontSize(11);
-                  doc.setTextColor(255, 255, 255);
-                  doc.setFont('', 'bold');
-                  doc.text(technician.name.toUpperCase(), 8, 24);
+                    doc.setFont('', 'bold');
+                    doc.setFontSize(6);
+                    doc.setTextColor(...AMBER);
+                    doc.text('NOU / HEVACRAZ', CARD_W / 2, 5.5, { align: 'center' });
+                    doc.setFont('', 'normal');
+                    doc.setFontSize(4.8);
+                    doc.setTextColor(...MUTED);
+                    doc.text('TECHNICIAN IDENTIFICATION CARD', CARD_W / 2, 9, { align: 'center' });
 
-                  // Specialization
-                  doc.setFontSize(6.5);
-                  doc.setFont('', 'normal');
-                  doc.setTextColor(156, 163, 175);
-                  doc.text(technician.specialization, 8, 29);
+                    // Photo frame
+                    const photoX = 4;
+                    const photoY = 16;
+                    const photoSize = 17;
+                    doc.setDrawColor(...LINE);
+                    doc.setLineWidth(0.3);
+                    doc.roundedRect(photoX, photoY, photoSize, photoSize, 1.5, 1.5);
+                    if (photo) {
+                      try { doc.addImage(photo, photoX, photoY, photoSize, photoSize); } catch { /* photo optional */ }
+                    } else {
+                      doc.setFillColor(245, 245, 244);
+                      doc.roundedRect(photoX, photoY, photoSize, photoSize, 1.5, 1.5, 'F');
+                      doc.setFont('', 'bold');
+                      doc.setFontSize(10);
+                      doc.setTextColor(...MUTED);
+                      const initials = technician.name.split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+                      doc.text(initials, photoX + photoSize / 2, photoY + photoSize / 2 + 1.5, { align: 'center' });
+                    }
 
-                  // Status badge
-                  const statusColor = technician.status === 'active' ? [34, 197, 94] : [239, 68, 68];
-                  doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-                  doc.roundedRect(8, 32, 18, 5, 1, 1, 'F');
-                  doc.setFontSize(5);
-                  doc.setTextColor(255, 255, 255);
-                  doc.setFont('', 'bold');
-                  doc.text(technician.status.toUpperCase(), 17, 35.5, { align: 'center' });
+                    // Name + specialization
+                    const infoX = photoX + photoSize + 4;
+                    doc.setFont('', 'bold');
+                    doc.setFontSize(9.5);
+                    doc.setTextColor(...INK);
+                    doc.text(technician.name.toUpperCase(), infoX, 21, { maxWidth: CARD_W - infoX - 4 });
+                    doc.setFont('', 'normal');
+                    doc.setFontSize(6.5);
+                    doc.setTextColor(...MUTED);
+                    doc.text(technician.specialization, infoX, 26);
 
-                  // Details
-                  doc.setFont('', 'normal');
-                  doc.setFontSize(5.5);
-                  doc.setTextColor(156, 163, 175);
-                  doc.text('REG NO', 8, 43);
-                  doc.text('VALID UNTIL', 8, 48);
-                  doc.setTextColor(255, 255, 255);
-                  doc.setFont('', 'bold');
-                  doc.text(technician.registrationNumber, 8, 46);
-                  doc.text(technician.expiryDate, 8, 51);
+                    // Status pill
+                    const statusColor: [number, number, number] = technician.status === 'active' ? GREEN : [190, 60, 60];
+                    doc.setFillColor(...statusColor);
+                    doc.roundedRect(infoX, 29, 16, 4.5, 1, 1, 'F');
+                    doc.setFont('', 'bold');
+                    doc.setFontSize(4.5);
+                    doc.setTextColor(255, 255, 255);
+                    doc.text(technician.status.toUpperCase(), infoX + 8, 32, { align: 'center' });
 
-                  // Province
-                  doc.setFont('', 'normal');
-                  doc.setTextColor(156, 163, 175);
-                  doc.text('PROVINCE', 55, 43);
-                  doc.setTextColor(255, 255, 255);
-                  doc.setFont('', 'bold');
-                  doc.text(technician.province, 55, 46);
+                    // Detail rows
+                    doc.setDrawColor(...LINE);
+                    doc.setLineWidth(0.25);
+                    doc.line(4, 37, CARD_W - 4, 37);
 
-                  doc.save(`${technician.name.replace(/\s+/g, '-')}-digital-id.pdf`);
-                  success('Digital ID card downloaded successfully');
+                    const rows: [string, string][] = [
+                      ['REG NO', technician.registrationNumber],
+                      ['PROVINCE', technician.province],
+                      ['VALID UNTIL', technician.expiryDate || 'Not set'],
+                    ];
+                    const rowColWidth = (CARD_W - 8 - 24) / rows.length;
+                    rows.forEach(([label, value], i) => {
+                      const x = 4 + rowColWidth * i;
+                      doc.setFont('', 'normal');
+                      doc.setFontSize(4.5);
+                      doc.setTextColor(...MUTED);
+                      doc.text(label, x, 41);
+                      doc.setFont('', 'bold');
+                      doc.setFontSize(5.5);
+                      doc.setTextColor(...INK);
+                      doc.text(value, x, 45, { maxWidth: rowColWidth - 2 });
+                    });
+
+                    // QR code — verifiable at the public verification portal
+                    if (qrDataUrl) {
+                      const qrSize = 15;
+                      doc.addImage(qrDataUrl, 'PNG', CARD_W - qrSize - 4, CARD_H - qrSize - 4, qrSize, qrSize);
+                    }
+
+                    doc.save(`${technician.name.replace(/\s+/g, '-')}-digital-id.pdf`);
+                    success('Digital ID card downloaded successfully');
+                  } finally {
+                    setGeneratingIdCard(false);
+                  }
                 }}
-                className="w-full px-4 py-2 bg-white text-blue-600 border border-blue-300 hover:bg-blue-50 transition-colors"
+                className="w-full px-4 py-2 bg-white text-blue-600 border border-blue-300 hover:bg-blue-50 transition-colors disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2"
               >
+                {generatingIdCard && <Loader2 className="h-4 w-4 animate-spin" />}
                 Send Digital ID Card
               </button>
             </div>

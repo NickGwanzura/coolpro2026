@@ -29,6 +29,11 @@ export function buildCourseMaterialKey(courseId: string, fileName: string): stri
   return `courses/${courseId}/${crypto.randomUUID()}-${safeName}`;
 }
 
+export function buildTechnicianPhotoKey(technicianId: string, fileName: string): string {
+  const safeName = fileName.replace(/[^a-zA-Z0-9_.-]/g, '_');
+  return `technician-photos/${technicianId}/${crypto.randomUUID()}-${safeName}`;
+}
+
 export async function createMaterialUploadUrl(key: string, contentType: string): Promise<string> {
   const command = new PutObjectCommand({ Bucket: getBucketName(), Key: key, ContentType: contentType });
   return getSignedUrl(getClient(), command, { expiresIn: UPLOAD_URL_TTL_SECONDS });

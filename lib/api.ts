@@ -274,6 +274,27 @@ export async function updateTechnician(id: string, body: Partial<Technician>): P
   return result;
 }
 
+export async function uploadTechnicianPhoto(id: string, file: File): Promise<Technician> {
+  const { uploadUrl, r2Key } = await post<{ uploadUrl: string; r2Key: string }>(
+    `/api/technicians/${id}/photo-upload-url`,
+    { fileName: file.name, fileType: file.type || 'application/octet-stream', sizeBytes: file.size }
+  );
+
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
+    xhr.onerror = () => reject(new Error('Upload failed'));
+    xhr.send(file);
+  });
+
+  const result = await patch<Technician>(`/api/technicians/${id}`, { photoKey: r2Key });
+  await mutate('/api/technicians');
+  await mutate(`/api/technicians/${id}`);
+  return result;
+}
+
 export async function createTechnician(body: Partial<Technician>): Promise<Technician> {
   const result = await post<Technician>('/api/technicians', body);
   await mutate('/api/technicians');

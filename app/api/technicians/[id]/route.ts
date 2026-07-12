@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { technicians } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { createMaterialDownloadUrl } from '@/lib/server/r2';
 import type { Technician } from '@/types/index';
 
 function toTechnician(row: typeof technicians.$inferSelect): Technician {
@@ -42,12 +43,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const [row] = await db.select().from(technicians).where(eq(technicians.id, id)).limit(1);
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  return NextResponse.json(toTechnician(row));
+
+  const technician = toTechnician(row);
+  if (row.photoKey) {
+    technician.photoUrl = await createMaterialDownloadUrl(row.photoKey).catch(() => undefined);
+  }
+  return NextResponse.json(technician);
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  let session;
   try {
-    requireRole(req, ['org_admin']);
+    session = requireRole(req, ['trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -57,7 +64,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const [existing] = await db.select().from(technicians).where(eq(technicians.id, id)).limit(1);
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const body = await req.json() as Partial<Pick<Technician, 'status' | 'name' | 'registrationNumber' | 'region' | 'certifications'>>;
+  const body = await req.json() as Partial<Pick<Technician, 'status' | 'name' | 'registrationNumber' | 'region' | 'certifications'>> & { photoKey?: string };
+
+  // Trainers/lecturers may only attach a photo — every other field stays org_admin-only.
+  const isPhotoOnlyUpdate = Object.keys(body).every((key) => key === 'photoKey');
+  if (!isPhotoOnlyUpdate && session.role !== 'org_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const updates: Partial<typeof technicians.$inferInsert> = {};
   if (body.status !== undefined) updates.status = body.status as typeof existing.status;
@@ -65,6 +78,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (body.registrationNumber !== undefined) updates.registrationNumber = body.registrationNumber;
   if (body.region !== undefined) updates.region = body.region;
   if (body.certifications !== undefined) updates.certifications = body.certifications;
+  if (body.photoKey !== undefined) updates.photoKey = body.photoKey;
 
   const [updated] = await db
     .update(technicians)
@@ -72,7 +86,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .where(eq(technicians.id, id))
     .returning();
 
-  return NextResponse.json(toTechnician(updated));
+  const technician = toTechnician(updated);
+  if (updated.photoKey) {
+    technician.photoUrl = await createMaterialDownloadUrl(updated.photoKey).catch(() => undefined);
+  }
+  return NextResponse.json(technician);
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {

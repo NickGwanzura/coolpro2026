@@ -597,6 +597,8 @@ export interface Technician {
   nextRenewalDate?: string;
   qrToken?: string;
   surveyData?: TechnicianSurveyData;
+  /** Short-lived presigned URL, resolved server-side from photoKey on read — never persisted client-side. */
+  photoUrl?: string;
 }
 
 export interface Certification {
