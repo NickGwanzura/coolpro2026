@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server';
-import { eq, ilike, or } from 'drizzle-orm';
+import { eq, ilike, or, asc } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { technicians } from '@/db/schema/index';
 import type { Technician } from '@/types/index';
 
-const MAX_RESULTS = 200;
+// /verify-technician fetches the unfiltered listing once and matches against it entirely
+// client-side (see findVerificationResult) — it is not a paginated browse view. A cap here
+// doesn't reduce what's exposed (contact details are already stripped from bulk listings
+// below) or add real scraping resistance (an unbounded ?q= search already allows full
+// enumeration); it only risks silently hiding real technicians from verification once the
+// registry grows past it, with no deterministic ordering to make the cutoff predictable.
+// Kept generous rather than removed so a single malformed client request can't ask for an
+// unbounded response.
+const MAX_RESULTS = 5000;
 
 // Public-facing technician lookup for the certificate verification portal.
 // Bulk/search listings never include contact details (email, phone) — those are only
@@ -51,10 +59,11 @@ export async function GET(req: Request) {
       .select()
       .from(technicians)
       .where(or(ilike(technicians.name, `%${q}%`), ilike(technicians.registrationNumber, `%${q}%`)))
+      .orderBy(asc(technicians.registrationNumber))
       .limit(MAX_RESULTS);
     return NextResponse.json(rows.map((row) => toPublicTechnician(row, false)));
   }
 
-  const rows = await db.select().from(technicians).limit(MAX_RESULTS);
+  const rows = await db.select().from(technicians).orderBy(asc(technicians.registrationNumber)).limit(MAX_RESULTS);
   return NextResponse.json(rows.map((row) => toPublicTechnician(row, false)));
 }
