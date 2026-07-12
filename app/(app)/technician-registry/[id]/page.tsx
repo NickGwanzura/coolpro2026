@@ -1,15 +1,39 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle, AlertTriangle, Clock, MapPin, Phone, Mail, Briefcase, Award, Calendar, FileText, Building2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertTriangle, Clock, MapPin, Phone, Mail, Briefcase, Award, Calendar, FileText, Building2, Loader2 } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { jsPDF } from 'jspdf';
 import { useTechnician } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { SITE_URL } from '@/lib/site-url';
+
+const HEVACRAZ_LOGO_PATH = '/logos/hevacraz-logo.jpeg';
+const MOECT_LOGO_PATH = '/logos/ministry-of-environment.jpeg';
+
+async function loadImageAsDataUrl(path: string): Promise<string | null> {
+  try {
+    const res = await fetch(path);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
 
 export default function TechnicianDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const { success, info } = useToast();
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [generatingCertificate, setGeneratingCertificate] = useState(false);
   const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : undefined;
   const { data: technician, error, isLoading } = useTechnician(id);
 
@@ -271,65 +295,145 @@ export default function TechnicianDetailsPage() {
           </div>
 
 
+          <div className="absolute -left-[9999px]" aria-hidden>
+            <QRCodeCanvas
+              ref={qrCanvasRef}
+              value={`${SITE_URL}/verify-technician?mode=registration&q=${encodeURIComponent(technician.registrationNumber)}`}
+              size={256}
+              level="M"
+            />
+          </div>
+
           <div className="bg-blue-50 border border-blue-200 p-6">
             <h3 className="text-lg font-semibold text-blue-900 mb-4">Quick Actions</h3>
             <div className="space-y-3">
               <button
-                onClick={() => {
-                  const doc = new jsPDF({
-                    orientation: 'landscape',
-                    unit: 'mm',
-                    format: 'a4'
-                  });
+                disabled={generatingCertificate}
+                onClick={async () => {
+                  setGeneratingCertificate(true);
+                  try {
+                    const [logoLeft, logoRight] = await Promise.all([
+                      loadImageAsDataUrl(HEVACRAZ_LOGO_PATH),
+                      loadImageAsDataUrl(MOECT_LOGO_PATH),
+                    ]);
+                    const qrDataUrl = qrCanvasRef.current?.toDataURL('image/png') ?? null;
 
-                  // Add border
-                  doc.setDrawColor(37, 99, 235);
-                  doc.setLineWidth(1);
-                  doc.rect(10, 10, 277, 190);
-                  doc.rect(12, 12, 273, 186);
+                    const INK: [number, number, number] = [28, 25, 23];
+                    const AMBER: [number, number, number] = [217, 119, 6];
+                    const GREEN: [number, number, number] = [90, 125, 90];
+                    const MUTED: [number, number, number] = [120, 113, 108];
 
-                  // Header
-                  doc.setFontSize(30);
-                  doc.setTextColor(37, 99, 235);
-                  doc.text('CERTIFICATE OF COMPETENCY', 148.5, 50, { align: 'center' });
+                    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                    const PAGE_W = 297;
+                    const PAGE_H = 210;
+                    const issueYear = new Date().getFullYear();
+                    const certificateNumber = `HEVACRAZ/CERT/${technician.registrationNumber}/${issueYear}`;
 
-                  doc.setFontSize(14);
-                  doc.setTextColor(100, 100, 100);
-                  doc.text('This is to certify that', 148.5, 70, { align: 'center' });
+                    // Ornate double border
+                    doc.setDrawColor(...INK);
+                    doc.setLineWidth(1.1);
+                    doc.rect(8, 8, PAGE_W - 16, PAGE_H - 16);
+                    doc.setDrawColor(...AMBER);
+                    doc.setLineWidth(0.4);
+                    doc.rect(12, 12, PAGE_W - 24, PAGE_H - 24);
 
-                  // Name
-                  doc.setFontSize(36);
-                  doc.setTextColor(15, 23, 42);
-                  doc.text(technician.name.toUpperCase(), 148.5, 90, { align: 'center' });
+                    // Logos
+                    if (logoLeft) { try { doc.addImage(logoLeft, 'JPEG', 24, 20, 20, 20); } catch { /* logo optional */ } }
+                    if (logoRight) { try { doc.addImage(logoRight, 'JPEG', PAGE_W - 44, 20, 20, 20); } catch { /* logo optional */ } }
 
-                  // Description
-                  doc.setFontSize(14);
-                  doc.setTextColor(100, 100, 100);
-                  doc.text('Has successfully completed the national assessment for', 148.5, 110, { align: 'center' });
+                    // Header
+                    doc.setFontSize(11);
+                    doc.setTextColor(...AMBER);
+                    doc.setFont('', 'bold');
+                    doc.text('NOU / HEVACRAZ  ·  NATIONAL OZONE UNIT ZIMBABWE', PAGE_W / 2, 32, { align: 'center' });
 
-                  doc.setFontSize(22);
-                  doc.setTextColor(37, 99, 235);
-                  doc.text(technician.specialization, 148.5, 125, { align: 'center' });
+                    doc.setFontSize(28);
+                    doc.setTextColor(...INK);
+                    doc.text('CERTIFICATE OF COMPETENCY', PAGE_W / 2, 48, { align: 'center' });
 
-                  // Details
-                  doc.setFontSize(10);
-                  doc.setTextColor(100, 100, 100);
-                  doc.text(`Registration No: ${technician.registrationNumber}`, 60, 155, { align: 'center' });
-                  doc.text(`Issue Date: ${new Date().toLocaleDateString()}`, 148.5, 155, { align: 'center' });
-                  doc.text(`Valid Until: ${technician.expiryDate}`, 237, 155, { align: 'center' });
+                    doc.setDrawColor(...AMBER);
+                    doc.setLineWidth(0.6);
+                    doc.line(PAGE_W / 2 - 30, 53, PAGE_W / 2 + 30, 53);
 
-                  // Footer
-                  doc.setFontSize(14);
-                  doc.setTextColor(15, 23, 42);
-                  doc.text('National Refrigeration Program', 148.5, 180, { align: 'center' });
-                  doc.setFontSize(8);
-                  doc.text('REPUBLIC OF ZIMBABWE', 148.5, 185, { align: 'center' });
+                    doc.setFont('', 'normal');
+                    doc.setFontSize(13);
+                    doc.setTextColor(...MUTED);
+                    doc.text('This is to certify that', PAGE_W / 2, 68, { align: 'center' });
 
-                  doc.save(`${technician.name.replace(/\s+/g, '-')}-certificate.pdf`);
+                    // Name
+                    doc.setFont('', 'bold');
+                    doc.setFontSize(32);
+                    doc.setTextColor(...INK);
+                    doc.text(technician.name.toUpperCase(), PAGE_W / 2, 84, { align: 'center' });
+
+                    doc.setFont('', 'normal');
+                    doc.setFontSize(13);
+                    doc.setTextColor(...MUTED);
+                    doc.text('has successfully completed the national assessment for', PAGE_W / 2, 100, { align: 'center' });
+
+                    doc.setFont('', 'bold');
+                    doc.setFontSize(20);
+                    doc.setTextColor(...GREEN);
+                    doc.text(technician.specialization, PAGE_W / 2, 114, { align: 'center' });
+
+                    // Detail columns
+                    const detailY = 138;
+                    const cols: [string, string][] = [
+                      ['Certificate No', certificateNumber],
+                      ['Registration No', technician.registrationNumber],
+                      ['Issue Date', new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium' }).format(new Date())],
+                      ['Valid Until', technician.expiryDate || 'Not set'],
+                    ];
+                    const colWidth = (PAGE_W - 60) / cols.length;
+                    cols.forEach(([label, value], i) => {
+                      const x = 30 + colWidth * i + colWidth / 2;
+                      doc.setFont('', 'bold');
+                      doc.setFontSize(7.5);
+                      doc.setTextColor(...MUTED);
+                      doc.text(label.toUpperCase(), x, detailY, { align: 'center' });
+                      doc.setFont('', 'bold');
+                      doc.setFontSize(10);
+                      doc.setTextColor(...INK);
+                      doc.text(value, x, detailY + 6, { align: 'center', maxWidth: colWidth - 4 });
+                    });
+
+                    // QR code — unique, verifiable at the public verification portal
+                    if (qrDataUrl) {
+                      const qrSize = 26;
+                      const qrX = PAGE_W - 24 - qrSize;
+                      const qrY = PAGE_H - 24 - qrSize - 6;
+                      doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+                      doc.setFont('', 'normal');
+                      doc.setFontSize(6.5);
+                      doc.setTextColor(...MUTED);
+                      doc.text('Scan to verify', qrX + qrSize / 2, qrY + qrSize + 4, { align: 'center' });
+                    }
+
+                    // Footer
+                    doc.setFont('', 'bold');
+                    doc.setFontSize(13);
+                    doc.setTextColor(...INK);
+                    doc.text('National Refrigeration Program', 32, PAGE_H - 34);
+                    doc.setFont('', 'normal');
+                    doc.setFontSize(8);
+                    doc.setTextColor(...MUTED);
+                    doc.text('Republic of Zimbabwe', 32, PAGE_H - 29);
+                    doc.text(
+                      `Verify this certificate at ${SITE_URL}/verify-technician?mode=registration&q=${encodeURIComponent(technician.registrationNumber)}`,
+                      32,
+                      PAGE_H - 20,
+                      { maxWidth: 180 },
+                    );
+
+                    doc.save(`${technician.name.replace(/\s+/g, '-')}-certificate.pdf`);
+                    success('Certificate downloaded successfully');
+                  } finally {
+                    setGeneratingCertificate(false);
+                  }
                 }}
-                className="w-full px-4 py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                className="w-full px-4 py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Award className="h-5 w-5" />
+                {generatingCertificate ? <Loader2 className="h-5 w-5 animate-spin" /> : <Award className="h-5 w-5" />}
                 Generate National Certificate
               </button>
               <button
