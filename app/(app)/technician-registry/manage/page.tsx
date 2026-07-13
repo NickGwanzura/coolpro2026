@@ -481,7 +481,7 @@ export default function ManageTechniciansPage() {
                         <Edit2 className="h-5 w-5" />
                       </button>
 
-                      {canReview && (technician.status === 'pending' ? (
+                      {canReview && membershipByTechnicianId.get(technician.id)?.status !== 'active' && (
                         <button
                           onClick={() => handleApprove(technician.id, technician.name)}
                           disabled={busyId === technician.id}
@@ -490,7 +490,9 @@ export default function ManageTechniciansPage() {
                         >
                           {busyId === technician.id ? 'Approving…' : 'Approve'}
                         </button>
-                      ) : (
+                      )}
+
+                      {canReview && technician.status !== 'pending' && (
                         <button
                           onClick={() => technician.status === 'active' ? handleSuspend(technician.id) : handleReactivate(technician.id, technician.name)}
                           disabled={busyId === technician.id}
@@ -502,7 +504,7 @@ export default function ManageTechniciansPage() {
                         >
                           {technician.status === 'active' ? <XCircle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
                         </button>
-                      ))}
+                      )}
 
                       {canReview && (
                         <button
