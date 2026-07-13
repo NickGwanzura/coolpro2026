@@ -5,7 +5,7 @@ import { Search, Filter, Plus, Edit2, Trash2, CheckCircle, XCircle, Clock, Chevr
 import { Technician } from '@/types/index';
 import { ZIMBABWE_PROVINCES, TECHNICIAN_SPECIALIZATIONS } from '@/constants/registry';
 import { useClientSession } from '@/lib/useClientSession';
-import { useTechnicians, updateTechnician, deleteTechnician, useMemberships } from '@/lib/api';
+import { useTechnicians, updateTechnician, deleteTechnician, useMemberships, createMembership } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/components/ui/Toast';
@@ -14,8 +14,9 @@ const PENDING_CERTIFICATIONS: Array<{ id: string; tech: string; cert: string; da
 
 export default function ManageTechniciansPage() {
   const router = useRouter();
-  const { success, info } = useToast();
+  const { success, error: toastError } = useToast();
   const session = useClientSession();
+  const canReview = session?.role === 'org_admin';
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
@@ -23,6 +24,8 @@ export default function ManageTechniciansPage() {
   const [selectedMembershipStatus, setSelectedMembershipStatus] = useState('');
   const [activeTab, setActiveTab] = useState<'technicians' | 'certifications'>('technicians');
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [suspendTargetId, setSuspendTargetId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingCerts, setPendingCerts] = useState(PENDING_CERTIFICATIONS);
   const [examModal, setExamModal] = useState<typeof PENDING_CERTIFICATIONS[number] | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
@@ -120,12 +123,57 @@ export default function ManageTechniciansPage() {
     );
   };
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
+  const handleApprove = async (id: string, techName: string) => {
     setMutationError(null);
+    setBusyId(id);
     try {
-      await updateTechnician(id, { status: newStatus as Technician['status'] });
+      await updateTechnician(id, { status: 'active' });
+      await createMembership({ technicianId: id });
+      success(`${techName} approved — membership created and confirmation sent.`);
     } catch (err) {
-      setMutationError(err instanceof Error ? err.message : 'Status update failed');
+      const message = err instanceof Error ? err.message : 'Approval failed';
+      setMutationError(message);
+      toastError(message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleReactivate = async (id: string, techName: string) => {
+    setMutationError(null);
+    setBusyId(id);
+    try {
+      await updateTechnician(id, { status: 'active' });
+      success(`${techName} reactivated.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Status update failed';
+      setMutationError(message);
+      toastError(message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleSuspend = (id: string) => {
+    setSuspendTargetId(id);
+  };
+
+  const confirmSuspend = async () => {
+    if (!suspendTargetId) return;
+    const id = suspendTargetId;
+    const techName = techniciansData?.find((t) => t.id === id)?.name ?? 'Technician';
+    setSuspendTargetId(null);
+    setMutationError(null);
+    setBusyId(id);
+    try {
+      await updateTechnician(id, { status: 'suspended' });
+      success(`${techName} suspended.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Status update failed';
+      setMutationError(message);
+      toastError(message);
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -138,10 +186,16 @@ export default function ManageTechniciansPage() {
     const id = deleteTargetId;
     setDeleteTargetId(null);
     setMutationError(null);
+    setBusyId(id);
     try {
       await deleteTechnician(id);
+      success('Technician record deleted.');
     } catch (err) {
-      setMutationError(err instanceof Error ? err.message : 'Delete failed');
+      const message = err instanceof Error ? err.message : 'Delete failed';
+      setMutationError(message);
+      toastError(message);
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -187,6 +241,16 @@ export default function ManageTechniciansPage() {
         variant="danger"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTargetId(null)}
+      />
+
+      <ConfirmModal
+        open={suspendTargetId !== null}
+        title="Suspend technician"
+        description="This immediately marks the technician as suspended — they will no longer verify as active on the public registry. You can reactivate them at any time."
+        confirmLabel="Suspend"
+        variant="danger"
+        onConfirm={confirmSuspend}
+        onCancel={() => setSuspendTargetId(null)}
       />
 
       {mutationError && (
@@ -417,31 +481,39 @@ export default function ManageTechniciansPage() {
                         <Edit2 className="h-5 w-5" />
                       </button>
 
-                      {technician.status === 'pending' ? (
+                      {canReview && (technician.status === 'pending' ? (
                         <button
-                          onClick={() => handleStatusChange(technician.id, 'active')}
-                          className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 transition-all font-bold text-sm shadow-sm"
+                          onClick={() => handleApprove(technician.id, technician.name)}
+                          disabled={busyId === technician.id}
+                          className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 transition-all font-bold text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Approve and create a HEVACRAZ membership"
                         >
-                          Approve
+                          {busyId === technician.id ? 'Approving…' : 'Approve'}
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleStatusChange(technician.id, technician.status === 'active' ? 'suspended' : 'active')}
-                          className={`p-2 transition-colors ${technician.status === 'active'
+                          onClick={() => technician.status === 'active' ? handleSuspend(technician.id) : handleReactivate(technician.id, technician.name)}
+                          disabled={busyId === technician.id}
+                          className={`p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${technician.status === 'active'
                               ? 'text-red-500 hover:bg-red-50'
                               : 'text-green-500 hover:bg-green-50'
                             }`}
+                          title={technician.status === 'active' ? 'Suspend' : 'Reactivate'}
                         >
                           {technician.status === 'active' ? <XCircle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
                         </button>
-                      )}
+                      ))}
 
-                      <button
-                        onClick={() => handleDelete(technician.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
+                      {canReview && (
+                        <button
+                          onClick={() => handleDelete(technician.id)}
+                          disabled={busyId === technician.id}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
