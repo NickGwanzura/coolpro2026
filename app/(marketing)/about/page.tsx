@@ -144,6 +144,8 @@ const CONTACTS = [
     label: 'National Ozone Unit',
     purpose: 'Institutional and regulatory queries',
     email: 'nou@environment.gov.zw',
+    address: 'Ministry of Environment, Water and Climate, 12th Floor, Kaguvi Building, Central Avenue, Private Bag 7753 Causeway, Harare, Zimbabwe',
+    phone: '(263) 4 701551/701691/2',
   },
   {
     label: 'HEVACRAZ',
@@ -671,10 +673,9 @@ export default function AboutPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
             {CONTACTS.map((c) => (
-              <a
+              <div
                 key={c.email}
-                href={`mailto:${c.email}`}
-                className="group flex flex-col bg-white border p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97706]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2"
+                className="group flex flex-col bg-white border p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-[#D97706]/40"
                 style={{ borderColor: '#E5E0DB' }}
               >
                 <div
@@ -689,14 +690,21 @@ export default function AboutPage() {
                 <p className="mt-1.5 text-base font-bold tracking-tight" style={{ color: '#1C1917' }}>
                   {c.purpose}
                 </p>
-                <span
-                  className="mt-auto pt-5 inline-flex items-center gap-1.5 text-sm font-semibold"
+                {'address' in c && c.address && (
+                  <p className="mt-3 text-xs leading-5 text-gray-500">{c.address}</p>
+                )}
+                {'phone' in c && c.phone && (
+                  <p className="mt-2 text-xs font-semibold text-gray-600">Tel: {c.phone}</p>
+                )}
+                <a
+                  href={`mailto:${c.email}`}
+                  className="mt-auto pt-5 inline-flex items-center gap-1.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2"
                   style={{ color: '#D97706' }}
                 >
                   {c.email}
                   <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-                </span>
-              </a>
+                </a>
+              </div>
             ))}
           </div>
 

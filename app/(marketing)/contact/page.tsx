@@ -105,6 +105,27 @@ export default function ContactPage() {
               </div>
 
               <div className="p-6 border" style={{ borderColor: '#E5E0DB' }}>
+                <div className="flex items-start gap-3">
+                  <div className="p-2" style={{ backgroundColor: 'rgba(90,125,90,0.1)', color: '#5A7D5A' }}>
+                    <MapPin className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold" style={{ color: '#1C1917' }}>National Ozone Unit</h3>
+                    <p className="text-sm text-gray-600 mt-1 leading-relaxed">
+                      Ministry of Environment, Water and Climate<br />
+                      12th Floor, Kaguvi Building, Central Avenue<br />
+                      Private Bag 7753 Causeway<br />
+                      Harare, Zimbabwe
+                    </p>
+                    <p className="text-sm text-gray-600 mt-2">Tel: (263) 4 701551/701691/2</p>
+                    <p className="text-sm text-gray-600">
+                      <a href="mailto:nou@environment.gov.zw" className="hover:underline">nou@environment.gov.zw</a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border" style={{ borderColor: '#E5E0DB' }}>
                 <h3 className="font-semibold mb-3" style={{ color: '#1C1917' }}>Follow us</h3>
                 <div className="flex gap-3">
                   <a href="#" className="p-2 transition-colors" style={{ backgroundColor: '#FAFAF9', color: '#1C1917' }} aria-label="Facebook">
