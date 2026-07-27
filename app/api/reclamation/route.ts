@@ -3,6 +3,7 @@ import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { reclamationRecords } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { requireApprovedSupplier } from '@/lib/server/supplier-access';
 import type { ReclamationRecord } from '@/types/index';
 
 function batchNumber() {
@@ -33,6 +34,7 @@ export async function GET(req: Request) {
   let session;
   try {
     session = requireRole(req, ['technician', 'vendor', 'org_admin']);
+    if (session.role === 'vendor') session = await requireApprovedSupplier(req);
   } catch (e) {
     return e as Response;
   }

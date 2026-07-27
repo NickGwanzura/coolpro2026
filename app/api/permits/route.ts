@@ -3,6 +3,7 @@ import { desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { tradePermits } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { requireApprovedSupplier } from '@/lib/server/supplier-access';
 import type { TradePermit } from '@/types/index';
 
 function permitNumber() {
@@ -66,7 +67,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['vendor']);
+    session = await requireApprovedSupplier(req);
   } catch (e) {
     return e as Response;
   }

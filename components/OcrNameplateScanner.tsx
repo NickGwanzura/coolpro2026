@@ -20,6 +20,8 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
     const [preview, setPreview] = useState<string>('');
     const [result, setResult] = useState<OcrScanRecord | null>(null);
     const [isScanning, setIsScanning] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [confirmed, setConfirmed] = useState(false);
     const [error, setError] = useState('');
     const { data: historyData } = useOcrScans();
     const history = historyData?.data ?? [];
@@ -41,10 +43,19 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
         if (!file) {
             return;
         }
+        if (!file.type.startsWith('image/')) {
+            setError('Choose an image file for the nameplate scan.');
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            setError('Use an image smaller than 10 MB. Crop the nameplate and try again.');
+            return;
+        }
 
         setError('');
         setIsScanning(true);
         setResult(null);
+        setConfirmed(false);
 
         const previewUrl = URL.createObjectURL(file);
         setPreview(previewUrl);
@@ -57,22 +68,42 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
 
             const parsed = await extractNameplateData(scan.data.text);
             setResult(parsed);
-            await createOcrScan({
-                rawText: parsed.rawText,
-                refrigerantCode: parsed.refrigerantCode,
-                manufacturer: parsed.manufacturer,
-                model: parsed.model,
-                serialNumber: parsed.serialNumber,
-                matchConfidence: parsed.matchConfidence,
-                whatGasRefrigerantId: parsed.whatGasMatch?.id,
-            }).catch(() => {
-                // Scan result is still shown to the user even if persisting history fails.
-            });
         } catch (scanError) {
             console.error(scanError);
             setError('OCR scan failed. Try a clearer image or use a higher-contrast photo.');
         } finally {
             setIsScanning(false);
+        }
+    };
+
+    const updateResult = (key: 'manufacturer' | 'model' | 'serialNumber' | 'refrigerantCode', value: string) => {
+        setResult((current) => current ? {
+            ...current,
+            [key]: value || undefined,
+            ...(key === 'refrigerantCode' ? { whatGasMatch: undefined } : {}),
+        } : current);
+        setConfirmed(false);
+    };
+
+    const confirmScan = async () => {
+        if (!result) return;
+        setIsSaving(true);
+        setError('');
+        try {
+            await createOcrScan({
+                rawText: result.rawText,
+                refrigerantCode: result.refrigerantCode,
+                manufacturer: result.manufacturer,
+                model: result.model,
+                serialNumber: result.serialNumber,
+                matchConfidence: result.matchConfidence,
+                whatGasRefrigerantId: result.whatGasMatch?.id,
+            });
+            setConfirmed(true);
+        } catch (saveError) {
+            setError(saveError instanceof Error ? saveError.message : 'Could not save the confirmed scan.');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -126,10 +157,13 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
                                 <p className="text-sm text-rose-700">{error}</p>
                             ) : result ? (
                                 <div className="space-y-3 text-sm text-gray-700">
-                                    <Detail label="Manufacturer" value={result.manufacturer || 'Not detected'} />
-                                    <Detail label="Model" value={result.model || 'Not detected'} />
-                                    <Detail label="Serial" value={result.serialNumber || 'Not detected'} />
-                                    <Detail label="Refrigerant" value={result.refrigerantCode || 'Not detected'} />
+                                    <EditableDetail label="Manufacturer" value={result.manufacturer ?? ''} onChange={(value) => updateResult('manufacturer', value)} />
+                                    <EditableDetail label="Model" value={result.model ?? ''} onChange={(value) => updateResult('model', value)} />
+                                    <EditableDetail label="Serial" value={result.serialNumber ?? ''} onChange={(value) => updateResult('serialNumber', value)} />
+                                    <EditableDetail label="Refrigerant" value={result.refrigerantCode ?? ''} onChange={(value) => updateResult('refrigerantCode', value.toUpperCase())} />
+                                    <button type="button" onClick={confirmScan} disabled={isSaving || confirmed} className="inline-flex items-center gap-2 bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#b45309] disabled:cursor-not-allowed disabled:opacity-60">
+                                        {isSaving ? 'Saving confirmed scan…' : confirmed ? 'Scan confirmed and saved' : 'Confirm and save scan'}
+                                    </button>
                                     {result.refrigerantCode && onUseRefrigerant && (
                                         <button
                                             type="button"
@@ -193,11 +227,11 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
     );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function EditableDetail({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
     return (
         <div className="flex items-center justify-between gap-3 border border-gray-200 bg-white px-4 py-3">
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">{label}</span>
-            <span className="text-sm font-medium text-gray-900">{value}</span>
+            <input value={value} onChange={(event) => onChange(event.target.value)} placeholder="Not detected" className="min-w-0 flex-1 bg-transparent text-right text-sm font-medium text-gray-900 outline-none focus:ring-1 focus:ring-[#D97706]" />
         </div>
     );
 }

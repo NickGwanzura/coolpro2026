@@ -5,17 +5,17 @@ import { technicians } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { Technician } from '@/types/index';
 
-function toTechnician(row: typeof technicians.$inferSelect): Technician {
+function toTechnician(row: typeof technicians.$inferSelect, includeSensitive = false): Technician {
   return {
     id: row.id,
     name: row.name,
-    nationalId: row.nationalId,
+    nationalId: includeSensitive ? row.nationalId : '',
     registrationNumber: row.registrationNumber,
     region: row.region,
     province: row.province,
     district: row.district,
-    contactNumber: row.contactNumber,
-    email: row.email ?? undefined,
+    contactNumber: includeSensitive ? row.contactNumber : '',
+    email: includeSensitive ? row.email ?? undefined : undefined,
     specialization: row.specialization,
     certifications: row.certifications as Technician['certifications'],
     trainingHistory: row.trainingHistory as Technician['trainingHistory'],
@@ -28,13 +28,14 @@ function toTechnician(row: typeof technicians.$inferSelect): Technician {
     status: row.status as Technician['status'],
     lastRenewalDate: row.lastRenewalDate ?? undefined,
     nextRenewalDate: row.nextRenewalDate ?? undefined,
-    surveyData: (row.surveyData as Technician['surveyData']) ?? undefined,
+    surveyData: includeSensitive ? (row.surveyData as Technician['surveyData']) ?? undefined : undefined,
   };
 }
 
 export async function GET(req: Request) {
+  let session;
   try {
-    requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
+    session = requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -47,11 +48,11 @@ export async function GET(req: Request) {
       .select()
       .from(technicians)
       .where(or(ilike(technicians.name, `%${q}%`), ilike(technicians.registrationNumber, `%${q}%`)));
-    return NextResponse.json(rows.map(toTechnician));
+    return NextResponse.json(rows.map((row) => toTechnician(row, session.role === 'org_admin')));
   }
 
   const rows = await db.select().from(technicians);
-  return NextResponse.json(rows.map(toTechnician));
+  return NextResponse.json(rows.map((row) => toTechnician(row, session.role === 'org_admin')));
 }
 
 export async function POST(req: Request) {

@@ -23,6 +23,7 @@ export function RefrigerantIntelligencePanel({
     const [summary, setSummary] = useState<Summary | null>(null);
     const [checklist, setChecklist] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [lookupError, setLookupError] = useState<string | null>(null);
     const [referenceTime] = useState(() => Date.now());
     const { data: syncStatus } = useWhatGasSyncStatus();
     const lastSync = syncStatus?.lastSuccessfulSync?.finishedAt
@@ -45,11 +46,19 @@ export function RefrigerantIntelligencePanel({
             }
 
             setIsLoading(true);
+            setLookupError(null);
             Promise.all([getRiskSummary(trimmed), buildPreJobChecklist(trimmed)])
                 .then(([nextSummary, nextChecklist]) => {
                     if (cancelled) return;
                     setSummary(nextSummary);
                     setChecklist(nextChecklist);
+                })
+                .catch(() => {
+                    if (!cancelled) {
+                        setSummary(null);
+                        setChecklist([]);
+                        setLookupError('The WhatGas registry is unavailable. Check your connection or try again shortly.');
+                    }
                 })
                 .finally(() => {
                     if (!cancelled) setIsLoading(false);
@@ -109,6 +118,8 @@ export function RefrigerantIntelligencePanel({
                 <div className="mt-5 border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
                     Searching the WhatGas registry...
                 </div>
+            ) : lookupError ? (
+                <div className="mt-5 border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">{lookupError}</div>
             ) : !profile || !summary ? (
                 <div className="mt-5 border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
                     No match found. Try a code like `R-290`, `R-32`, `R-744`, or `R-717`.

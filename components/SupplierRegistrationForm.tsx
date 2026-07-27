@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, CheckCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import type { SupplierRegistration } from '@/types/index';
-import { createSupplierApplication } from '@/lib/api';
+import { completeInvitedSupplierApplication, createSupplierApplication } from '@/lib/api';
 import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 
 const ACCENT = '#D97706';
@@ -61,8 +61,8 @@ const INITIAL: SupplierFormState = {
   agree: false,
 };
 
-export default function SupplierRegistrationForm() {
-  const [form, setForm] = useState<SupplierFormState>(INITIAL);
+export default function SupplierRegistrationForm({ inviteOnly = false, invitedEmail }: { inviteOnly?: boolean; invitedEmail?: string }) {
+  const [form, setForm] = useState<SupplierFormState>(() => ({ ...INITIAL, email: invitedEmail ?? '' }));
   const [submitted, setSubmitted] = useState<SupplierRegistration | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,11 +90,11 @@ export default function SupplierRegistrationForm() {
       setError('Select at least one refrigerant category before submitting.');
       return;
     }
-    if (form.password.length < 8) {
+    if (!inviteOnly && form.password.length < 8) {
       setError('Password must be at least 8 characters.');
       return;
     }
-    if (form.password !== form.confirmPassword) {
+    if (!inviteOnly && form.password !== form.confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
@@ -102,13 +102,12 @@ export default function SupplierRegistrationForm() {
     setSubmitting(true);
     setError(null);
     try {
-      const record = await createSupplierApplication({
+      const application = {
         companyName: form.companyName.trim(),
         tradingName: form.tradingName.trim() || undefined,
         supplierType: form.supplierType,
         contactName: form.contactName.trim(),
         email: form.email.trim().toLowerCase(),
-        password: form.password,
         phone: form.phone.trim(),
         province: form.province,
         city: form.city.trim(),
@@ -118,7 +117,10 @@ export default function SupplierRegistrationForm() {
         pesepayMerchantId: form.pesepayMerchantId.trim() || undefined,
         website: form.website.trim() || undefined,
         notes: form.notes.trim() || undefined,
-      });
+      };
+      const record = inviteOnly
+        ? await completeInvitedSupplierApplication(application)
+        : await createSupplierApplication({ ...application, password: form.password });
       setSubmitted(record);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Submission failed. Please try again.';
@@ -238,6 +240,7 @@ export default function SupplierRegistrationForm() {
                 onChange={(v) => update('email', v)}
                 required
                 placeholder="supplier@example.co.zw"
+                readOnly={inviteOnly}
               />
             </Field>
             <Field label="Phone" required>
@@ -249,22 +252,22 @@ export default function SupplierRegistrationForm() {
                 placeholder="+263 77 000 0000"
               />
             </Field>
-            <Field label="Password" required>
+            {!inviteOnly && <Field label="Password" required>
               <Input
                 type="password"
                 value={form.password}
                 onChange={(v) => update('password', v)}
                 required
               />
-            </Field>
-            <Field label="Confirm password" required>
+            </Field>}
+            {!inviteOnly && <Field label="Confirm password" required>
               <Input
                 type="password"
                 value={form.confirmPassword}
                 onChange={(v) => update('confirmPassword', v)}
                 required
               />
-            </Field>
+            </Field>}
             <Field label="Province" required>
               <Select
                 value={form.province}
@@ -445,12 +448,14 @@ function Input({
   type = 'text',
   required,
   placeholder,
+  readOnly,
 }: {
   value: string;
   onChange: (v: string) => void;
   type?: string;
   required?: boolean;
   placeholder?: string;
+  readOnly?: boolean;
 }) {
   return (
     <input
@@ -459,6 +464,7 @@ function Input({
       onChange={(e) => onChange(e.target.value)}
       required={required}
       placeholder={placeholder}
+      readOnly={readOnly}
       className="w-full px-4 py-3 border text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:border-transparent rounded-lg"
       style={{ borderColor: BORDER }}
     />

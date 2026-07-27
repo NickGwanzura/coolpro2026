@@ -171,10 +171,10 @@ export default function SupplierManagement() {
 
                     <div className="flex flex-wrap gap-3">
                         <Link
-                            href={canReview ? '/admin/suppliers/add' : '/supplier-register'}
+                            href={canReview ? '/admin/suppliers/add' : '/contact'}
                             className="inline-flex items-center gap-2 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
                         >
-                            {canReview ? 'Add supplier' : 'Register supplier'}
+                            {canReview ? 'Invite supplier' : 'Request onboarding'}
                             <ArrowRight className="h-4 w-4" />
                         </Link>
                         <Link
@@ -239,13 +239,13 @@ export default function SupplierManagement() {
                                 <div className="space-y-2">
                                     <p className="font-semibold text-gray-900">No supplier application linked yet</p>
                                     <p className="max-w-2xl text-sm leading-6 text-gray-600">
-                                        Submit your business details through the supplier registration flow to enter the review queue.
+                                        Ask the administrator who invited you to resend the onboarding invitation. Supplier records are created only through that secure flow.
                                     </p>
                                     <Link
-                                        href="/supplier-register"
+                                        href="/contact"
                                         className="inline-flex items-center gap-2 bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800"
                                     >
-                                        Register as supplier
+                                        Contact HEVACRAZ
                                         <ArrowRight className="h-4 w-4" />
                                     </Link>
                                 </div>

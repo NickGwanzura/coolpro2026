@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { courses } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { buildCourseMaterialKey, createMaterialUploadUrl } from '@/lib/server/r2';
+import { isAllowedCourseMaterialType } from '../../../course-validation';
 
 const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500MB, covers course video uploads
 
@@ -26,6 +27,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const body = await req.json() as { fileName?: string; fileType?: string; sizeBytes?: number };
   if (!body.fileName || !body.fileType || !body.sizeBytes) {
     return NextResponse.json({ error: 'fileName, fileType, and sizeBytes are required' }, { status: 400 });
+  }
+  if (body.fileName.length > 180) {
+    return NextResponse.json({ error: 'File name must be 180 characters or fewer' }, { status: 400 });
+  }
+  if (!isAllowedCourseMaterialType(body.fileType)) {
+    return NextResponse.json({ error: 'Unsupported course material file type' }, { status: 400 });
+  }
+  if (body.sizeBytes <= 0) {
+    return NextResponse.json({ error: 'File size must be greater than zero' }, { status: 400 });
   }
   if (body.sizeBytes > MAX_FILE_SIZE_BYTES) {
     return NextResponse.json({ error: 'File exceeds the 500MB limit' }, { status: 400 });

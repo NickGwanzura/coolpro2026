@@ -15,13 +15,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
   const body = await req.json().catch(() => ({})) as { notes?: string };
+  const [existing] = await db.select().from(cocRequests).where(eq(cocRequests.id, id)).limit(1);
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (existing.status !== 'submitted') {
+    return NextResponse.json({ error: 'Only submitted COC requests can be rejected.' }, { status: 409 });
+  }
+  if (!body.notes?.trim()) {
+    return NextResponse.json({ error: 'A rejection note is required.' }, { status: 400 });
+  }
 
   const [updated] = await db
     .update(cocRequests)
-    .set({ status: 'rejected', reviewedBy: session.name, reviewedAt: new Date(), reviewNote: body.notes ?? null })
+    .set({
+      status: 'rejected',
+      reviewedBy: session.name,
+      reviewedAt: new Date(),
+      reviewNote: body.notes.trim(),
+      issuedDate: null,
+      verificationToken: null,
+    })
     .where(eq(cocRequests.id, id))
     .returning();
 
-  if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json(toCocRequest(updated));
 }

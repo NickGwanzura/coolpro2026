@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { cocRequests } from '@/db/schema/index';
+import { cocRequests, plannerJobs } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { CocRequest } from '@/types/index';
 
@@ -72,6 +72,29 @@ export async function POST(req: Request) {
   for (const key of required) {
     if (!body[key]) {
       return NextResponse.json({ error: `${key} is required` }, { status: 400 });
+    }
+  }
+  if (!body.complianceCheck) {
+    return NextResponse.json({ error: 'Compliance confirmation is required' }, { status: 400 });
+  }
+
+  if (body.plannerJobId) {
+    const [job] = await db
+      .select()
+      .from(plannerJobs)
+      .where(and(eq(plannerJobs.id, body.plannerJobId), eq(plannerJobs.technicianId, session.id)))
+      .limit(1);
+    if (!job) {
+      return NextResponse.json({ error: 'Planner job not found for this technician' }, { status: 404 });
+    }
+
+    const [existingRequest] = await db
+      .select()
+      .from(cocRequests)
+      .where(and(eq(cocRequests.plannerJobId, body.plannerJobId), eq(cocRequests.technicianId, session.id)))
+      .limit(1);
+    if (existingRequest) {
+      return NextResponse.json({ error: 'A COC request already exists for this planner job' }, { status: 409 });
     }
   }
 

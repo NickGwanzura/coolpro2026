@@ -4,7 +4,7 @@ import { mapDetailToRow, mapListItemToRow } from './mapper';
 import {
   createSyncLog,
   finishSyncLog,
-  getIdsMissingDetail,
+  getIdsNeedingDetailRefresh,
   upsertRefrigerantDetail,
   upsertRefrigerants,
 } from './repository';
@@ -34,7 +34,7 @@ const DETAIL_HYDRATION_CONCURRENCY = 5;
  * the 30-day on-demand refresh in `service.ts` covers the rest of the freshness story.
  */
 async function hydrateMissingDetails(): Promise<{ hydrated: number; failed: number }> {
-  const ids = await getIdsMissingDetail();
+  const ids = await getIdsNeedingDetailRefresh();
   if (ids.length === 0) return { hydrated: 0, failed: 0 };
 
   const queue = [...ids];
@@ -87,7 +87,7 @@ export async function runWhatGasSync(syncType: SyncType, triggeredBy?: string): 
     const { hydrated: detailsHydrated, failed: detailsFailed } = await hydrateMissingDetails();
 
     const durationMs = Date.now() - startedAt;
-    const status = failures.length === 0 ? 'success' : valid.length > 0 ? 'partial' : 'failed';
+    const status = failures.length === 0 && detailsFailed === 0 ? 'success' : valid.length > 0 ? 'partial' : 'failed';
 
     await finishSyncLog(log.id, {
       status,

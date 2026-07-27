@@ -53,6 +53,14 @@ export async function POST(req: Request) {
   if (!INVITABLE_ROLES.includes(role)) {
     return NextResponse.json({ error: 'Unknown role' }, { status: 400 });
   }
+  if (role === 'vendor' || role === 'technician') {
+    return NextResponse.json(
+      { error: role === 'vendor'
+        ? 'Supplier invitations must be created through Supplier Management so the invited business completes the supplier onboarding questionnaire.'
+        : 'Technician access is created only after an approved technician application or an approved registry membership.' },
+      { status: 400 },
+    );
+  }
 
   const [existingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (existingUser) {

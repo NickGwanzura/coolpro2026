@@ -67,7 +67,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!SELF_SIGNUP_OPEN.supplier) {
-    return NextResponse.json({ error: 'Supplier self-registration is currently closed.' }, { status: 403 });
+    return NextResponse.json({ error: 'Supplier access is invitation-only. Contact HEVACRAZ or your organisation administrator to request onboarding.' }, { status: 403 });
   }
   if (!checkRateLimit(`supplier-application:${getClientIp(req)}`, SIGNUP_RATE_LIMIT, SIGNUP_RATE_WINDOW_MS)) {
     return NextResponse.json({ error: 'Too many applications from this address. Try again later.' }, { status: 429 });

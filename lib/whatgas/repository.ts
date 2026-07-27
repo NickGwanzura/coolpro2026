@@ -95,12 +95,15 @@ export async function getRefrigerantById(id: number): Promise<RefrigerantRow | n
   return row ?? null;
 }
 
-/** Ids that have never had detail-endpoint fields (ASHRAE safety group, flammability, etc.) hydrated. */
-export async function getIdsMissingDetail(): Promise<number[]> {
+/** Refresh detail records monthly so upstream safety-data corrections are not retained indefinitely. */
+export async function getIdsNeedingDetailRefresh(): Promise<number[]> {
   const rows = await db
     .select({ id: refrigerants.id })
     .from(refrigerants)
-    .where(isNull(refrigerants.detailFetchedAt));
+    .where(or(
+      isNull(refrigerants.detailFetchedAt),
+      sql`${refrigerants.detailFetchedAt} < now() - interval '30 days'`,
+    ));
   return rows.map((r) => r.id);
 }
 

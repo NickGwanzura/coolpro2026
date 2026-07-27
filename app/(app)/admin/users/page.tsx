@@ -11,7 +11,6 @@ const ROLES = [
   { value: 'technician', label: 'Technician' },
   { value: 'trainer', label: 'Trainer' },
   { value: 'lecturer', label: 'Lecturer' },
-  { value: 'vendor', label: 'Vendor' },
   { value: 'student', label: 'Student' },
 ];
 

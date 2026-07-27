@@ -2,23 +2,9 @@ import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { courses } from '@/db/schema/index';
-import { readSessionFromRequest, requireRole } from '@/lib/server/auth';
+import { requireRole } from '@/lib/server/auth';
 import type { ManagedCourse } from '@/lib/platformStore';
-
-function toManagedCourse(row: typeof courses.$inferSelect): ManagedCourse {
-  return {
-    id: row.id,
-    lecturerId: row.lecturerId,
-    lecturerName: row.lecturerName,
-    title: row.title,
-    description: row.description,
-    modules: row.modules as ManagedCourse['modules'],
-    status: row.status as ManagedCourse['status'],
-    rejectionReason: row.rejectionReason ?? undefined,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-  };
-}
+import { toManagedCourse, validateCourseBasics, validateCourseModules } from './course-validation';
 
 export async function GET(req: Request) {
   let session;
@@ -49,17 +35,22 @@ export async function POST(req: Request) {
     return e as Response;
   }
 
-  const body = await req.json() as Omit<ManagedCourse, 'id' | 'status' | 'createdAt' | 'updatedAt'>;
+  const body = await req.json().catch(() => ({})) as Omit<ManagedCourse, 'id' | 'status' | 'createdAt' | 'updatedAt'>;
+  const basics = validateCourseBasics(body);
+  if (basics.error) return NextResponse.json({ error: basics.error }, { status: 400 });
+  const modulesResult = validateCourseModules(body.modules);
+  if (modulesResult.error) return NextResponse.json({ error: modulesResult.error }, { status: 400 });
+
   const now = new Date();
 
   const [inserted] = await db
     .insert(courses)
     .values({
       lecturerId: session.id,
-      lecturerName: body.lecturerName ?? session.name,
-      title: body.title,
-      description: body.description,
-      modules: body.modules,
+      lecturerName: session.name,
+      title: basics.title!,
+      description: basics.description!,
+      modules: modulesResult.modules!,
       status: 'draft',
       createdAt: now,
       updatedAt: now,

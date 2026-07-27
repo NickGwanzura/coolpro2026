@@ -48,6 +48,9 @@ export async function PATCH(
   if (!existing) {
     return NextResponse.json({ error: 'Reclamation record not found' }, { status: 404 });
   }
+  if (session.role === 'technician' && existing.technicianId !== session.id) {
+    return NextResponse.json({ error: 'Not authorized to modify this reclamation record' }, { status: 403 });
+  }
 
   // Only org_admin can approve/reject (change status from pending to passed/failed)
   if (body.status && body.status !== existing.status) {

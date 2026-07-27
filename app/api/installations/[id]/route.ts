@@ -51,12 +51,24 @@ export async function PATCH(
   if (session.role === 'technician' && existing.technicianId !== session.id) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
   }
+  if (session.role !== 'org_admin' && (body.cocApproved !== undefined || body.cocApprovalDate !== undefined)) {
+    return NextResponse.json({ error: 'Only administrators can approve a certificate of compliance.' }, { status: 403 });
+  }
+  if (session.role === 'technician' && body.status && body.status !== existing.status) {
+    return NextResponse.json({ error: 'Technicians cannot change installation review status.' }, { status: 403 });
+  }
+  if (session.role === 'technician' && body.cocRequested === false && existing.cocRequested) {
+    return NextResponse.json({ error: 'Submitted COC requests cannot be withdrawn here.' }, { status: 409 });
+  }
+  if (session.role === 'org_admin' && body.cocApproved && !existing.cocRequested) {
+    return NextResponse.json({ error: 'COC approval requires a technician request first.' }, { status: 409 });
+  }
 
   const updateFields: Record<string, unknown> = {};
-  if (body.status) updateFields.status = body.status;
+  if (session.role === 'org_admin' && body.status) updateFields.status = body.status;
   if (body.cocRequested !== undefined) updateFields.cocRequested = body.cocRequested;
-  if (body.cocApproved !== undefined) updateFields.cocApproved = body.cocApproved;
-  if (body.cocApprovalDate !== undefined) updateFields.cocApprovalDate = body.cocApprovalDate ? new Date(body.cocApprovalDate) : null;
+  if (session.role === 'org_admin' && body.cocApproved !== undefined) updateFields.cocApproved = body.cocApproved;
+  if (session.role === 'org_admin' && body.cocApprovalDate !== undefined) updateFields.cocApprovalDate = body.cocApprovalDate ? new Date(body.cocApprovalDate) : null;
   updateFields.updatedAt = new Date();
 
   const [updated] = await db

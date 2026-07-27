@@ -10,8 +10,8 @@ export function SignupClosedNotice({ title, accent = '#1C1917' }: { title: strin
         </div>
         <h1 className="text-xl font-bold text-[#1C1917]">{title}</h1>
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Self-service registration is temporarily closed while HEVACRAZ and the National Ozone Unit
-          process the current queue. New applicants are being added directly by the admin team.
+          Self-service registration is unavailable. Supplier access is issued by secure invitation,
+          then the invited contact completes their company and compliance questionnaire.
         </p>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link

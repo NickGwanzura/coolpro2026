@@ -1,15 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { UserPlus, Copy, Check, X, Clock, Mail, AlertCircle } from 'lucide-react';
-import { useInvites, createInvite, revokeInvite } from '@/lib/api';
+import { UserPlus, Copy, Check, X, Clock, Mail, AlertCircle, RotateCcw } from 'lucide-react';
+import { useInvites, createInvite, revokeInvite, resendSupplierInvite } from '@/lib/api';
 import type { InviteStatus } from '@/types/index';
 
 const ROLES = [
-  { value: 'technician', label: 'Technician' },
   { value: 'trainer', label: 'Trainer' },
   { value: 'lecturer', label: 'Lecturer' },
-  { value: 'vendor', label: 'Vendor' },
   { value: 'student', label: 'Student' },
   { value: 'org_admin', label: 'Org Admin' },
 ];
@@ -56,6 +54,17 @@ export default function AdminInvitesPage() {
       await revokeInvite(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to revoke invite');
+    }
+  };
+
+  const handleResendSupplierInvite = async (id: string) => {
+    setError(null);
+    try {
+      const result = await resendSupplierInvite(id);
+      setLastInviteUrl(result.inviteUrl);
+      setLastEmailSent(result.emailSent);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend supplier invite');
     }
   };
 
@@ -188,6 +197,14 @@ export default function AdminInvitesPage() {
                   <div className="flex shrink-0 items-center gap-2">
                     {invite.status === 'pending' && (
                       <>
+                        {invite.role === 'vendor' && (
+                          <button
+                            onClick={() => handleResendSupplierInvite(invite.id)}
+                            className="inline-flex items-center gap-1.5 border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-50"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" /> Resend
+                          </button>
+                        )}
                         <button
                           disabled={!url}
                           onClick={() => copyLink(invite.id, url)}

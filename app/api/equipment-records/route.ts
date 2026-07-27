@@ -31,7 +31,7 @@ function toEquipmentRecord(row: typeof equipmentRecords.$inferSelect): Equipment
 
 export async function GET(req: Request) {
   try {
-    requireRole(req, ['technician', 'org_admin']);
+    requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }

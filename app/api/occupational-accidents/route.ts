@@ -6,6 +6,11 @@ import { requireRole } from '@/lib/server/auth';
 import type { OccupationalAccident } from '@/types/index';
 
 const REPORTER_ROLES = ['technician', 'trainer', 'lecturer', 'student', 'org_admin'];
+const VALID_SEVERITIES = ['Critical', 'High', 'Medium', 'Low'] as const;
+
+function cleanText(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
 
 function toOccupationalAccident(row: typeof occupationalAccidents.$inferSelect): OccupationalAccident {
   return {
@@ -59,11 +64,23 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({})) as Partial<OccupationalAccident>;
 
-  if (!body.date || !body.jobSite || !body.clientName || !body.severity || !body.description) {
+  const date = cleanText(body.date);
+  const jobSite = cleanText(body.jobSite);
+  const clientName = cleanText(body.clientName);
+  const description = cleanText(body.description);
+  const refrigerantInvolved = cleanText(body.refrigerantInvolved);
+
+  if (!date || !jobSite || !clientName || !body.severity || !description) {
     return NextResponse.json(
       { error: 'date, jobSite, clientName, severity, and description are required' },
       { status: 400 }
     );
+  }
+  if (!VALID_SEVERITIES.includes(body.severity)) {
+    return NextResponse.json({ error: 'Invalid accident severity' }, { status: 400 });
+  }
+  if (description.length < 20) {
+    return NextResponse.json({ error: 'Description must include at least 20 characters' }, { status: 400 });
   }
 
   const [inserted] = await db
@@ -71,12 +88,12 @@ export async function POST(req: Request) {
     .values({
       technicianId: session.id,
       technicianName: session.name,
-      date: body.date,
-      jobSite: body.jobSite,
-      clientName: body.clientName,
+      date,
+      jobSite,
+      clientName,
       severity: body.severity as typeof occupationalAccidents.$inferInsert['severity'],
-      description: body.description,
-      refrigerantInvolved: body.refrigerantInvolved,
+      description,
+      refrigerantInvolved: refrigerantInvolved || null,
       nearMissFlag: body.nearMissFlag ?? false,
       nouNotified: body.nouNotified ?? false,
     })

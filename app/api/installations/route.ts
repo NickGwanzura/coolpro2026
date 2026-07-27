@@ -28,7 +28,7 @@ function toInstallation(row: typeof installations.$inferSelect): Installation {
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician', 'org_admin']);
+    session = requireRole(req, ['technician']);
   } catch (e) {
     return e as Response;
   }
@@ -57,6 +57,10 @@ export async function POST(req: Request) {
 
   if (!body.clientName || !body.jobDetails) {
     return NextResponse.json({ error: 'clientName and jobDetails are required' }, { status: 400 });
+  }
+
+  if (body.cocRequested || body.cocApproved || body.status) {
+    return NextResponse.json({ error: 'Installation review fields cannot be set on create' }, { status: 400 });
   }
 
   const [inserted] = await db

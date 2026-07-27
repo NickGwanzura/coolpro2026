@@ -70,7 +70,7 @@ function AcceptInviteContent() {
         setSubmitError(data.error ?? 'Could not accept this invite.');
         return;
       }
-      router.push('/dashboard');
+      router.push(data.user?.role === 'vendor' ? '/supplier-onboarding' : '/dashboard');
     } catch {
       setSubmitError('Something went wrong. Try again.');
     } finally {

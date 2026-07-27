@@ -106,9 +106,9 @@ const FAQS: FAQ[] = [
   // Suppliers
   {
     category: 'suppliers',
-    question: 'How do I register as a gas supplier?',
+    question: 'How do suppliers join HEVACRAZ?',
     answer:
-      'Start at /supplier-register. You submit company details, tax registration, NOU trading licence, and authorised product list. HEVACRAZ reviews first, then the NOU signs off as the second-step approver. Once approved, your account unlocks the Verify Buyer tool and Reorder queue.',
+      'Supplier access is invitation-only. Contact HEVACRAZ to request onboarding. An administrator sends a secure link to the approved contact, who then submits company details, tax registration, NOU trading licence, and authorised product list for review. Once approved, the account unlocks the Verify Buyer tool and Reorder queue.',
   },
   {
     category: 'suppliers',

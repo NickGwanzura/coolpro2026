@@ -28,6 +28,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .where(eq(trainerCertificateRequests.id, id))
     .limit(1);
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (existing.status !== 'admin-approved') {
+    return NextResponse.json({ error: 'Only an admin-approved certificate request can be issued.' }, { status: 409 });
+  }
 
   const [updated] = await db
     .update(trainerCertificateRequests)

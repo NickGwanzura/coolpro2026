@@ -3,22 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { courses } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
-import type { ManagedCourse } from '@/lib/platformStore';
-
-function toManagedCourse(row: typeof courses.$inferSelect): ManagedCourse {
-  return {
-    id: row.id,
-    lecturerId: row.lecturerId,
-    lecturerName: row.lecturerName,
-    title: row.title,
-    description: row.description,
-    modules: row.modules as ManagedCourse['modules'],
-    status: row.status as ManagedCourse['status'],
-    rejectionReason: row.rejectionReason ?? undefined,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-  };
-}
+import { toManagedCourse } from '../../course-validation';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -31,10 +16,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const body = await req.json() as { reason?: string };
   const [row] = await db.select().from(courses).where(eq(courses.id, id)).limit(1);
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (row.status !== 'pending_nou') {
+    return NextResponse.json({ error: 'Only courses pending NOU approval can be rejected.' }, { status: 409 });
+  }
+  if (!body.reason?.trim()) {
+    return NextResponse.json({ error: 'A rejection reason is required.' }, { status: 400 });
+  }
 
   const [updated] = await db
     .update(courses)
-    .set({ status: 'rejected', rejectionReason: body.reason ?? null, updatedAt: new Date() })
+    .set({ status: 'rejected', rejectionReason: body.reason.trim(), updatedAt: new Date() })
     .where(eq(courses.id, id))
     .returning();
 

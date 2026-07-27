@@ -14,6 +14,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const { id } = await params;
+  const [existing] = await db.select({ status: trainerCertificateRequests.status }).from(trainerCertificateRequests).where(eq(trainerCertificateRequests.id, id)).limit(1);
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (existing.status !== 'submitted-for-admin-approval') return NextResponse.json({ error: `A ${existing.status} request cannot be approved.` }, { status: 409 });
   const [updated] = await db
     .update(trainerCertificateRequests)
     .set({ status: 'admin-approved', reviewedAt: new Date(), adminReviewer: session.name })

@@ -14,11 +14,9 @@ import type { Technician } from '@/types/index';
 // unbounded response.
 const MAX_RESULTS = 5000;
 
-// Public-facing technician lookup for the certificate verification portal.
-// Bulk/search listings never include contact details (email, phone) — those are only
-// returned for a single technician fetched by exact id, to prevent this endpoint being
-// used to scrape the entire directory's contact information.
-function toPublicTechnician(row: typeof technicians.$inferSelect, includeContact: boolean): Technician {
+// Public verification never returns direct contact details. IDs are deliberately available
+// in search results, so returning contacts for an exact ID would still enable enumeration.
+function toPublicTechnician(row: typeof technicians.$inferSelect): Technician {
   return {
     id: row.id,
     name: row.name,
@@ -27,8 +25,8 @@ function toPublicTechnician(row: typeof technicians.$inferSelect, includeContact
     region: row.region,
     province: row.province,
     district: row.district,
-    contactNumber: includeContact ? row.contactNumber : '',
-    email: includeContact ? row.email ?? undefined : undefined,
+    contactNumber: '',
+    email: undefined,
     specialization: row.specialization,
     certifications: row.certifications as Technician['certifications'],
     trainingHistory: [],
@@ -51,7 +49,7 @@ export async function GET(req: Request) {
   if (id) {
     const [row] = await db.select().from(technicians).where(eq(technicians.id, id)).limit(1);
     if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    return NextResponse.json(toPublicTechnician(row, true));
+    return NextResponse.json(toPublicTechnician(row));
   }
 
   if (q) {
@@ -61,9 +59,9 @@ export async function GET(req: Request) {
       .where(or(ilike(technicians.name, `%${q}%`), ilike(technicians.registrationNumber, `%${q}%`)))
       .orderBy(asc(technicians.registrationNumber))
       .limit(MAX_RESULTS);
-    return NextResponse.json(rows.map((row) => toPublicTechnician(row, false)));
+    return NextResponse.json(rows.map(toPublicTechnician));
   }
 
   const rows = await db.select().from(technicians).orderBy(asc(technicians.registrationNumber)).limit(MAX_RESULTS);
-  return NextResponse.json(rows.map((row) => toPublicTechnician(row, false)));
+  return NextResponse.json(rows.map(toPublicTechnician));
 }

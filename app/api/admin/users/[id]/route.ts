@@ -45,6 +45,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.role === 'org_admin' && existing.role !== 'org_admin') {
       return NextResponse.json({ error: 'Org admin access cannot be granted from this screen' }, { status: 403 });
     }
+    if ((body.role === 'vendor' || body.role === 'technician') && existing.role !== body.role) {
+      return NextResponse.json({ error: body.role === 'vendor'
+        ? 'Supplier access can only be created through Supplier Management invitations.'
+        : 'Technician access can only be created through an approved application or registry membership.' }, { status: 403 });
+    }
     update.role = body.role as (typeof VALID_ROLES)[number];
   }
   if (body.status !== undefined) {

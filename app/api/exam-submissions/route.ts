@@ -25,12 +25,12 @@ function toExamSubmission(row: typeof examSubmissions.$inferSelect): ExamSubmiss
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
+    session = requireRole(req, ['technician', 'student', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
 
-  if (session.role === 'technician') {
+  if (session.role === 'technician' || session.role === 'student') {
     const rows = await db
       .select()
       .from(examSubmissions)
@@ -59,21 +59,25 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician']);
+    session = requireRole(req, ['technician', 'student']);
   } catch (e) {
     return e as Response;
   }
 
   const body = await req.json() as Omit<ExamSubmission, 'id' | 'status' | 'submittedAt'>;
+  const [course] = await db.select({ id: courses.id, title: courses.title, status: courses.status }).from(courses).where(eq(courses.id, body.courseId)).limit(1);
+  if (!course || course.status !== 'approved') {
+    return NextResponse.json({ error: 'Choose an approved course before submitting an exam.' }, { status: 400 });
+  }
   const now = new Date();
 
   const [inserted] = await db
     .insert(examSubmissions)
     .values({
-      courseId: body.courseId,
-      courseTitle: body.courseTitle,
+      courseId: course.id,
+      courseTitle: course.title,
       studentId: session.id,
-      studentName: body.studentName,
+      studentName: session.name,
       answers: body.answers,
       status: 'pending',
       submittedAt: now,

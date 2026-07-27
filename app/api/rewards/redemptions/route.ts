@@ -3,6 +3,7 @@ import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { rewardRedemptions } from '@/db/schema/index';
 import { readSessionFromRequest, requireRole } from '@/lib/server/auth';
+import { requireApprovedSupplier } from '@/lib/server/supplier-access';
 import { checkRateLimit } from '@/lib/server/rate-limit';
 import { computeTechnicianRewardSummary, computeVendorRewardSummary } from '@/lib/server/rewards';
 import { TECHNICIAN_REWARDS, VENDOR_REWARDS } from '@/constants/rewards';
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
   let session;
   try {
     session = requireRole(req, ['technician', 'vendor']);
+    if (session.role === 'vendor') session = await requireApprovedSupplier(req);
   } catch (e) {
     return e as Response;
   }

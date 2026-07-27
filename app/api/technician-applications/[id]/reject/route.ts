@@ -33,6 +33,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .where(eq(technicianApplications.id, id))
     .limit(1);
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (row.status !== 'submitted' && row.status !== 'under-review') {
+    return NextResponse.json({ error: `A ${row.status} application cannot be rejected.` }, { status: 409 });
+  }
 
   const internalReviewNote = [body.reason ?? body.notes, body.internalNotes]
     .filter((part): part is string => Boolean(part && part.trim()))

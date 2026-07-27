@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { supplierLedger } from '@/db/schema/index';
 import { readSessionFromRequest, requireRole } from '@/lib/server/auth';
+import { requireApprovedSupplier } from '@/lib/server/supplier-access';
 import type { SupplierLedgerEntry } from '@/types/index';
 
 function toSupplierLedgerEntry(row: typeof supplierLedger.$inferSelect): SupplierLedgerEntry {
@@ -65,6 +66,7 @@ export async function POST(req: Request) {
   let session;
   try {
     session = requireRole(req, ['org_admin', 'vendor']);
+    if (session.role === 'vendor') session = await requireApprovedSupplier(req);
   } catch (e) {
     return e as Response;
   }

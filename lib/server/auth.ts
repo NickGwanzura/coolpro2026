@@ -5,7 +5,9 @@ import { getSessionSecret } from './session-secret';
 export type { SessionPayload };
 
 const SESSION_COOKIE = 'coolpro_session';
-const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+// Short-lived signed sessions limit access after an account is suspended. The client session
+// endpoint also clears disabled accounts on the next revalidation.
+const MAX_AGE_MS = 15 * 60 * 1000;
 
 function base64urlEncode(str: string): string {
   return Buffer.from(str).toString('base64url');
@@ -55,7 +57,7 @@ export function requireRole(req: Request, allowedRoles: string[]): SessionPayloa
 
 export function sessionCookie(token: string): string {
   const secure = process.env.NODE_ENV === 'production' ? ' Secure;' : '';
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax;${secure} Max-Age=86400`;
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax;${secure} Max-Age=${Math.floor(MAX_AGE_MS / 1000)}`;
 }
 
 export function clearSessionCookie(): string {

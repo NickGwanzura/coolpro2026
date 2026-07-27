@@ -3,6 +3,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { supplierReorders } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { requireApprovedSupplier } from '@/lib/server/supplier-access';
 import type { SupplierReorder } from '@/lib/platformStore';
 
 function toSupplierReorder(row: typeof supplierReorders.$inferSelect): SupplierReorder {
@@ -51,7 +52,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['vendor']);
+    session = await requireApprovedSupplier(req);
   } catch (e) {
     return e as Response;
   }

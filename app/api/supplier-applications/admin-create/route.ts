@@ -1,21 +1,18 @@
 import { randomBytes } from 'crypto';
 import { NextResponse } from 'next/server';
+import { and, eq, lt } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { supplierApplications, invites } from '@/db/schema/index';
+import { invites, users } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
-import { provisionUserFromApplication, ProvisionConflictError } from '@/lib/server/provision-user';
-import { generateSupplierRegistrationNumber } from '@/lib/server/registration-number';
 import { sendInviteEmail } from '@/lib/server/email';
 import { logEmail } from '@/lib/server/email-log';
 import { SITE_URL } from '@/lib/site-url';
-import type { SupplierRegistration, SupplierSurveyData } from '@/types/index';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Admin-only "Direct Entry" for suppliers — mirrors the student and technician equivalents.
- * No applicant-chosen password (self-signup is closed): account provisioned as pending,
- * activated via the existing secure invite-link flow.
+ * Supplier access is invitation-only. The invitee supplies their company and compliance
+ * answers after accepting the secure link; admins only identify the intended recipient.
  */
 export async function POST(req: Request) {
   let session;
@@ -25,63 +22,24 @@ export async function POST(req: Request) {
     return e as Response;
   }
 
-  const body = (await req.json().catch(() => ({}))) as Partial<SupplierRegistration> & {
-    companyName?: string; contactName?: string; email?: string; phone?: string;
-    province?: string; city?: string; address?: string;
-    surveyData?: SupplierSurveyData;
-  };
+  const body = (await req.json().catch(() => ({}))) as { email?: string; region?: string };
 
-  const required = ['companyName', 'contactName', 'email', 'phone', 'province', 'city', 'address'] as const;
-  for (const key of required) {
-    if (!body[key]) return NextResponse.json({ error: `${key} is required` }, { status: 400 });
-  }
-
-  const email = String(body.email).trim().toLowerCase();
+  const email = String(body.email ?? '').trim().toLowerCase();
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
   }
 
-  const registrationNumber = await generateSupplierRegistrationNumber();
+  const region = String(body.region ?? '').trim();
+  if (!region) return NextResponse.json({ error: 'Region is required' }, { status: 400 });
 
-  const [inserted] = await db
-    .insert(supplierApplications)
-    .values({
-      companyName: String(body.companyName).trim(),
-      tradingName: body.tradingName ?? null,
-      registrationNumber,
-      supplierType: (body.supplierType ?? 'distributor') as SupplierRegistration['supplierType'],
-      contactName: String(body.contactName).trim(),
-      email,
-      passwordHash: null,
-      phone: String(body.phone).trim(),
-      province: String(body.province).trim(),
-      city: String(body.city).trim(),
-      address: String(body.address).trim(),
-      refrigerantsSupplied: body.refrigerantsSupplied ?? [],
-      taxNumber: body.taxNumber ?? null,
-      website: body.website ?? null,
-      notes: body.notes ?? null,
-      surveyData: body.surveyData ?? null,
-      status: 'approved',
-      reviewedBy: session.name,
-      reviewedAt: new Date(),
-    })
-    .returning();
+  const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+  if (existingUser) return NextResponse.json({ error: 'A user with that email already exists' }, { status: 409 });
 
-  try {
-    await provisionUserFromApplication({
-      name: inserted.contactName,
-      email,
-      passwordHash: null,
-      role: 'vendor',
-      region: inserted.province,
-    });
-  } catch (err) {
-    if (err instanceof ProvisionConflictError) {
-      return NextResponse.json({ error: err.message }, { status: 409 });
-    }
-    throw err;
-  }
+  await db.update(invites).set({ status: 'expired' })
+    .where(and(eq(invites.status, 'pending'), lt(invites.expiresAt, new Date())));
+  const [pendingInvite] = await db.select({ id: invites.id }).from(invites)
+    .where(and(eq(invites.email, email), eq(invites.status, 'pending'))).limit(1);
+  if (pendingInvite) return NextResponse.json({ error: 'A pending invite already exists for that email' }, { status: 409 });
 
   const token = randomBytes(24).toString('base64url');
   const expiresAt = new Date();
@@ -90,26 +48,21 @@ export async function POST(req: Request) {
   await db.insert(invites).values({
     email,
     role: 'vendor',
-    region: inserted.province,
+    region,
     token,
     invitedBy: session.email,
     expiresAt,
-  }).catch(() => {});
+  });
 
   const inviteUrl = `${SITE_URL}/accept-invite?token=${token}`;
-  sendInviteEmail({ email, inviteUrl, role: 'vendor', invitedBy: session.name })
-    .then((result) => logEmail({
-      emailType: 'account_activation',
-      recipientEmail: email,
-      relatedEntityType: 'supplier_application',
-      relatedEntityId: inserted.id,
-      sent: result.sent,
-    }))
-    .catch(() => {});
+  const emailResult = await sendInviteEmail({ email, inviteUrl, role: 'vendor', invitedBy: session.name });
+  await logEmail({
+    emailType: 'account_activation', recipientEmail: email, relatedEntityType: 'supplier_invite',
+    relatedEntityId: email, sent: emailResult.sent,
+  }).catch(() => {});
 
   return NextResponse.json({
-    id: inserted.id,
-    status: inserted.status,
-    registrationNumber: inserted.registrationNumber,
+    inviteUrl,
+    emailSent: emailResult.sent,
   }, { status: 201 });
 }

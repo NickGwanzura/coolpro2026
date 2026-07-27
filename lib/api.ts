@@ -336,10 +336,18 @@ export async function createSupplierApplication(
   return result;
 }
 
-export type AdminCreateSupplierInput = Omit<SupplierRegistration, 'id' | 'status' | 'submittedAt' | 'registrationNumber'>;
+export async function completeInvitedSupplierApplication(
+  body: Omit<SupplierRegistration, 'id' | 'status' | 'submittedAt' | 'registrationNumber'>,
+): Promise<SupplierApplicationRecord> {
+  const result = await post<SupplierApplicationRecord>('/api/supplier-applications/complete-invite', body);
+  await mutate('/api/supplier-applications');
+  return result;
+}
 
-export async function adminCreateSupplier(body: AdminCreateSupplierInput): Promise<{ id: string; status: string; registrationNumber: string }> {
-  const result = await post<{ id: string; status: string; registrationNumber: string }>('/api/supplier-applications/admin-create', body);
+export type AdminCreateSupplierInput = { email: string; region: string };
+
+export async function adminCreateSupplier(body: AdminCreateSupplierInput): Promise<{ inviteUrl: string; emailSent: boolean }> {
+  const result = await post<{ inviteUrl: string; emailSent: boolean }>('/api/supplier-applications/admin-create', body);
   await mutate('/api/supplier-applications');
   return result;
 }
@@ -499,13 +507,13 @@ export function useUsers() {
 // ---------------------------------------------------------------------------
 
 /** Fetch aggregated gas usage by job type from the DB */
-export function useGasUsage(from?: string, to?: string) {
+export function useGasUsage(from?: string, to?: string, enabled = true) {
   const params = new URLSearchParams();
   if (from) params.set('from', from);
   if (to) params.set('to', to);
   const qs = params.toString();
   const key = `/api/jobs/gas-usage${qs ? `?${qs}` : ''}`;
-  return useSWR<GasUsageByJobTypeResponse>(key, fetcher, {
+  return useSWR<GasUsageByJobTypeResponse>(enabled ? key : null, fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 5000,
   });
@@ -520,21 +528,21 @@ export async function createGasLogs(logs: RefrigerantLog[]): Promise<Refrigerant
 }
 
 /** Fetch raw refrigerant logs from the DB (for admin views) */
-export function useGasLogs(from?: string, to?: string, limit?: number) {
+export function useGasLogs(from?: string, to?: string, limit?: number, enabled = true) {
   const params = new URLSearchParams();
   if (from) params.set('from', from);
   if (to) params.set('to', to);
   if (limit) params.set('limit', String(limit));
   const qs = params.toString();
-  return useSWR<RefrigerantLog[]>(`/api/gas-logs${qs ? `?${qs}` : ''}`, fetcher);
+  return useSWR<RefrigerantLog[]>(enabled ? `/api/gas-logs${qs ? `?${qs}` : ''}` : null, fetcher);
 }
 
 // ---------------------------------------------------------------------------
 // Job Planner (DB-backed)
 // ---------------------------------------------------------------------------
 
-export function usePlannerJobs() {
-  return useSWR<PlannerJob[]>('/api/planner-jobs', fetcher);
+export function usePlannerJobs(enabled = true) {
+  return useSWR<PlannerJob[]>(enabled ? '/api/planner-jobs' : null, fetcher);
 }
 
 export async function createPlannerJob(
@@ -831,6 +839,12 @@ export async function revokeInvite(id: string): Promise<Invite> {
   return result;
 }
 
+export async function resendSupplierInvite(id: string): Promise<{ invite: Invite; inviteUrl: string; emailSent: boolean }> {
+  const result = await post<{ invite: Invite; inviteUrl: string; emailSent: boolean }>(`/api/supplier-applications/admin-create/${id}/resend`);
+  await mutate('/api/admin/invites');
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // System users (DB-backed, org_admin only)
 // ---------------------------------------------------------------------------
@@ -875,8 +889,8 @@ export async function createOcrScan(body: {
 // Certificate of Conformity requests (DB-backed)
 // ---------------------------------------------------------------------------
 
-export function useCocRequests() {
-  return useSWR<CocRequest[]>('/api/coc-requests', fetcher);
+export function useCocRequests(enabled = true) {
+  return useSWR<CocRequest[]>(enabled ? '/api/coc-requests' : null, fetcher);
 }
 
 export async function createCocRequest(

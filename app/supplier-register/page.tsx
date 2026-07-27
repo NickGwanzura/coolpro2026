@@ -6,7 +6,7 @@ import { SignupClosedNotice } from '@/components/marketing/SignupClosedNotice';
 
 export default function SupplierRegisterPage() {
   if (!SELF_SIGNUP_OPEN.supplier) {
-    return <SignupClosedNotice title="Supplier registration is closed" accent="#D97706" />;
+    return <SignupClosedNotice title="Supplier access is invitation-only" accent="#D97706" />;
   }
 
   return (

@@ -7,6 +7,7 @@ import { getWhatGasProfileById } from '@/lib/whatgas/service';
 import type { OcrScanRecord } from '@/types/index';
 
 const HISTORY_LIMIT = 20;
+const MAX_RAW_TEXT_LENGTH = 12_000;
 
 async function toOcrScanRecord(row: typeof ocrScans.$inferSelect): Promise<OcrScanRecord> {
   const whatGasMatch = row.whatGasRefrigerantId != null
@@ -68,6 +69,20 @@ export async function POST(req: Request) {
 
   if (!body.rawText) {
     return NextResponse.json({ error: 'rawText is required' }, { status: 400 });
+  }
+  if (body.rawText.length > MAX_RAW_TEXT_LENGTH) {
+    return NextResponse.json({ error: 'Scan text is too large.' }, { status: 400 });
+  }
+  if (body.matchConfidence != null && (!Number.isFinite(body.matchConfidence) || body.matchConfidence < 0 || body.matchConfidence > 1)) {
+    return NextResponse.json({ error: 'matchConfidence must be between 0 and 1.' }, { status: 400 });
+  }
+  if (body.whatGasRefrigerantId != null) {
+    const profile = await getWhatGasProfileById(body.whatGasRefrigerantId);
+    const normalizedScan = body.refrigerantCode?.toUpperCase().replace(/[\s-]/g, '');
+    const normalizedMatch = profile?.code.toUpperCase().replace(/[\s-]/g, '');
+    if (!profile || !normalizedScan || normalizedScan !== normalizedMatch) {
+      return NextResponse.json({ error: 'The selected WhatGas record does not match the confirmed refrigerant code.' }, { status: 400 });
+    }
   }
 
   const [inserted] = await db

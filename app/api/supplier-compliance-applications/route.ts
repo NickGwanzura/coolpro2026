@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { supplierComplianceApplications } from '@/db/schema/index';
 import { readSessionFromRequest, requireRole } from '@/lib/server/auth';
+import { requireApprovedSupplier } from '@/lib/server/supplier-access';
 import type { SupplierComplianceApplication } from '@/types/index';
 
 function toSupplierComplianceApplication(row: typeof supplierComplianceApplications.$inferSelect): SupplierComplianceApplication {
@@ -44,7 +45,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['vendor']);
+    session = await requireApprovedSupplier(req);
   } catch (e) {
     return e as Response;
   }

@@ -21,6 +21,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const [existing] = await db.select().from(cocRequests).where(eq(cocRequests.id, id)).limit(1);
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (existing.status !== 'submitted') {
+    return NextResponse.json({ error: 'Only submitted COC requests can be approved.' }, { status: 409 });
+  }
+  if (!existing.complianceCheck) {
+    return NextResponse.json({ error: 'COC request is missing the technician compliance confirmation.' }, { status: 400 });
+  }
 
   const [updated] = await db
     .update(cocRequests)
@@ -29,6 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       reviewedBy: session.name,
       reviewedAt: new Date(),
       issuedDate: new Date().toISOString().slice(0, 10),
+      reviewNote: null,
       verificationToken: existing.verificationToken ?? generateVerificationToken(),
     })
     .where(eq(cocRequests.id, id))

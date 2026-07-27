@@ -63,11 +63,11 @@ export default function ForSuppliersPage() {
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4">
             <Link
-              href="/supplier-register"
+              href="/contact"
               className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 font-semibold text-white text-sm transition-all duration-200 hover:brightness-110 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               style={{ backgroundColor: '#D97706' }}
             >
-              Register as Supplier
+              Request supplier onboarding
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
             </Link>
             <Link
@@ -152,11 +152,11 @@ export default function ForSuppliersPage() {
 
           <div className="mt-14 sm:mt-16 text-center">
             <Link
-              href="/supplier-register"
+              href="/contact"
               className="group inline-flex items-center gap-2 font-semibold py-4 px-10 text-white text-base sm:text-lg transition-all duration-200 hover:brightness-110 shadow-sm hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2"
               style={{ backgroundColor: '#D97706' }}
             >
-              Register as Supplier
+              Request supplier onboarding
               <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-200 group-hover:translate-x-1" />
             </Link>
           </div>

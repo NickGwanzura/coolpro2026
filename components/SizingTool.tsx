@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { SizingInputs, JobType, JobTypeLabels, JobTypeDefaults, JobTypeImages, JobTypeDescriptions, ProcessingMode, ProcessingModeLabels, ProcessingModeDescriptions } from '../types';
 import { INSULATION_U_VALUES, Icons, REFRIGERANTS } from '../constants';
-import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download, Snowflake, ExternalLink, Gauge, ArrowUpDown, Droplets } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download, Snowflake, ExternalLink, Gauge, ArrowUpDown, Droplets, Save } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
 
@@ -195,6 +195,7 @@ const SizingTool: React.FC = () => {
   });
 
   const [aiAdvice, setAiAdvice] = useState<string>('');
+  const [savedAt, setSavedAt] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [activeCalculator, setActiveCalculator] = useState<CalculatorTab>('wizard');
   const [selectedRefrigerant, setSelectedRefrigerant] = useState<RefrigerantCode>('R-290');
@@ -440,6 +441,13 @@ const SizingTool: React.FC = () => {
 
     // Save
     doc.save(`HEVACRAZ_Sizing_Report_${Date.now()}.pdf`);
+  };
+
+  const saveSizingCase = () => {
+    const entry = { id: crypto.randomUUID(), savedAt: new Date().toISOString(), inputs, calculatedLoadKw: results.total };
+    const existing = JSON.parse(localStorage.getItem('hevacraz-sizing-cases') ?? '[]') as unknown[];
+    localStorage.setItem('hevacraz-sizing-cases', JSON.stringify([entry, ...existing].slice(0, 20)));
+    setSavedAt(entry.savedAt);
   };
 
   const results = useMemo(() => {
@@ -1318,7 +1326,11 @@ const SizingTool: React.FC = () => {
                 </div>
                 
                 <div className="p-4 bg-emerald-50 border border-emerald-100">
-                  <p className="text-sm font-semibold text-emerald-900 mb-3">Equipment Selection</p>
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-emerald-900">Preliminary equipment guidance</p>
+                    <button type="button" onClick={saveSizingCase} className="inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"><Save className="h-3.5 w-3.5" /> {savedAt ? 'Case saved locally' : 'Save sizing case'}</button>
+                  </div>
+                  <p className="mb-4 text-xs leading-5 text-emerald-800">Confirm refrigerant, evaporating and condensing temperatures, line length/elevation, pressure drop, and manufacturer performance data before ordering equipment.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-3">
                       <div>

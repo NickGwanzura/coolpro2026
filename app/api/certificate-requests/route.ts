@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { trainerCertificateRequests } from '@/db/schema/index';
+import { trainerCertificateRequests, technicians } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { TrainerCertificateRequest } from '@/types/index';
 
@@ -49,10 +49,12 @@ export async function GET(req: Request) {
   if (session.role === 'org_admin') {
     rows = await db.select().from(trainerCertificateRequests).orderBy(desc(trainerCertificateRequests.submittedAt));
   } else if (session.role === 'technician') {
+    const matchingTechnicians = await db.select({ id: technicians.id }).from(technicians).where(eq(technicians.email, session.email));
+    const technicianIds = [session.id, ...matchingTechnicians.map((technician) => technician.id)];
     rows = await db
       .select()
       .from(trainerCertificateRequests)
-      .where(eq(trainerCertificateRequests.technicianId, session.id))
+      .where(inArray(trainerCertificateRequests.technicianId, technicianIds))
       .orderBy(desc(trainerCertificateRequests.submittedAt));
   } else {
     rows = await db

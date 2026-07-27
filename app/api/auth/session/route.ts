@@ -13,7 +13,10 @@ export async function GET(req: Request) {
 
   const [user] = await db.select().from(users).where(eq(users.id, session.id)).limit(1);
   if (!user) {
-    return NextResponse.json({ user: null });
+    return NextResponse.json({ user: null, }, { headers: { 'Set-Cookie': 'coolpro_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0' } });
+  }
+  if (user.status !== 'active') {
+    return NextResponse.json({ user: null }, { headers: { 'Set-Cookie': 'coolpro_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0' } });
   }
 
   const userSession: UserSession = {

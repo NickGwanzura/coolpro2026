@@ -158,17 +158,17 @@ function LoginPageContent() {
               <div className="space-y-4">
                 <div className="border border-[#E7E5E4] bg-[#FAFAF9] p-3 flex items-start gap-3 text-sm text-[#44403C]">
                   <Building2 className="h-4 w-4 text-[#D97706] mt-0.5 flex-shrink-0" />
-                  <span><strong className="font-semibold text-[#1C1917]">Supplier Onboarding</strong> Register for approved supplier consideration and NOU traceability.</span>
+                  <span><strong className="font-semibold text-[#1C1917]">Supplier Onboarding</strong> Supplier access is issued by secure invitation for NOU traceability.</span>
                 </div>
                 <p className="text-sm text-[#78716C] leading-relaxed">
-                  Supplier registration collects company, compliance, and account details on a dedicated
-                  page. HEVACRAZ and the NOU review every application before an account is activated.
+                  Ask HEVACRAZ or your organisation administrator for an invitation. The secure link lets
+                  you create your account and complete the supplier questionnaire.
                 </p>
                 <Link
-                  href="/supplier-register"
+                  href="/contact"
                   className="w-full inline-flex items-center justify-center gap-2 bg-[#D97706] text-white text-sm font-semibold py-2.5 px-4 hover:bg-[#b45309] transition-colors"
                 >
-                  <span>Continue to Supplier Registration</span>
+                  <span>Request supplier onboarding</span>
                   <PackageSearch className="h-4 w-4" />
                 </Link>
                 <p className="text-center text-sm text-[#78716C]">

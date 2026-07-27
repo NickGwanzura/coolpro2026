@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { courses } from '@/db/schema/index';
 import { readSessionFromRequest } from '@/lib/server/auth';
 import { createMaterialDownloadUrl } from '@/lib/server/r2';
+import { courseReferencesMaterial } from '../../../course-validation';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = readSessionFromRequest(req);
@@ -23,6 +24,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const body = await req.json() as { r2Key?: string };
   if (!body.r2Key || !body.r2Key.startsWith(`courses/${id}/`)) {
     return NextResponse.json({ error: 'Invalid r2Key' }, { status: 400 });
+  }
+  if (!courseReferencesMaterial(row.modules, body.r2Key)) {
+    return NextResponse.json({ error: 'Course material is not attached to this course' }, { status: 404 });
   }
 
   const downloadUrl = await createMaterialDownloadUrl(body.r2Key);

@@ -3,6 +3,7 @@ import { eq, ilike } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { technicianVerifications, technicians } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { requireApprovedSupplier } from '@/lib/server/supplier-access';
 import type { TechnicianVerification, VerificationMethod, VerificationResult } from '@/lib/platformStore';
 import type { Technician } from '@/types/index';
 
@@ -68,7 +69,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['vendor']);
+    session = await requireApprovedSupplier(req);
   } catch (e) {
     return e as Response;
   }

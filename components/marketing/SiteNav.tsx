@@ -202,12 +202,12 @@ export function SiteNav() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
-                  href="/supplier-register"
+                  href="/contact"
                   onClick={() => setMobileMenuOpen(false)}
                   className="w-full text-center font-medium py-3 px-5 text-sm border transition-colors hover:bg-[#FAFAF9] text-gray-600"
                   style={{ borderColor: '#E5E0DB' }}
                 >
-                  Register as Supplier
+                  Supplier onboarding
                 </Link>
               </div>
             </div>
