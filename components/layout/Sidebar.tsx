@@ -177,6 +177,7 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
         label: 'Suppliers',
         items: [
             { name: 'Supplier Management', href: '/suppliers', icon: Factory, roles: ['org_admin'], exact: true },
+            { name: 'Invite Supplier', href: '/admin/suppliers/add', icon: UserPlus, roles: ['org_admin'] },
             { name: 'Supplier Compliance', href: '/supplier-compliance', icon: ShieldCheck, roles: ['org_admin'] },
             { name: 'Vendor Reorder', href: '/suppliers/reorder', icon: Factory, roles: ['org_admin'] },
             { name: 'Verify Buyer', href: '/suppliers/verify-buyer', icon: ShieldCheck, roles: ['org_admin'] },

@@ -145,12 +145,6 @@ function LoginPageContent() {
                 </button>
                 </form>
 
-                <p className="text-center text-sm text-[#78716C]">
-                  New here?{' '}
-                  <Link href="/join" className="font-semibold text-[#D97706] hover:underline">
-                    Create an account
-                  </Link>
-                </p>
               </div>
             )}
 
