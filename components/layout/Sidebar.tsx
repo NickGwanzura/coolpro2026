@@ -223,21 +223,22 @@ function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string;
         <Link
             href={item.href}
             onClick={onClose}
+            aria-current={isActive ? 'page' : undefined}
             className={cn(
-                'group flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors duration-150',
+                'group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]',
                 isActive
-                    ? 'bg-white/10 text-white'
-                    : 'text-[#A8A29E] hover:bg-white/5 hover:text-white'
+                    ? 'bg-white/[0.12] text-white shadow-sm'
+                    : 'text-[#D6D3D1] hover:bg-white/[0.08] hover:text-white'
             )}
         >
             <item.icon
                 className={cn(
                     'w-4 h-4 flex-shrink-0 transition-colors',
-                    isActive ? 'text-[#D97706]' : 'text-[#57534E] group-hover:text-[#A8A29E]'
+                    isActive ? 'text-[#F59E0B]' : 'text-[#A8A29E] group-hover:text-white'
                 )}
             />
             <span className="truncate">{item.name}</span>
-            {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#D97706] flex-shrink-0" />}
+            {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#F59E0B] flex-shrink-0" />}
         </Link>
     );
 }
@@ -256,11 +257,11 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
     })).filter(section => section.items.length > 0);
 
     return (
-        <div className={cn('flex flex-col h-full bg-[#1C1917]', className)}>
+        <div className={cn('flex flex-col h-full bg-[#1C1917] text-white', className)}>
             {/* Logo */}
             <div className="h-16 flex items-center px-5 border-b border-white/10 flex-shrink-0">
                 <div className="flex items-center justify-between w-full">
-                    <Link href="/dashboard" className="flex items-center gap-2.5 focus-visible:outline-none">
+                    <Link href="/dashboard" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]" aria-label="Go to dashboard">
                         <div className="flex items-center gap-2 flex-shrink-0">
                             <img
                                 src="/logos/ministry-of-environment.jpeg"
@@ -278,7 +279,8 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
                     {onClose && (
                         <button
                             onClick={onClose}
-                            className="lg:hidden p-1.5 text-[#57534E] hover:text-white transition-colors"
+                            aria-label="Close navigation"
+                            className="lg:hidden flex h-10 w-10 items-center justify-center rounded-lg text-[#D6D3D1] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]"
                         >
                             <X className="h-4 w-4" />
                         </button>
@@ -287,12 +289,12 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 px-2 py-4 overflow-y-auto">
+            <nav className="flex-1 overflow-y-auto px-2 py-4 [scrollbar-color:#57534E_transparent]" aria-label="Primary navigation">
                 {visibleSections.map((section, i) => (
                     <div key={i}>
                         {section.label && (
-                            <div className="pt-4 pb-1 px-3">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#57534E]">
+                            <div className="px-3 pb-1 pt-4 first:pt-0">
+                                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#A8A29E]">
                                     {section.label}
                                 </p>
                             </div>
@@ -313,10 +315,10 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
                         type="button"
                         onClick={toggleEmergencyMode}
                         className={cn(
-                            'w-full flex items-center gap-3 px-3 py-3 text-sm font-semibold transition-colors border',
+                            'w-full flex min-h-11 items-center gap-3 rounded-lg border px-3 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]',
                             emergencyMode
                                 ? 'bg-rose-600 border-rose-500 text-white hover:bg-rose-700'
-                                : 'bg-[#292524] border-white/10 text-[#A8A29E] hover:bg-white/5 hover:text-white'
+                                : 'bg-[#292524] border-white/10 text-[#D6D3D1] hover:bg-white/[0.08] hover:text-white'
                         )}
                     >
                         {emergencyMode
@@ -337,14 +339,14 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
             <div className="p-4 border-t border-white/10 flex-shrink-0">
                 <button
                     onClick={() => setIsProfileModalOpen(true)}
-                    className="flex w-full items-center gap-3 mb-3 hover:bg-white/5 p-2 rounded-md transition-colors text-left"
+                    className="mb-3 flex min-h-11 w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]"
                 >
                     <div className="w-8 h-8 flex items-center justify-center bg-[#292524] flex-shrink-0 rounded-full">
-                        <UserCircle className="w-5 h-5 text-[#78716C]" />
+                        <UserCircle className="w-5 h-5 text-[#D6D3D1]" />
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">{user?.name ?? ' '}</p>
-                        <p className="text-xs text-[#78716C] capitalize truncate">
+                        <p className="text-xs font-medium text-[#A8A29E] capitalize truncate">
                             {user?.role?.replace('_', ' ') ?? ''}
                         </p>
                     </div>
