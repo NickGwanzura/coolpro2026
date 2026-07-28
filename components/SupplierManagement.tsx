@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
     ArrowRight,
@@ -19,7 +19,7 @@ import {
     Users,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { useSupplierApplications, approveSupplierApplication, rejectSupplierApplication, useApprovedSuppliers } from '@/lib/api';
+import { useSupplierApplications, approveSupplierApplication, markSupplierApplicationUnderReview, rejectSupplierApplication, useApprovedSuppliers } from '@/lib/api';
 import VendorReportingPanel from '@/components/VendorReportingPanel';
 import type {
     SupplierRegistrationStatus,
@@ -70,6 +70,7 @@ export default function SupplierManagement() {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [provinceFilter, setProvinceFilter] = useState('all');
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const selectedApplicationRef = useRef<HTMLDivElement | null>(null);
 
     const isVendor = session?.role === 'vendor';
     const canReview = session ? ['org_admin'].includes(session.role) : false;
@@ -145,11 +146,20 @@ export default function SupplierManagement() {
     ] as const;
 
     const updateStatus = async (id: string, status: SupplierRegistrationStatus) => {
-        if (status === 'approved') {
+        if (status === 'under-review') {
+            await markSupplierApplicationUnderReview(id);
+        } else if (status === 'approved') {
             await approveSupplierApplication(id);
         } else if (status === 'rejected') {
             await rejectSupplierApplication(id);
         }
+    };
+
+    const handleReviewApplication = (id: string) => {
+        setSelectedId(id);
+        requestAnimationFrame(() => {
+            selectedApplicationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
     };
 
     return (
@@ -375,9 +385,10 @@ export default function SupplierManagement() {
                                             <button
                                                 key={application.id}
                                                 type="button"
-                                                onClick={() => setSelectedId(application.id)}
-                                                className={`grid w-full grid-cols-[1.4fr_0.8fr_0.7fr_0.6fr] gap-4 px-4 py-4 text-left transition hover:bg-gray-50 ${
-                                                    isSelected ? 'bg-[#5A7D5A]/5' : 'bg-white'
+                                                onClick={() => handleReviewApplication(application.id)}
+                                                aria-label={`Review ${application.tradingName || application.companyName}`}
+                                                className={`grid w-full grid-cols-[1.4fr_0.8fr_0.7fr_0.6fr] gap-4 px-4 py-4 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset ${
+                                                    isSelected ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : 'bg-white hover:bg-gray-50'
                                                 }`}
                                             >
                                                 <div className="min-w-0">
@@ -398,8 +409,10 @@ export default function SupplierManagement() {
                                                     </Badge>
                                                 </div>
                                                 <div className="flex items-center justify-end">
-                                                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
-                                                        Review
+                                                    <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] ${
+                                                        isSelected ? 'bg-blue-600 text-white' : 'border border-blue-200 bg-blue-50 text-blue-700'
+                                                    }`}>
+                                                        {isSelected ? 'Selected' : 'Review'}
                                                     </span>
                                                 </div>
                                             </button>
@@ -411,7 +424,7 @@ export default function SupplierManagement() {
                         </div>
                     </div>
 
-                    <aside className="space-y-6">
+                    <aside ref={selectedApplicationRef} className="scroll-mt-6 space-y-6">
                         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">Selected application</p>
                             {selectedApplication ? (

@@ -358,6 +358,12 @@ export async function approveSupplierApplication(id: string): Promise<SupplierAp
   return result;
 }
 
+export async function markSupplierApplicationUnderReview(id: string): Promise<SupplierApplicationRecord> {
+  const result = await post<SupplierApplicationRecord>(`/api/supplier-applications/${id}/review`);
+  await mutate('/api/supplier-applications');
+  return result;
+}
+
 export async function rejectSupplierApplication(id: string, notes?: string): Promise<SupplierApplicationRecord> {
   const result = await post<SupplierApplicationRecord>(`/api/supplier-applications/${id}/reject`, { notes });
   await mutate('/api/supplier-applications');
