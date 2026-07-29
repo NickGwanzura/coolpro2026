@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { cocRequests } from '@/db/schema/index';
+import { cocRequests, installations } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { toCocRequest } from '../../route';
 
@@ -36,6 +36,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     })
     .where(eq(cocRequests.id, id))
     .returning();
+
+  if (updated.installationId) {
+    await db
+      .update(installations)
+      .set({
+        status: 'rejected',
+        cocRequested: true,
+        cocApproved: false,
+        cocRequestId: updated.id,
+        cocApprovalDate: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(installations.id, updated.installationId));
+  }
 
   return NextResponse.json(toCocRequest(updated));
 }

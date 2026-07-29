@@ -19,8 +19,10 @@ function toInstallation(row: typeof installations.$inferSelect): Installation {
     equipmentId: row.equipmentId ?? undefined,
     status: row.status as Installation['status'],
     images: row.images,
+    checklistSnapshot: row.checklistSnapshot ?? null,
     cocRequested: row.cocRequested,
     cocApproved: row.cocApproved,
+    cocRequestId: row.cocRequestId ?? undefined,
     cocApprovalDate: row.cocApprovalDate?.toISOString() ?? undefined,
   };
 }
@@ -28,7 +30,7 @@ function toInstallation(row: typeof installations.$inferSelect): Installation {
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician']);
+    session = requireRole(req, ['technician', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -76,8 +78,10 @@ export async function POST(req: Request) {
       installationDate: new Date(),
       status: 'pending',
       images: body.images ?? [],
+      checklistSnapshot: body.checklistSnapshot ?? null,
       cocRequested: false,
       cocApproved: false,
+      cocRequestId: null,
       notes: null,
     })
     .returning();

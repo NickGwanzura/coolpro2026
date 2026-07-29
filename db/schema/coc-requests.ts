@@ -1,4 +1,5 @@
-import { pgEnum, pgTable, text, timestamp, uuid, boolean } from 'drizzle-orm/pg-core';
+import { pgEnum, pgTable, text, timestamp, uuid, boolean, jsonb } from 'drizzle-orm/pg-core';
+import type { InstallationChecklistSnapshot } from '@/types/index';
 
 export const cocRequestStatusEnum = pgEnum('coc_request_status', [
   'submitted',
@@ -13,6 +14,7 @@ export const cocRequests = pgTable('coc_requests', {
   id: uuid('id').primaryKey().defaultRandom(),
   certificateNumber: text('certificate_number').notNull().unique(),
   plannerJobId: uuid('planner_job_id'),
+  installationId: uuid('installation_id'),
   technicianId: uuid('technician_id').notNull(),
   technicianName: text('technician_name').notNull(),
   clientName: text('client_name').notNull(),
@@ -21,6 +23,8 @@ export const cocRequests = pgTable('coc_requests', {
   serialNumber: text('serial_number'),
   installationDate: text('installation_date').notNull(),
   details: text('details'),
+  checklistSnapshot: jsonb('checklist_snapshot').$type<InstallationChecklistSnapshot | null>(),
+  evidenceImages: jsonb('evidence_images').notNull().$type<string[]>().default([]),
   complianceCheck: boolean('compliance_check').notNull().default(false),
   status: cocRequestStatusEnum('status').notNull().default('submitted'),
   verificationToken: text('verification_token'),

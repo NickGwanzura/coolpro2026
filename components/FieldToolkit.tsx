@@ -10,7 +10,6 @@ import {
   Download,
   History,
   PlusCircle,
-  Upload,
   FileCheck,
   ClipboardCheck,
   ShieldCheck,
@@ -25,11 +24,12 @@ import {
   X
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
-import { RefrigerantLog, Installation, JobType, JobTypeLabels, Refrigerant } from '../types';
+import { CocRequest, Installation, InstallationChecklistSnapshot, JobType, JobTypeLabels, Refrigerant, RefrigerantLog } from '../types';
 import { jsPDF } from 'jspdf';
 import { readCollection, STORAGE_KEYS } from '@/lib/platformStore';
-import { createGasLogs, searchRefrigerantsOnce, useApprovedSuppliers, useInstallations, createInstallation } from '@/lib/api';
+import { createCocRequest, createGasLogs, searchRefrigerantsOnce, useApprovedSuppliers, useCocRequests, useInstallations, createInstallation } from '@/lib/api';
 import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
+import { CocPdfButton } from '@/components/CocPdfButton';
 
 interface FieldToolkitProps {
   /** A refrigerant code detected by the OCR nameplate scanner, to prefill the gas register form. */
@@ -43,10 +43,12 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
   const { data: approvedSuppliersData, error: approvedSuppliersError, isLoading: approvedSuppliersLoading } = useApprovedSuppliers();
   const approvedSuppliers = approvedSuppliersData ?? [];
   const { data: dbInstallations = [], mutate: mutateInstallations } = useInstallations();
+  const { data: cocRequests = [] } = useCocRequests();
   const installations = dbInstallations;
   const [activeTab, setActiveTab] = useState<'checklist' | 'installations' | 'leaks'>('checklist');
   const [checklistType, setChecklistType] = useState<'installation' | 'regassing'>('installation');
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
+  const [savedChecklistSnapshot, setSavedChecklistSnapshot] = useState<InstallationChecklistSnapshot | null>(null);
 
   // Installation State
   const [installationForm, setInstallationForm] = useState({
@@ -161,22 +163,43 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
     );
   };
 
-  const handleSaveChecklist = () => {
-    const totalItems = (checklistType === 'installation' ? checklistItems : regassingChecklistItems)
-      .reduce((sum, category) => sum + category.items.length, 0);
-    const entry = {
-      id: Math.random().toString(36).substr(2, 9),
+  const buildChecklistSnapshot = (completedAt = new Date().toISOString()): InstallationChecklistSnapshot => {
+    const checklist = checklistType === 'installation' ? checklistItems : regassingChecklistItems;
+    const totalItems = checklist.reduce((sum, category) => sum + category.items.length, 0);
+    const items = checklist.flatMap((category, catIndex) =>
+      category.items.map((item, itemIndex) => {
+        const id = `${checklistType}-${catIndex}-${itemIndex}`;
+        return {
+          id,
+          category: category.category,
+          text: item.text,
+          checked: checkedItems.includes(id),
+          source: item.source ?? null,
+        };
+      }),
+    );
+    return {
       checklistType,
       completedItems: checkedItems.length,
       totalItems,
-      completedAt: new Date().toISOString(),
+      completedAt,
+      items,
+    };
+  };
+
+  const handleSaveChecklist = () => {
+    const snapshot = buildChecklistSnapshot();
+    const entry = {
+      id: Math.random().toString(36).substr(2, 9),
+      ...snapshot,
     };
     try {
       const existing = JSON.parse(window.localStorage.getItem(STORAGE_KEYS.fieldToolkitChecklists) ?? '[]');
       existing.unshift(entry);
       window.localStorage.setItem(STORAGE_KEYS.fieldToolkitChecklists, JSON.stringify(existing));
     } catch {}
-    setChecklistNotice(`Saved — ${checkedItems.length}/${totalItems} items checked.`);
+    setSavedChecklistSnapshot(snapshot);
+    setChecklistNotice(`Saved — ${checkedItems.length}/${snapshot.totalItems} items checked. This snapshot will attach to the next installation/COC request.`);
   };
 
   const checklistItems = [
@@ -289,6 +312,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
         floorSpace: installationForm.floorSpace.trim(),
         jobType: installationForm.jobType,
         images: uploadedImages,
+        checklistSnapshot: savedChecklistSnapshot,
       });
       await mutateInstallations();
       setInstallationForm({
@@ -298,6 +322,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
         jobType: 'COLD_ROOM',
       });
       setUploadedImages([]);
+      setSavedChecklistSnapshot(null);
       setInstallationNotice('Installation saved to the tracker.');
     } catch (err) {
       console.error('Failed to save installation:', err);
@@ -306,21 +331,26 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
   };
 
   // Request COC
-  const requestCOC = async (id: string) => {
+  const requestCOC = async (installation: Installation) => {
     setInstallationNotice('');
+    if (!installation.checklistSnapshot) {
+      setInstallationNotice('Complete and save the installation checklist before requesting a COC.');
+      return;
+    }
     try {
-      const res = await fetch(`/api/installations/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ cocRequested: true }),
+      await createCocRequest({
+        installationId: installation.id,
+        clientName: installation.clientName,
+        location: installation.location || 'Location not captured',
+        equipmentType: JobTypeLabels[installation.jobType as JobType] ?? installation.jobType,
+        installationDate: installation.installationDate.slice(0, 10),
+        details: installation.jobDetails,
+        checklistSnapshot: installation.checklistSnapshot,
+        evidenceImages: installation.images,
+        complianceCheck: true,
       });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        throw new Error(payload.error || 'Failed to request COC.');
-      }
       await mutateInstallations();
-      setInstallationNotice('COC request sent for admin review.');
+      setInstallationNotice('COC request sent for admin review with checklist and evidence attached.');
     } catch (err) {
       console.error('Failed to request COC:', err);
       setInstallationNotice(err instanceof Error ? err.message : 'Failed to request COC.');
@@ -353,82 +383,6 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
       return matchesSearch && matchesStatus;
     });
   }, [installationSearch, installationStatusFilter, installations]);
-
-  // Generate COC Certificate PDF
-  const generateCOCCertificate = (installation: Installation) => {
-    const doc = new jsPDF();
-    
-    // Header
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('CERTIFICATE OF CONFORMITY', 105, 25, { align: 'center' });
-    
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text('HEVACRAZ', 105, 35, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text('HVAC-R Association of Zimbabwe', 105, 42, { align: 'center' });
-    
-    // Certificate Number
-    doc.setFontSize(10);
-    doc.text(`Certificate No: COC-${installation.id.toUpperCase()}`, 20, 50);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 58);
-    
-    // Client Info
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Client Details', 20, 75);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Client Name: ${installation.clientName}`, 25, 85);
-    doc.text(`Job Type: ${JobTypeLabels[installation.jobType]}`, 25, 93);
-    doc.text(`Floor Space: ${installation.floorSpace || 'N/A'}`, 25, 101);
-    
-    // Job Details
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Installation Details', 20, 118);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    const jobDetailsLines = doc.splitTextToSize(installation.jobDetails, 170);
-    doc.text(jobDetailsLines, 25, 128);
-    
-    // Technician Info
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Technician', 20, 150);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Name: ${installation.technicianName}`, 25, 160);
-    doc.text(`Installation Date: ${new Date(installation.installationDate).toLocaleDateString()}`, 25, 168);
-    
-    // Approval
-    if (installation.cocApproved) {
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Certificate Approved', 20, 185);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Approval Date: ${installation.cocApprovalDate ? new Date(installation.cocApprovalDate).toLocaleDateString() : 'N/A'}`, 25, 195);
-    }
-    
-    // References
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text('References & Standards:', 20, 220);
-    doc.setFontSize(8);
-    doc.text('• SANS 5001-1: South African National Standard for Refrigeration', 25, 230);
-    doc.text('• SANS 10142-1: Wiring of Premises (Electrical)', 25, 238);
-    doc.text('• ASHRAE Standards: American Society of Heating, Refrigerating and Air-Conditioning Engineers', 25, 246);
-    
-    // Footer
-    doc.setFontSize(8);
-    doc.setTextColor(128);
-    doc.text('This certificate is issued subject to HEVACRAZ terms and conditions', 105, 270, { align: 'center' });
-    doc.text('Generated by HEVACRAZ Digital Field Toolkit', 105, 278, { align: 'center' });
-    
-    doc.save(`COC-Certificate-${installation.id}.pdf`);
-  };
 
   const handleLogSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -759,10 +713,12 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                 )}
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  {installationNotice ? (
+                {installationNotice ? (
                     <p className="text-sm font-medium text-stone-700">{installationNotice}</p>
                   ) : (
-                    <p className="text-sm text-stone-500">Images are kept with the installation record shown below.</p>
+                    <p className="text-sm text-stone-500">
+                      Images and the latest saved checklist snapshot are kept with this installation record.
+                    </p>
                   )}
                   <button
                     type="submit"
@@ -808,7 +764,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                       key={inst.id}
                       installation={inst}
                       onRequestCoc={requestCOC}
-                      onDownloadCoc={generateCOCCertificate}
+                      cocRequest={cocRequests.find(request => request.id === inst.cocRequestId || request.installationId === inst.id)}
                     />
                   ))
                 ) : (
@@ -1148,11 +1104,11 @@ function InstallationMetric({
 function InstallationCard({
   installation,
   onRequestCoc,
-  onDownloadCoc,
+  cocRequest,
 }: {
   installation: Installation;
-  onRequestCoc: (id: string) => void;
-  onDownloadCoc: (installation: Installation) => void;
+  onRequestCoc: (installation: Installation) => void;
+  cocRequest?: CocRequest;
 }) {
   const statusClass =
     installation.status === 'approved'
@@ -1167,6 +1123,9 @@ function InstallationCard({
       ? { label: 'COC pending', className: 'border-blue-200 bg-blue-50 text-blue-700', icon: Clock }
       : { label: 'COC not requested', className: 'border-stone-200 bg-stone-50 text-stone-600', icon: FileCheck };
   const CocIcon = cocStatus.icon;
+  const checklistComplete = installation.checklistSnapshot
+    ? installation.checklistSnapshot.completedItems === installation.checklistSnapshot.totalItems
+    : false;
 
   return (
     <article className="bg-white px-4 py-4 transition hover:bg-stone-50 sm:px-5">
@@ -1209,6 +1168,12 @@ function InstallationCard({
                 {installation.images.length} image{installation.images.length === 1 ? '' : 's'}
               </span>
             )}
+            {installation.checklistSnapshot && (
+              <span className={`inline-flex items-center gap-1.5 ${checklistComplete ? 'text-emerald-700' : 'text-amber-700'}`}>
+                <CheckSquare className="h-3.5 w-3.5" />
+                Checklist {installation.checklistSnapshot.completedItems}/{installation.checklistSnapshot.totalItems}
+              </span>
+            )}
           </div>
 
           {installation.images.length > 0 && (
@@ -1229,11 +1194,13 @@ function InstallationCard({
           {!installation.cocRequested && (
             <button
               type="button"
-              onClick={() => onRequestCoc(installation.id)}
+              onClick={() => onRequestCoc(installation)}
+              disabled={!installation.checklistSnapshot}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+              title={installation.checklistSnapshot ? 'Request COC' : 'Complete and save checklist first'}
             >
               <FileCheck className="h-4 w-4" />
-              Request COC
+              {installation.checklistSnapshot ? 'Request COC' : 'Checklist required'}
             </button>
           )}
           {installation.cocRequested && !installation.cocApproved && (
@@ -1242,15 +1209,10 @@ function InstallationCard({
               Awaiting admin
             </span>
           )}
-          {installation.cocApproved && (
-            <button
-              type="button"
-              onClick={() => onDownloadCoc(installation)}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#D97706] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#b45309]"
-            >
-              <Download className="h-4 w-4" />
-              Download COC
-            </button>
+          {cocRequest?.status === 'approved' && (
+            <div className="inline-flex min-h-11 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-2">
+              <CocPdfButton request={cocRequest} />
+            </div>
           )}
         </div>
       </div>

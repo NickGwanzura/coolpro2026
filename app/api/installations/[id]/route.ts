@@ -19,8 +19,10 @@ function toInstallation(row: typeof installations.$inferSelect): Installation {
     equipmentId: row.equipmentId ?? undefined,
     status: row.status as Installation['status'],
     images: row.images,
+    checklistSnapshot: row.checklistSnapshot ?? null,
     cocRequested: row.cocRequested,
     cocApproved: row.cocApproved,
+    cocRequestId: row.cocRequestId ?? undefined,
     cocApprovalDate: row.cocApprovalDate?.toISOString() ?? undefined,
   };
 }
@@ -67,6 +69,7 @@ export async function PATCH(
   const updateFields: Record<string, unknown> = {};
   if (session.role === 'org_admin' && body.status) updateFields.status = body.status;
   if (body.cocRequested !== undefined) updateFields.cocRequested = body.cocRequested;
+  if (body.checklistSnapshot !== undefined) updateFields.checklistSnapshot = body.checklistSnapshot;
   if (session.role === 'org_admin' && body.cocApproved !== undefined) updateFields.cocApproved = body.cocApproved;
   if (session.role === 'org_admin' && body.cocApprovalDate !== undefined) updateFields.cocApprovalDate = body.cocApprovalDate ? new Date(body.cocApprovalDate) : null;
   updateFields.updatedAt = new Date();

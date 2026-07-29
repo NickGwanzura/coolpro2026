@@ -685,6 +685,20 @@ export interface RefrigerantLog {
   purchaseTransactionId?: string;
 }
 
+export interface InstallationChecklistSnapshot {
+  checklistType: 'installation' | 'regassing';
+  completedItems: number;
+  totalItems: number;
+  completedAt: string;
+  items: Array<{
+    id: string;
+    text: string;
+    category: string;
+    checked: boolean;
+    source?: string | null;
+  }>;
+}
+
 // Installation Types
 export interface Installation {
   id: string;
@@ -701,8 +715,10 @@ export interface Installation {
   nameplateJson?: Record<string, string | number | boolean | null>;
   status: 'pending' | 'approved' | 'rejected';
   images: string[];
+  checklistSnapshot?: InstallationChecklistSnapshot | null;
   cocRequested: boolean;
   cocApproved: boolean;
+  cocRequestId?: string;
   cocApprovalDate?: string;
 }
 
@@ -1123,6 +1139,7 @@ export interface CocRequest {
   id: string;
   certificateNumber: string;
   plannerJobId?: string;
+  installationId?: string;
   technicianId: string;
   technicianName: string;
   clientName: string;
@@ -1131,6 +1148,8 @@ export interface CocRequest {
   serialNumber?: string;
   installationDate: string;
   details?: string;
+  checklistSnapshot?: InstallationChecklistSnapshot | null;
+  evidenceImages?: string[];
   complianceCheck: boolean;
   status: CocRequestStatus;
   verificationToken?: string;

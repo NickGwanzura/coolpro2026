@@ -1,4 +1,5 @@
-import { pgEnum, pgTable, text, timestamp, numeric, uuid, boolean, jsonb } from 'drizzle-orm/pg-core';
+import { pgEnum, pgTable, text, timestamp, uuid, boolean, jsonb } from 'drizzle-orm/pg-core';
+import type { InstallationChecklistSnapshot } from '@/types/index';
 
 export const installationStatusEnum = pgEnum('installation_status', [
   'pending',
@@ -27,8 +28,10 @@ export const installations = pgTable('installations', {
   equipmentId: uuid('equipment_id'),
   status: installationStatusEnum('status').notNull().default('pending'),
   images: jsonb('images').notNull().$type<string[]>().default([]),
+  checklistSnapshot: jsonb('checklist_snapshot').$type<InstallationChecklistSnapshot | null>(),
   cocRequested: boolean('coc_requested').notNull().default(false),
   cocApproved: boolean('coc_approved').notNull().default(false),
+  cocRequestId: uuid('coc_request_id'),
   cocApprovalDate: timestamp('coc_approval_date', { withTimezone: true }),
   notes: text('notes'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

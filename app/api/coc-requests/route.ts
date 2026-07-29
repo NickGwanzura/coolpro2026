@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, or } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { cocRequests, plannerJobs } from '@/db/schema/index';
+import { cocRequests, installations, plannerJobs } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { CocRequest } from '@/types/index';
 
@@ -14,6 +14,7 @@ export function toCocRequest(row: typeof cocRequests.$inferSelect): CocRequest {
     id: row.id,
     certificateNumber: row.certificateNumber,
     plannerJobId: row.plannerJobId ?? undefined,
+    installationId: row.installationId ?? undefined,
     technicianId: row.technicianId,
     technicianName: row.technicianName,
     clientName: row.clientName,
@@ -22,6 +23,8 @@ export function toCocRequest(row: typeof cocRequests.$inferSelect): CocRequest {
     serialNumber: row.serialNumber ?? undefined,
     installationDate: row.installationDate,
     details: row.details ?? undefined,
+    checklistSnapshot: row.checklistSnapshot ?? null,
+    evidenceImages: row.evidenceImages ?? [],
     complianceCheck: row.complianceCheck,
     status: row.status as CocRequest['status'],
     verificationToken: row.verificationToken ?? undefined,
@@ -78,6 +81,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Compliance confirmation is required' }, { status: 400 });
   }
 
+  let linkedInstallation: typeof installations.$inferSelect | null = null;
+
+  if (body.installationId) {
+    const [installation] = await db
+      .select()
+      .from(installations)
+      .where(and(eq(installations.id, body.installationId), eq(installations.technicianId, session.id)))
+      .limit(1);
+    if (!installation) {
+      return NextResponse.json({ error: 'Installation not found for this technician' }, { status: 404 });
+    }
+    linkedInstallation = installation;
+  }
+
   if (body.plannerJobId) {
     const [job] = await db
       .select()
@@ -88,13 +105,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Planner job not found for this technician' }, { status: 404 });
     }
 
-    const [existingRequest] = await db
-      .select()
-      .from(cocRequests)
-      .where(and(eq(cocRequests.plannerJobId, body.plannerJobId), eq(cocRequests.technicianId, session.id)))
-      .limit(1);
+  }
+
+  if (body.plannerJobId || body.installationId) {
+    const duplicateConditions = [
+      body.plannerJobId ? eq(cocRequests.plannerJobId, body.plannerJobId) : undefined,
+      body.installationId ? eq(cocRequests.installationId, body.installationId) : undefined,
+    ].filter(Boolean) as NonNullable<ReturnType<typeof eq>>[];
+
+    const [existingRequest] = duplicateConditions.length > 0
+      ? await db
+          .select()
+          .from(cocRequests)
+          .where(and(eq(cocRequests.technicianId, session.id), or(...duplicateConditions)!))
+          .limit(1)
+      : [];
     if (existingRequest) {
-      return NextResponse.json({ error: 'A COC request already exists for this planner job' }, { status: 409 });
+      return NextResponse.json({ error: 'A COC request already exists for this job or installation' }, { status: 409 });
     }
   }
 
@@ -103,6 +130,7 @@ export async function POST(req: Request) {
     .values({
       certificateNumber: certificateNumber(),
       plannerJobId: body.plannerJobId ?? null,
+      installationId: body.installationId ?? null,
       technicianId: session.id,
       technicianName: session.name,
       clientName: body.clientName!,
@@ -110,11 +138,25 @@ export async function POST(req: Request) {
       equipmentType: body.equipmentType!,
       serialNumber: body.serialNumber ?? null,
       installationDate: body.installationDate!,
-      details: body.details ?? null,
+      details: body.details ?? linkedInstallation?.jobDetails ?? null,
+      checklistSnapshot: body.checklistSnapshot ?? linkedInstallation?.checklistSnapshot ?? null,
+      evidenceImages: body.evidenceImages ?? linkedInstallation?.images ?? [],
       complianceCheck: body.complianceCheck ?? false,
       status: 'submitted',
     })
     .returning();
+
+  if (body.installationId) {
+    await db
+      .update(installations)
+      .set({
+        cocRequested: true,
+        cocApproved: false,
+        cocRequestId: inserted.id,
+        updatedAt: new Date(),
+      })
+      .where(eq(installations.id, body.installationId));
+  }
 
   return NextResponse.json(toCocRequest(inserted), { status: 201 });
 }

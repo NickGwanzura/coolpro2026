@@ -901,16 +901,18 @@ export function useCocRequests(enabled = true) {
 
 export async function createCocRequest(
   body: Pick<CocRequest, 'clientName' | 'location' | 'equipmentType' | 'installationDate' | 'complianceCheck'> &
-    Partial<Pick<CocRequest, 'plannerJobId' | 'serialNumber' | 'details'>>,
+    Partial<Pick<CocRequest, 'plannerJobId' | 'installationId' | 'serialNumber' | 'details' | 'checklistSnapshot' | 'evidenceImages'>>,
 ): Promise<CocRequest> {
   const result = await post<CocRequest>('/api/coc-requests', body);
   await mutate('/api/coc-requests');
+  await mutate('/api/installations');
   return result;
 }
 
 export async function reviewCocRequest(id: string, action: 'approve' | 'reject', notes?: string): Promise<CocRequest> {
   const result = await post<CocRequest>(`/api/coc-requests/${id}/${action}`, notes ? { notes } : undefined);
   await mutate('/api/coc-requests');
+  await mutate('/api/installations');
   return result;
 }
 
@@ -923,7 +925,7 @@ export function useInstallations() {
 }
 
 export async function createInstallation(
-  body: Omit<Installation, 'id' | 'technicianId' | 'technicianName' | 'installationDate' | 'status' | 'cocRequested' | 'cocApproved'>,
+  body: Omit<Installation, 'id' | 'technicianId' | 'technicianName' | 'installationDate' | 'status' | 'cocRequested' | 'cocApproved' | 'cocRequestId' | 'cocApprovalDate'>,
 ): Promise<Installation> {
   const result = await post<Installation>('/api/installations', body);
   await mutate('/api/installations');
