@@ -20,9 +20,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useSupplierApplications, approveSupplierApplication, markSupplierApplicationUnderReview, rejectSupplierApplication, useApprovedSuppliers } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 import VendorReportingPanel from '@/components/VendorReportingPanel';
 import type {
     SupplierRegistrationStatus,
+    SupplierSurveyData,
 } from '@/types/index';
 
 type StatusFilter = SupplierRegistrationStatus | 'all';
@@ -41,11 +43,42 @@ const STATUS_LABELS: Record<SupplierRegistrationStatus, string> = {
     rejected: 'Rejected',
 };
 
+const SURVEY_LABELS: Record<keyof SupplierSurveyData, string> = {
+    employeeCountBand: 'Employee count',
+    yearsInOperation: 'Years in operation',
+    recoveryEquipmentAccess: 'Recovery equipment access',
+    storageComplianceConfidence: 'Storage compliance confidence',
+    lowGwpRegulationConfidence: 'Low-GWP regulation confidence',
+    loadSheddingFrequency: 'Load-shedding frequency',
+    preferredLanguage: 'Preferred language',
+    biggestDistributionChallenge: 'Biggest distribution challenge',
+};
+
+const SURVEY_VALUE_LABELS: Record<string, string> = {
+    '1_5': '1–5',
+    '6_20': '6–20',
+    '21_50': '21–50',
+    '51_200': '51–200',
+    '200_plus': '200+',
+    under_1: 'Under 1 year',
+    '1_3': '1–3 years',
+    '4_10': '4–10 years',
+    '11_20': '11–20 years',
+    '20_plus': '20+ years',
+    no_access: 'No access',
+};
+
 function formatDate(value: string) {
     return new Intl.DateTimeFormat('en-ZW', {
         dateStyle: 'medium',
         timeStyle: 'short',
     }).format(new Date(value));
+}
+
+function formatSurveyValue(value: unknown) {
+    if (typeof value === 'number') return `${value}/5`;
+    if (typeof value === 'string') return SURVEY_VALUE_LABELS[value] ?? value.replace(/_/g, ' ');
+    return String(value);
 }
 
 function Badge({
@@ -64,12 +97,14 @@ function Badge({
 
 export default function SupplierManagement() {
     const { user: session, isLoading } = useAuth();
+    const { success, error } = useToast();
     const { data: applications = [], isLoading: applicationsLoading, error: applicationsError } = useSupplierApplications();
     const { data: approvedSuppliersData } = useApprovedSuppliers();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [provinceFilter, setProvinceFilter] = useState('all');
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [actingStatus, setActingStatus] = useState<SupplierRegistrationStatus | null>(null);
     const selectedApplicationRef = useRef<HTMLDivElement | null>(null);
 
     const isVendor = session?.role === 'vendor';
@@ -146,12 +181,22 @@ export default function SupplierManagement() {
     ] as const;
 
     const updateStatus = async (id: string, status: SupplierRegistrationStatus) => {
-        if (status === 'under-review') {
-            await markSupplierApplicationUnderReview(id);
-        } else if (status === 'approved') {
-            await approveSupplierApplication(id);
-        } else if (status === 'rejected') {
-            await rejectSupplierApplication(id);
+        setActingStatus(status);
+        try {
+            if (status === 'under-review') {
+                await markSupplierApplicationUnderReview(id);
+                success('Supplier application marked under review.');
+            } else if (status === 'approved') {
+                await approveSupplierApplication(id);
+                success('Supplier application approved and vendor account updated.');
+            } else if (status === 'rejected') {
+                await rejectSupplierApplication(id);
+                success('Supplier application rejected.');
+            }
+        } catch (err) {
+            error(err instanceof Error ? err.message : 'Could not update supplier application.');
+        } finally {
+            setActingStatus(null);
         }
     };
 
@@ -388,27 +433,30 @@ export default function SupplierManagement() {
                                         <div className="flex flex-wrap gap-2">
                                             <button
                                                 type="button"
+                                                disabled={actingStatus !== null || selectedApplication.status === 'approved' || selectedApplication.status === 'rejected'}
                                                 onClick={() => updateStatus(selectedApplication.id, 'under-review')}
-                                                className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+                                                className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                                 <Clock3 className="h-4 w-4" />
-                                                Under review
+                                                {actingStatus === 'under-review' ? 'Updating…' : 'Under review'}
                                             </button>
                                             <button
                                                 type="button"
+                                                disabled={actingStatus !== null || selectedApplication.status === 'approved'}
                                                 onClick={() => updateStatus(selectedApplication.id, 'approved')}
-                                                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                                                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                                 <CheckCircle2 className="h-4 w-4" />
-                                                Approve
+                                                {actingStatus === 'approved' ? 'Approving…' : 'Approve'}
                                             </button>
                                             <button
                                                 type="button"
+                                                disabled={actingStatus !== null || selectedApplication.status === 'rejected' || selectedApplication.status === 'approved'}
                                                 onClick={() => updateStatus(selectedApplication.id, 'rejected')}
-                                                className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                                                className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                                 <ShieldAlert className="h-4 w-4" />
-                                                Reject
+                                                {actingStatus === 'rejected' ? 'Rejecting…' : 'Reject'}
                                             </button>
                                         </div>
                                     )}
@@ -427,6 +475,12 @@ export default function SupplierManagement() {
                                     )}
                                     {selectedApplication.website && (
                                         <p className="sm:col-span-2"><span className="font-semibold text-gray-900">Website:</span> {selectedApplication.website}</p>
+                                    )}
+                                    {selectedApplication.address && (
+                                        <p className="sm:col-span-2"><span className="font-semibold text-gray-900">Address:</span> {selectedApplication.address}</p>
+                                    )}
+                                    {selectedApplication.notes && (
+                                        <p className="sm:col-span-2"><span className="font-semibold text-gray-900">Notes:</span> {selectedApplication.notes}</p>
                                     )}
                                 </div>
 
@@ -452,6 +506,28 @@ export default function SupplierManagement() {
                                         )}
                                     </div>
                                 )}
+
+                                <details className="mt-4 rounded-lg border border-blue-100 bg-white">
+                                    <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-900">
+                                        Drill down: questionnaire and compliance answers
+                                    </summary>
+                                    <div className="border-t border-blue-100 p-4">
+                                        {selectedApplication.surveyData && Object.entries(selectedApplication.surveyData).some(([, value]) => value !== undefined && value !== null && value !== '') ? (
+                                            <div className="grid gap-3 text-sm text-gray-700 sm:grid-cols-2">
+                                                {Object.entries(selectedApplication.surveyData)
+                                                    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+                                                    .map(([key, value]) => (
+                                                        <p key={key}>
+                                                            <span className="font-semibold text-gray-900">{SURVEY_LABELS[key as keyof SupplierSurveyData] ?? key}:</span>{' '}
+                                                            {formatSurveyValue(value)}
+                                                        </p>
+                                                    ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-gray-500">No questionnaire answers were saved for this application.</p>
+                                        )}
+                                    </div>
+                                </details>
                             </div>
                         )}
 

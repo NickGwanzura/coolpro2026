@@ -361,9 +361,9 @@ export default function DashboardPage() {
     ];
     const technicianQuickActions: QuickAction[] = [
         {
-            href: '/job-planner',
-            title: 'Job Planner',
-            detail: 'Schedule and manage service jobs',
+            href: '/field-operations',
+            title: 'Field Operations',
+            detail: 'Schedule, plan, and review field work',
             icon: CalendarDays,
             iconClassName: 'bg-teal-100 text-teal-600',
         },
@@ -376,7 +376,7 @@ export default function DashboardPage() {
             iconStyle: { backgroundColor: colors.accent + '20', color: colors.accent },
         },
         {
-            href: '/jobs',
+            href: '/field-operations?tab=logs',
             title: 'Jobs & Logs',
             detail: 'View all records',
             icon: ClipboardCheck,
@@ -476,7 +476,7 @@ export default function DashboardPage() {
             iconClassName: 'bg-cyan-100 text-cyan-600',
         },
         {
-            href: '/safety',
+            href: '/safety-center',
             title: 'Safety Center',
             detail: 'Guidance and safety resources',
             icon: ShieldAlert,
@@ -867,8 +867,8 @@ export default function DashboardPage() {
                                     <h2 className="text-base font-semibold text-[#1C1917]">Upcoming Schedule</h2>
                                     <p className="text-xs text-[#78716C] mt-0.5">Jobs assigned and pending</p>
                                 </div>
-                                <Link href="/job-planner" className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97706] hover:text-[#b45309]">
-                                    Planner <ChevronRight className="h-3 w-3" />
+                                <Link href="/field-operations?tab=planner" className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97706] hover:text-[#b45309]">
+                                    Field Ops <ChevronRight className="h-3 w-3" />
                                 </Link>
                             </div>
                             <div className="divide-y divide-[#E7E5E4]">
@@ -876,8 +876,8 @@ export default function DashboardPage() {
                                     <div className="px-6 py-8 text-center">
                                         <CalendarDays className="h-8 w-8 text-[#D1C5C0] mx-auto mb-2" />
                                         <p className="text-sm text-[#78716C]">No upcoming jobs scheduled.</p>
-                                        <Link href="/job-planner" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#D97706]">
-                                            Open Job Planner <ArrowRight className="h-3 w-3" />
+                                        <Link href="/field-operations?tab=planner" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#D97706]">
+                                            Open Field Operations <ArrowRight className="h-3 w-3" />
                                         </Link>
                                     </div>
                                 ) : (
@@ -914,7 +914,7 @@ export default function DashboardPage() {
                                                     <div className="flex items-center gap-2 shrink-0">
                                                         <span className="text-xs font-semibold text-[#44403C] hidden sm:block">{job.scheduledDate}</span>
                                                         <Link
-                                                            href="/job-planner"
+                                                            href="/field-operations?tab=planner"
                                                             className="rounded-lg inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#D97706] bg-[#D97706]/5 border border-[#D97706]/20 hover:bg-[#D97706]/10 transition-colors opacity-0 group-hover:opacity-100"
                                                                                 >
                                                             Open <ArrowRight className="h-3 w-3" />

@@ -27,6 +27,7 @@ function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): 
     pesepayMerchantId: row.pesepayMerchantId ?? undefined,
     website: row.website ?? undefined,
     notes: row.notes ?? undefined,
+    surveyData: (row.surveyData as SupplierRegistration['surveyData']) ?? undefined,
     status: row.status as SupplierRegistration['status'],
     submittedAt: row.submittedAt.toISOString(),
     reviewedAt: row.reviewedAt?.toISOString() ?? undefined,

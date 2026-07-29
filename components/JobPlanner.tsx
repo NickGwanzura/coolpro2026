@@ -123,6 +123,7 @@ export default function JobPlanner() {
         }
         setSubmitting(true);
         try {
+            const selectedTechnician = technicians.find(technician => technician.id === formData.technicianId || technician.name === formData.technicianName);
             const created = await createPlannerJob({
                 clientId: slugify(formData.clientName),
                 clientName: formData.clientName.trim(),
@@ -134,6 +135,8 @@ export default function JobPlanner() {
                 refrigerantType: formData.refrigerant ? refrigerantLabel(formData.refrigerant) : undefined,
                 amount: formData.amount > 0 ? formData.amount : undefined,
                 status: 'scheduled', scheduledDate: formData.scheduledDate,
+                technicianId: selectedTechnician?.id,
+                technicianName: selectedTechnician?.name,
                 preJobChecklistComplete: formData.preJobChecklistComplete,
                 checklistItems: DEFAULT_PLANNER_SAFETY_CHECKLIST.map((i): PlannerSafetyChecklistItem => ({ ...i, completed: formData.preJobChecklistComplete })),
                 notes: formData.notes,
@@ -382,9 +385,13 @@ export default function JobPlanner() {
                                 </div>
                                 <div>
                                     <label className="mb-1.5 block text-sm font-semibold text-gray-700">Technician</label>
-                                    <select value={formData.technicianName} onChange={e => setFormData(p => ({ ...p, technicianName: e.target.value }))}
+                                    <select value={formData.technicianId} onChange={e => {
+                                        const technician = technicians.find(t => t.id === e.target.value);
+                                        setFormData(p => ({ ...p, technicianId: e.target.value, technicianName: technician?.name ?? '' }));
+                                    }}
                                         className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white">
-                                        {technicians.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                        <option value="">Assign to me</option>
+                                        {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                     </select>
                                 </div>
                             </div>

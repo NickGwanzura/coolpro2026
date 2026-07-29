@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { equipmentRecords } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
@@ -30,12 +31,15 @@ function toEquipmentRecord(row: typeof equipmentRecords.$inferSelect): Equipment
 }
 
 export async function GET(req: Request) {
+  let session;
   try {
-    requireRole(req, ['org_admin']);
+    session = requireRole(req, ['technician', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
 
-  const rows = await db.select().from(equipmentRecords);
+  const rows = session.role === 'technician'
+    ? await db.select().from(equipmentRecords).where(eq(equipmentRecords.technicianName, session.name))
+    : await db.select().from(equipmentRecords);
   return NextResponse.json(rows.map(toEquipmentRecord));
 }

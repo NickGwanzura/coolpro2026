@@ -11,8 +11,6 @@ import {
     Factory,
     Wrench,
     ClipboardList,
-    CalendarRange,
-    BellRing,
     Award,
     Users,
     ShieldCheck,
@@ -30,6 +28,7 @@ import {
     RefreshCw,
     UserPlus,
     Mail,
+    ChevronDown,
 } from 'lucide-react';
 import { useAuth, logout } from '@/lib/auth';
 import { useEmergencyMode } from '@/lib/emergencyMode';
@@ -60,17 +59,14 @@ const NAV_SECTIONS: NavSection[] = [
         items: [
             { name: 'Learning Hub', href: '/learn', icon: BookOpen, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
             { name: 'Manage Courses', href: '/learn/manage', icon: BookOpen, roles: ['trainer', 'lecturer'] },
-            { name: 'Safety', href: '/safety', icon: ShieldCheck, roles: ['technician', 'trainer', 'lecturer', 'student'] },
-            { name: 'Field Scheduling', href: '/field-scheduling', icon: BellRing, roles: ['technician', 'org_admin'] },
+            { name: 'Safety Center', href: '/safety-center', icon: ShieldCheck, roles: ['technician', 'trainer', 'lecturer', 'student'] },
+            { name: 'Field Operations', href: '/field-operations', icon: Wrench, roles: ['technician', 'org_admin'] },
         ],
     },
     {
         label: 'Field Tools',
         items: [
             { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician', 'org_admin'] },
-            { name: 'Job Planner', href: '/job-planner', icon: CalendarRange, roles: ['technician'] },
-            { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['technician', 'org_admin'] },
-            { name: 'Safety & Hazards', href: '/health-safety', icon: ShieldAlert, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
         ],
     },
     {
@@ -148,12 +144,9 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
         items: [
             { name: 'Learning Hub', href: '/learn', icon: BookOpen, roles: ['org_admin'], exact: true },
             { name: 'Manage Courses', href: '/learn/manage', icon: BookOpen, roles: ['org_admin'] },
-            { name: 'Field Scheduling', href: '/field-scheduling', icon: BellRing, roles: ['org_admin'] },
-            { name: 'Job Planner', href: '/job-planner', icon: CalendarRange, roles: ['org_admin'] },
+            { name: 'Field Operations', href: '/field-operations', icon: Wrench, roles: ['org_admin'] },
             { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['org_admin'] },
-            { name: 'Jobs & Logs', href: '/jobs', icon: ClipboardList, roles: ['org_admin'] },
-            { name: 'Safety', href: '/safety', icon: ShieldCheck, roles: ['org_admin'] },
-            { name: 'Safety & Hazards', href: '/health-safety', icon: ShieldAlert, roles: ['org_admin'] },
+            { name: 'Safety Center', href: '/safety-center', icon: ShieldCheck, roles: ['org_admin'] },
         ],
     },
     {
@@ -225,7 +218,7 @@ function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string;
             onClick={onClose}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
-                'group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]',
+                'group flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]',
                 isActive
                     ? 'bg-white/[0.12] text-white shadow-sm'
                     : 'text-[#D6D3D1] hover:bg-white/[0.08] hover:text-white'
@@ -243,12 +236,75 @@ function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string;
     );
 }
 
+function NavSectionGroup({
+    section,
+    index,
+    pathname,
+    isOpen,
+    onToggle,
+    onClose,
+}: {
+    section: NavSection;
+    index: number;
+    pathname: string;
+    isOpen: boolean;
+    onToggle: () => void;
+    onClose?: () => void;
+}) {
+    const hasActiveItem = section.items.some(item => item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`));
+
+    if (!section.label) {
+        return (
+            <div>
+                <div className="space-y-0.5">
+                    {section.items.map(item => (
+                        <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            <button
+                type="button"
+                onClick={onToggle}
+                aria-expanded={isOpen}
+                className={cn(
+                    'mt-1 flex min-h-9 w-full items-center gap-2 rounded-lg px-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]',
+                    hasActiveItem ? 'text-white' : 'text-[#A8A29E] hover:bg-white/[0.06] hover:text-white',
+                    index === 0 && 'mt-0'
+                )}
+            >
+                <span className="truncate">{section.label}</span>
+                {hasActiveItem && <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" aria-hidden="true" />}
+                <ChevronDown
+                    className={cn(
+                        'ml-auto h-3.5 w-3.5 transition-transform',
+                        isOpen ? 'rotate-180 text-[#F59E0B]' : 'text-[#78716C]'
+                    )}
+                    aria-hidden="true"
+                />
+            </button>
+            {isOpen && (
+                <div className="mt-1 space-y-0.5">
+                    {section.items.map(item => (
+                        <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function Sidebar({ className, onClose }: SidebarProps & { className?: string }) {
     const pathname = usePathname();
     const { user } = useAuth();
     const role = user?.role ?? 'technician';
     const { emergencyMode, toggleEmergencyMode } = useEmergencyMode();
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
     const navSections = role === 'org_admin' ? ADMIN_NAV_SECTIONS : NAV_SECTIONS;
     const visibleSections = navSections.map(section => ({
@@ -289,23 +345,26 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto px-2 py-4 [scrollbar-color:#57534E_transparent]" aria-label="Primary navigation">
-                {visibleSections.map((section, i) => (
-                    <div key={i}>
-                        {section.label && (
-                            <div className="px-3 pb-1 pt-4 first:pt-0">
-                                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#A8A29E]">
-                                    {section.label}
-                                </p>
-                            </div>
-                        )}
-                        <div className="space-y-0.5">
-                            {section.items.map(item => (
-                                <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />
-                            ))}
-                        </div>
-                    </div>
-                ))}
+            <nav className="flex-1 overflow-y-auto px-2 py-3 [scrollbar-color:#57534E_transparent]" aria-label="Primary navigation">
+                <div className="space-y-1">
+                    {visibleSections.map((section, i) => {
+                        const key = section.label ?? `primary-${i}`;
+                        const hasActiveItem = section.items.some(item => item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`));
+                        const isOpen = !section.label || (expandedSections[key] ?? hasActiveItem);
+
+                        return (
+                            <NavSectionGroup
+                                key={key}
+                                section={section}
+                                index={i}
+                                pathname={pathname}
+                                isOpen={isOpen}
+                                onToggle={() => setExpandedSections(prev => ({ ...prev, [key]: !isOpen }))}
+                                onClose={onClose}
+                            />
+                        );
+                    })}
+                </div>
             </nav>
 
             {/* Emergency Mode — field-technician concept, not relevant to admin oversight roles */}
@@ -336,10 +395,10 @@ export function Sidebar({ className, onClose }: SidebarProps & { className?: str
             )}
 
             {/* User / Logout */}
-            <div className="p-4 border-t border-white/10 flex-shrink-0">
+            <div className="p-3 border-t border-white/10 flex-shrink-0">
                 <button
                     onClick={() => setIsProfileModalOpen(true)}
-                    className="mb-3 flex min-h-11 w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]"
+                    className="flex min-h-10 w-full items-center gap-2.5 rounded-lg p-2 text-left transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1C1917]"
                 >
                     <div className="w-8 h-8 flex items-center justify-center bg-[#292524] flex-shrink-0 rounded-full">
                         <UserCircle className="w-5 h-5 text-[#D6D3D1]" />

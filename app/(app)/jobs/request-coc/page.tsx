@@ -77,7 +77,7 @@ function RequestCoCForm() {
             });
             setSubmitted(true);
             setTimeout(() => {
-                router.push('/jobs');
+                router.push('/field-operations?tab=logs');
             }, 3000);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to submit request.');

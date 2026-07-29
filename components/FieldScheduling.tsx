@@ -110,7 +110,7 @@ export default function FieldScheduling() {
         try {
             await seedPlannerJob(record);
             setMessage(`Scheduled a planner job from ${record.equipmentId}.`);
-            router.push('/job-planner');
+            router.push('/field-operations?tab=planner');
         } catch (err) {
             setMessage(err instanceof Error ? err.message : 'Failed to schedule the planner job.');
         }
