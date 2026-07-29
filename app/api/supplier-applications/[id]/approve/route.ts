@@ -75,7 +75,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   sendApprovalEmail({
     email: row.email,
     name: row.contactName,
-    role: 'vendor',
+    role: 'supplier',
   }).catch(() => {});
 
   return NextResponse.json(toSupplierRegistration(updated));

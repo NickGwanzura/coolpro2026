@@ -4,9 +4,10 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
-import type { SupplierRegistration } from '@/types/index';
+import type { SupplierRegistration, SupplierSurveyData } from '@/types/index';
 import { completeInvitedSupplierApplication, createSupplierApplication } from '@/lib/api';
 import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
+import { isSupplierSurveyComplete, SupplierSurveyFields } from '@/components/supplier/SupplierSurveyFields';
 
 const ACCENT = '#D97706';
 const ACCENT_TINT = 'rgba(217,119,6,0.10)';
@@ -38,6 +39,7 @@ type SupplierFormState = {
   pesepayMerchantId: string;
   website: string;
   notes: string;
+  surveyData: SupplierSurveyData;
   agree: boolean;
 };
 
@@ -58,6 +60,7 @@ const INITIAL: SupplierFormState = {
   pesepayMerchantId: '',
   website: '',
   notes: '',
+  surveyData: {},
   agree: false,
 };
 
@@ -90,6 +93,10 @@ export default function SupplierRegistrationForm({ inviteOnly = false, invitedEm
       setError('Select at least one refrigerant category before submitting.');
       return;
     }
+    if (!isSupplierSurveyComplete(form.surveyData)) {
+      setError('Please complete the supplier questionnaire before submitting.');
+      return;
+    }
     if (!inviteOnly && form.password.length < 8) {
       setError('Password must be at least 8 characters.');
       return;
@@ -117,6 +124,7 @@ export default function SupplierRegistrationForm({ inviteOnly = false, invitedEm
         pesepayMerchantId: form.pesepayMerchantId.trim() || undefined,
         website: form.website.trim() || undefined,
         notes: form.notes.trim() || undefined,
+        surveyData: form.surveyData,
       };
       const record = inviteOnly
         ? await completeInvitedSupplierApplication(application)
@@ -335,6 +343,14 @@ export default function SupplierRegistrationForm({ inviteOnly = false, invitedEm
               ))}
             </div>
           )}
+        </fieldset>
+
+        <fieldset className="space-y-5 pt-5 border-t" style={{ borderColor: BORDER }}>
+          <SupplierSurveyFields
+            value={form.surveyData}
+            onChange={(surveyData) => update('surveyData', surveyData)}
+            required
+          />
         </fieldset>
 
         <fieldset className="space-y-5 pt-5 border-t" style={{ borderColor: BORDER }}>

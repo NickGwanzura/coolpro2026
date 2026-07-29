@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { supplierApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { sendApplicationRejectedEmail } from '@/lib/server/email';
 import type { SupplierRegistration } from '@/types/index';
 
 function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): SupplierRegistration & {
@@ -60,6 +61,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     })
     .where(eq(supplierApplications.id, id))
     .returning();
+
+  sendApplicationRejectedEmail({
+    email: row.email,
+    name: row.contactName,
+    role: 'supplier',
+    applicantMessage: body.notes?.trim() || undefined,
+  }).catch(() => {});
 
   return NextResponse.json(toSupplierRegistration(updated));
 }

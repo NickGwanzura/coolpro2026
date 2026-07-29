@@ -391,20 +391,21 @@ export async function sendApplicationReceivedEmail(input: { email: string; name:
   }
 }
 
-function applicationRejectedEmailHtml(input: { name: string; applicantMessage?: string }): string {
+function applicationRejectedEmailHtml(input: { name: string; role?: string; applicantMessage?: string }): string {
   const name = escapeHtml(input.name);
+  const role = escapeHtml(input.role?.replace('_', ' ') ?? 'application');
   const message = input.applicantMessage ? escapeHtml(input.applicantMessage) : null;
   return emailShell(`
     <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Application update</p>
     <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Application not approved</p>
     <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
-      Hi ${name}, your HEVACRAZ technician registration application was not approved at this time.
+      Hi ${name}, your HEVACRAZ / National Ozone Unit Zimbabwe ${role} application was not approved at this time.
     </p>
     ${message ? `<div style="margin-top: 18px; border-left: 3px solid ${BRAND.amber}; background: ${BRAND.soft}; padding: 12px 14px; color: ${BRAND.ink}; font-size: 14px; line-height: 1.6;">${message}</div>` : ''}
     <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
       If you have questions, contact HEVACRAZ at info@hevacraz.co.zw.
     </p>
-  `, 'Your NOU / HEVACRAZ technician application was not approved.');
+  `, 'Your NOU / HEVACRAZ application was not approved.');
 }
 
 /**
@@ -415,6 +416,7 @@ function applicationRejectedEmailHtml(input: { name: string; applicantMessage?: 
 export async function sendApplicationRejectedEmail(input: {
   email: string;
   name: string;
+  role?: string;
   applicantMessage?: string;
 }): Promise<{ sent: boolean }> {
   const resend = getResendClient();
@@ -427,7 +429,7 @@ export async function sendApplicationRejectedEmail(input: {
     const { error } = await resend.emails.send({
       from: FROM_ADDRESS,
       to: input.email,
-      subject: 'Update on your NOU / HEVACRAZ technician application',
+      subject: 'Update on your NOU / HEVACRAZ ' + (input.role?.replace('_', ' ') ?? '') + ' application',
       html: applicationRejectedEmailHtml(input),
     });
     if (error) {

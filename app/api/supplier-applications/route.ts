@@ -9,11 +9,26 @@ import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
 import { generateSupplierRegistrationNumber } from '@/lib/server/registration-number';
 import { SITE_URL } from '@/lib/site-url';
 import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
-import type { SupplierRegistration } from '@/types/index';
+import type { SupplierRegistration, SupplierSurveyData } from '@/types/index';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SIGNUP_RATE_LIMIT = 5;
 const SIGNUP_RATE_WINDOW_MS = 15 * 60 * 1000;
+const REQUIRED_SURVEY_KEYS: Array<keyof SupplierSurveyData> = [
+  'employeeCountBand',
+  'yearsInOperation',
+  'recoveryEquipmentAccess',
+  'storageComplianceConfidence',
+  'lowGwpRegulationConfidence',
+  'loadSheddingFrequency',
+  'preferredLanguage',
+  'biggestDistributionChallenge',
+];
+
+function isSupplierSurveyComplete(data: SupplierSurveyData | undefined): boolean {
+  if (!data) return false;
+  return REQUIRED_SURVEY_KEYS.every((key) => data[key] !== undefined && data[key] !== '');
+}
 
 function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): SupplierRegistration & {
   reviewedAt?: string;
@@ -86,6 +101,9 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+  if (!isSupplierSurveyComplete(body.surveyData)) {
+    return NextResponse.json({ error: 'Complete the supplier questionnaire before submitting.' }, { status: 400 });
+  }
 
   const email = String(body.email).trim().toLowerCase();
   if (!EMAIL_RE.test(email)) {
@@ -136,6 +154,7 @@ export async function POST(req: Request) {
       pesepayMerchantId: body.pesepayMerchantId ?? null,
       website: body.website ?? null,
       notes: body.notes ?? null,
+      surveyData: body.surveyData ?? null,
       status: 'submitted',
       submittedAt: new Date(),
       createdAt: new Date(),

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
     ArrowRight,
@@ -105,6 +105,7 @@ export default function SupplierManagement() {
     const [provinceFilter, setProvinceFilter] = useState('all');
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [actingStatus, setActingStatus] = useState<SupplierRegistrationStatus | null>(null);
+    const [reviewNote, setReviewNote] = useState('');
     const selectedApplicationRef = useRef<HTMLDivElement | null>(null);
 
     const isVendor = session?.role === 'vendor';
@@ -147,6 +148,10 @@ export default function SupplierManagement() {
         [selectedId, visibleApplications]
     );
 
+    useEffect(() => {
+        setReviewNote('');
+    }, [selectedApplication?.id]);
+
     const approvedSupplierList = approvedSuppliersData ?? [];
 
     const stats = [
@@ -181,6 +186,10 @@ export default function SupplierManagement() {
     ] as const;
 
     const updateStatus = async (id: string, status: SupplierRegistrationStatus) => {
+        if (status === 'rejected' && !reviewNote.trim()) {
+            error('Add a rejection note before rejecting this supplier application.');
+            return;
+        }
         setActingStatus(status);
         try {
             if (status === 'under-review') {
@@ -190,9 +199,10 @@ export default function SupplierManagement() {
                 await approveSupplierApplication(id);
                 success('Supplier application approved and vendor account updated.');
             } else if (status === 'rejected') {
-                await rejectSupplierApplication(id);
-                success('Supplier application rejected.');
+                await rejectSupplierApplication(id, reviewNote.trim());
+                success('Supplier application rejected and email notification queued.');
             }
+            setReviewNote('');
         } catch (err) {
             error(err instanceof Error ? err.message : 'Could not update supplier application.');
         } finally {
@@ -495,10 +505,28 @@ export default function SupplierManagement() {
                                     </div>
                                 </div>
 
-                                {(selectedApplication.reviewedAt || selectedApplication.reviewNote) && (
+                                {selectedApplication.status !== 'approved' && selectedApplication.status !== 'rejected' && (
+                                    <div className="mt-4 rounded-lg border border-amber-200 bg-white p-4">
+                                        <label htmlFor="supplier-review-note" className="text-sm font-semibold text-gray-900">
+                                            Review note
+                                        </label>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            Required when rejecting. This note is saved and included in the supplier rejection email.
+                                        </p>
+                                        <textarea
+                                            id="supplier-review-note"
+                                            value={reviewNote}
+                                            onChange={(event) => setReviewNote(event.target.value)}
+                                            className="mt-3 min-h-24 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                                            placeholder="Explain missing documents, questionnaire concerns, or compliance corrections."
+                                        />
+                                    </div>
+                                )}
+
+                                {selectedApplication.reviewNote && (
                                     <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600">
                                         <p className="font-semibold text-gray-900">Review note</p>
-                                        <p className="mt-1">{selectedApplication.reviewNote ?? 'Review details recorded locally.'}</p>
+                                        <p className="mt-1">{selectedApplication.reviewNote}</p>
                                         {selectedApplication.reviewedAt && (
                                             <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gray-400">
                                                 Updated {formatDate(selectedApplication.reviewedAt)}
