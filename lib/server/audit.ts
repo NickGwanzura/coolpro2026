@@ -1,7 +1,7 @@
 import { db } from '@/db/client';
 import { applicationAuditLog } from '@/db/schema/index';
 
-export type AuditEntityType = 'technician_application' | 'membership';
+export type AuditEntityType = 'technician_application' | 'membership' | 'user';
 
 export interface RecordAuditEventInput {
   entityType: AuditEntityType;

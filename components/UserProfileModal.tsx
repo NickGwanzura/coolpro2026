@@ -13,19 +13,47 @@ export function UserProfileModal({ user, onClose, onLogout }: UserProfileModalPr
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handlePasswordReset = (e: React.FormEvent) => {
+  const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
+      setMessageType('error');
       setMessage('New passwords do not match.');
       return;
     }
-    // Mock password reset logic
-    setMessage('Password reset successfully.');
-    setTimeout(() => setMessage(''), 3000);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    if (newPassword.length < 8) {
+      setMessageType('error');
+      setMessage('New password must be at least 8 characters.');
+      return;
+    }
+    setIsSubmitting(true);
+    setMessage('');
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({})) as { error?: string };
+      if (!res.ok) {
+        setMessageType('error');
+        setMessage(data.error ?? 'Password reset failed.');
+        return;
+      }
+      setMessageType('success');
+      setMessage('Password updated successfully.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch {
+      setMessageType('error');
+      setMessage('Network error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!user) return null;
@@ -87,7 +115,7 @@ export function UserProfileModal({ user, onClose, onLogout }: UserProfileModalPr
               Reset Password
             </h3>
             {message && (
-              <p className={`text-xs font-semibold ${message.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`text-xs font-semibold ${messageType === 'success' ? 'text-green-600' : 'text-red-600'}`}>
                 {message}
               </p>
             )}
@@ -117,10 +145,11 @@ export function UserProfileModal({ user, onClose, onLogout }: UserProfileModalPr
             />
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-2 bg-gray-900 text-white px-4 py-2 text-sm font-semibold hover:bg-gray-800 transition-colors"
+              disabled={isSubmitting}
+              className="flex w-full items-center justify-center gap-2 bg-gray-900 text-white px-4 py-2 text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
-              Update Password
+              {isSubmitting ? 'Updating…' : 'Update Password'}
             </button>
           </form>
 

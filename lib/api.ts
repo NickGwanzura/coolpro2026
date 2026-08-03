@@ -862,7 +862,7 @@ export function useAdminUsers(q?: string) {
 
 export async function updateAdminUser(
   id: string,
-  body: Partial<Pick<AdminUserRecord, 'role' | 'status' | 'region' | 'name'>>,
+  body: Partial<Pick<AdminUserRecord, 'role' | 'status' | 'region' | 'name'>> & { newPassword?: string },
 ): Promise<AdminUserRecord> {
   const result = await patch<AdminUserRecord>(`/api/admin/users/${id}`, body);
   await mutate((key) => typeof key === 'string' && key.startsWith('/api/admin/users'));
