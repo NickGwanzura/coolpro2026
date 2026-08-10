@@ -1,6 +1,6 @@
 /**
  * In-memory, per-process rate limiter. Deliberately simple — this only holds correctly on a
- * single running instance (fine for the current one-instance Railway deploy). If this service
+ * single running instance (fine for the current one-instance deploy). If this service
  * is ever scaled to multiple instances, replace with a shared store (Redis, or a DB table)
  * since each instance would otherwise track its own independent counters.
  */

@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { runWhatGasSync, type SyncType } from '@/lib/whatgas/sync';
 
 /**
- * Trigger endpoint for scheduled syncs. This app deploys on Railway, which has no built-in
- * cron like Vercel — point an external scheduler (Railway Cron Job, GitHub Actions
- * scheduled workflow, cron-job.org, etc.) at this route with:
+ * Trigger endpoint for scheduled syncs. This app has no built-in cron like Vercel — point
+ * an external scheduler (Dokploy scheduled task, GitHub Actions scheduled workflow,
+ * cron-job.org, etc.) at this route with:
  *   Authorization: Bearer <CRON_SECRET>
  *   POST /api/cron/whatgas-sync?type=daily-incremental   (suggested: daily)
  *   POST /api/cron/whatgas-sync?type=weekly-full          (suggested: weekly)
