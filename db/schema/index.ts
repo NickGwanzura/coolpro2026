@@ -23,3 +23,4 @@ export * from './accidents';
 export * from './memberships';
 export * from './audit';
 export * from './email-log';
+export * from './contractors';

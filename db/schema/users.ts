@@ -7,6 +7,7 @@ export const userRoleEnum = pgEnum('user_role', [
   'vendor',
   'org_admin',
   'student',
+  'contractor',
 ]);
 
 export const userStatusEnum = pgEnum('user_status', [

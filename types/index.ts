@@ -4,7 +4,7 @@ export type AppLanguage = 'en' | 'fr';
 export type SafetyAlertColor = 'green' | 'orange' | 'red' | 'blue';
 export type RefrigerantRiskLevel = 'low' | 'moderate' | 'high' | 'critical';
 
-export type UserRole = 'technician' | 'trainer' | 'vendor' | 'org_admin' | 'lecturer' | 'student';
+export type UserRole = 'technician' | 'trainer' | 'vendor' | 'org_admin' | 'lecturer' | 'student' | 'contractor';
 
 export const UserRole = {
   TECHNICIAN: 'technician' as const,
@@ -13,6 +13,7 @@ export const UserRole = {
   ORG_ADMIN: 'org_admin' as const,
   LECTURER: 'lecturer' as const,
   STUDENT: 'student' as const,
+  CONTRACTOR: 'contractor' as const,
 };
 
 export interface User {
@@ -239,6 +240,32 @@ export interface SupplierSurveyData {
   loadSheddingFrequency?: 'never' | 'rarely' | 'occasionally' | 'frequently' | 'daily';
   preferredLanguage?: 'english' | 'shona' | 'ndebele';
   biggestDistributionChallenge?: string;
+}
+
+export type ContractorApplicationStatus = 'invited' | 'submitted' | 'under-review' | 'approved' | 'rejected';
+
+// Contractor is invitation-only: an admin creates the invite row (email, region only), the
+// invitee sets their own password via /accept-invite, then completes this profile themselves.
+export interface ContractorApplication {
+  id: string;
+  email: string;
+  companyName?: string;
+  contactName?: string;
+  phone?: string;
+  region: string;
+  tradeSpecialization?: string;
+  yearsInOperation?: string;
+  teamSize?: string;
+  servicesOffered?: string[];
+  hasSafetyCertification?: string;
+  biggestChallenge?: string;
+  invitedBy: string;
+  status: ContractorApplicationStatus;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+  submittedAt?: string;
+  createdAt: string;
 }
 
 export type SupplierLedgerDirection = 'purchase' | 'sale';

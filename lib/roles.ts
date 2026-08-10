@@ -13,6 +13,7 @@ export const ROLES: Record<string, UserRole> = {
   ORG_ADMIN: 'org_admin',
   LECTURER: 'lecturer',
   STUDENT: 'student',
+  CONTRACTOR: 'contractor',
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -22,4 +23,5 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   org_admin: 'Organization Admin',
   lecturer: 'Lecturer',
   student: 'Student',
+  contractor: 'Contractor',
 };

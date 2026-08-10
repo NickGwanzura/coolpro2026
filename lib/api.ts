@@ -42,6 +42,7 @@ import type {
 	  Membership,
 	  AuditLogEntry,
 	  EmailLogEntry,
+	  ContractorApplication,
 } from '@/types/index';
 import type { TechnicianRewardSummary } from '@/lib/server/rewards';
 
@@ -349,6 +350,30 @@ export type AdminCreateSupplierInput = { email: string; region: string };
 export async function adminCreateSupplier(body: AdminCreateSupplierInput): Promise<{ inviteUrl: string; emailSent: boolean }> {
   const result = await post<{ inviteUrl: string; emailSent: boolean }>('/api/supplier-applications/admin-create', body);
   await mutate('/api/supplier-applications');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Contractors (invitation-only, mirrors supplier invite pattern)
+// ---------------------------------------------------------------------------
+
+export function useContractorApplications(enabled = true) {
+  return useSWR<ContractorApplication[]>(enabled ? '/api/contractor-applications' : null, fetcher);
+}
+
+export type AdminCreateContractorInput = { email: string; region: string };
+
+export async function adminCreateContractor(body: AdminCreateContractorInput): Promise<{ inviteUrl: string; emailSent: boolean }> {
+  const result = await post<{ inviteUrl: string; emailSent: boolean }>('/api/contractor-applications/admin-create', body);
+  await mutate('/api/contractor-applications');
+  return result;
+}
+
+export async function submitContractorOnboarding(
+  body: Omit<ContractorApplication, 'id' | 'email' | 'region' | 'invitedBy' | 'status' | 'reviewedAt' | 'reviewedBy' | 'reviewNote' | 'submittedAt' | 'createdAt'>,
+): Promise<ContractorApplication> {
+  const result = await patch<ContractorApplication>('/api/contractor-applications', body);
+  await mutate('/api/contractor-applications');
   return result;
 }
 

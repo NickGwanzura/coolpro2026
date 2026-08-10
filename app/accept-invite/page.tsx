@@ -70,7 +70,11 @@ function AcceptInviteContent() {
         setSubmitError(data.error ?? 'Could not accept this invite.');
         return;
       }
-      router.push(data.user?.role === 'vendor' ? '/supplier-onboarding' : '/dashboard');
+      const redirectByRole: Record<string, string> = {
+        vendor: '/supplier-onboarding',
+        contractor: '/contractor-onboarding',
+      };
+      router.push(redirectByRole[data.user?.role] ?? '/dashboard');
     } catch {
       setSubmitError('Something went wrong. Try again.');
     } finally {

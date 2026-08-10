@@ -26,6 +26,7 @@ const PROTECTED_ROUTE_PREFIXES = [
     '/reclamation',
     '/recycling',
     '/emergency-mode',
+    '/contractor-onboarding',
 ] as const;
 
 const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
@@ -37,6 +38,7 @@ const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
     { prefix: '/admin/accidents', roles: ['org_admin'] },
     { prefix: '/admin/reporting', roles: ['org_admin'] },
     { prefix: '/admin/refrigerants', roles: ['org_admin'] },
+    { prefix: '/admin/contractors', roles: ['org_admin'] },
     { prefix: '/admin', roles: ['org_admin'] },
     { prefix: '/nou-dashboard', roles: ['org_admin'] },
     { prefix: '/suppliers/approvals', roles: ['org_admin'] },
@@ -61,7 +63,8 @@ const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
     { prefix: '/safety', roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
     { prefix: '/health-safety', roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
     { prefix: '/emergency-mode', roles: ['technician', 'trainer', 'lecturer', 'student'] },
-    { prefix: '/dashboard', roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] },
+    { prefix: '/dashboard', roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student', 'contractor'] },
+    { prefix: '/contractor-onboarding', roles: ['contractor', 'org_admin'] },
     { prefix: '/refrigerants', roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] },
     { prefix: '/cylinders', roles: ['technician', 'vendor', 'org_admin'] },
     { prefix: '/permits', roles: ['vendor', 'org_admin'] },
