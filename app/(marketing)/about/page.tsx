@@ -145,12 +145,14 @@ const CONTACTS = [
     purpose: 'Institutional and regulatory queries',
     email: 'nou@environment.gov.zw',
     address: 'Ministry of Environment, Water and Climate, 12th Floor, Kaguvi Building, Central Avenue, Private Bag 7753 Causeway, Harare, Zimbabwe',
-    phone: '(263) 4 701551/701691/2',
+    phone: '(263) 4 701551/701691/2, +263 778 410 281',
   },
   {
     label: 'HEVACRAZ',
     purpose: 'Technician registration and industry queries',
     email: 'info@hevacraz.co.zw',
+    address: '661 Lorraine Drive, Bluff Hill, Harare, Zimbabwe',
+    phone: '+263 772 630 517 / +263 773 034 528',
   },
   {
     label: 'Platform Support',

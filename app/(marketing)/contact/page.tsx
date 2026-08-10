@@ -67,8 +67,8 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold" style={{ color: '#1C1917' }}>Head office</h3>
                     <p className="text-sm text-gray-600 mt-1 leading-relaxed">
-                      12 Samora Machel Avenue<br />
-                      Harare, Zimbabwe
+                      661 Lorraine Drive<br />
+                      Bluff Hill, Harare, Zimbabwe
                     </p>
                   </div>
                 </div>
@@ -98,7 +98,12 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold" style={{ color: '#1C1917' }}>Phone</h3>
-                    <p className="text-sm text-gray-600 mt-1">+263 242 000 000</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      <a href="tel:+263772630517" className="hover:underline">+263 772 630 517</a>
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      <a href="tel:+263773034528" className="hover:underline">+263 773 034 528</a>
+                    </p>
                     <p className="text-xs text-gray-400 mt-1">Mon-Fri · 08:00-17:00 CAT</p>
                   </div>
                 </div>
@@ -118,6 +123,9 @@ export default function ContactPage() {
                       Harare, Zimbabwe
                     </p>
                     <p className="text-sm text-gray-600 mt-2">Tel: (263) 4 701551/701691/2</p>
+                    <p className="text-sm text-gray-600">
+                      <a href="tel:+263778410281" className="hover:underline">+263 778 410 281</a>
+                    </p>
                     <p className="text-sm text-gray-600">
                       <a href="mailto:nou@environment.gov.zw" className="hover:underline">nou@environment.gov.zw</a>
                     </p>

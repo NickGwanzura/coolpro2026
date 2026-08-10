@@ -48,6 +48,13 @@ export function SiteFooter() {
             <p className="mt-4 text-gray-400 text-sm leading-relaxed max-w-sm">
               Advance the HVAC-R profession in Zimbabwe through education, certification, and advocacy.
             </p>
+            <div className="mt-5 space-y-1.5 text-sm text-gray-400">
+              <a href="mailto:info@hevacraz.co.zw" className="block hover:text-white transition-colors">info@hevacraz.co.zw</a>
+              <a href="mailto:compliance@hevacraz.co.zw" className="block hover:text-white transition-colors">compliance@hevacraz.co.zw</a>
+              <a href="tel:+263772630517" className="block hover:text-white transition-colors">+263 772 630 517</a>
+              <a href="tel:+263773034528" className="block hover:text-white transition-colors">+263 773 034 528</a>
+              <a href="tel:+263778410281" className="block hover:text-white transition-colors">NOU: +263 778 410 281</a>
+            </div>
           </div>
 
           {/* Quick Links */}
