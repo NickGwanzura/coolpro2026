@@ -50,15 +50,18 @@ export default function DashboardPage() {
     const [regionFilter, setRegionFilter] = useState('all');
     const isAdmin = session?.role === 'org_admin';
     const isTechnician = session?.role === 'technician';
+    // Contractors currently share the technician dashboard view (data + layout); a
+    // contractor-specific section can be split out later once contractor-only data exists.
+    const isContractor = session?.role === 'contractor';
     const isVendor = session?.role === 'vendor';
     const isTrainerOrLecturer = session?.role === 'trainer' || session?.role === 'lecturer';
     const isStudent = session?.role === 'student';
 
     const { data: technicians = [] } = useTechnicians(undefined, isAdmin);
     const { data: reorders = [] } = useReorders(isAdmin || isVendor);
-    const { data: plannerJobs = [] } = usePlannerJobs(isTechnician || isAdmin);
-    const { data: gasLogsData } = useGasLogs(undefined, undefined, 50, isTechnician || isAdmin || isTrainerOrLecturer);
-    const { data: cocRequests = [] } = useCocRequests(isTechnician || isAdmin);
+    const { data: plannerJobs = [] } = usePlannerJobs(isTechnician || isContractor || isAdmin);
+    const { data: gasLogsData } = useGasLogs(undefined, undefined, 50, isTechnician || isContractor || isAdmin || isTrainerOrLecturer);
+    const { data: cocRequests = [] } = useCocRequests(isTechnician || isContractor || isAdmin);
     const { data: complianceApps = [] } = useSupplierComplianceApplications(isVendor);
     const { data: vendorLedger = [] } = useSupplierLedger(undefined, isVendor);
     const { data: managedCourses = [] } = useCourses(isTrainerOrLecturer || isStudent);
@@ -855,8 +858,8 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* ── Technician-only sections ── */}
-            {isTechnician && (
+            {/* ── Technician-only sections (also shown to contractors, who share this view for now) ── */}
+            {(isTechnician || isContractor) && (
                 <>
                     {/* Upcoming Schedule + Certifications */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

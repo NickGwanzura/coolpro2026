@@ -37,14 +37,15 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, unit, trend, positive, 
 );
 
 const ComplianceDashboard: React.FC = () => {
-  const { data: reorders = [] } = useReorders();
-  const { data: technicians = [] } = useTechnicians();
+  const { data: reorders = [], isLoading: reordersLoading } = useReorders();
+  const { data: technicians = [], isLoading: techniciansLoading } = useTechnicians();
   const leakLookbackFrom = useMemo(() => {
     const from = new Date();
     from.setDate(from.getDate() - 30);
     return from.toISOString();
   }, []);
-  const { data: gasLogs = [] } = useGasLogs(leakLookbackFrom, undefined, 100);
+  const { data: gasLogs = [], isLoading: gasLogsLoading } = useGasLogs(leakLookbackFrom, undefined, 100);
+  const isLoading = reordersLoading || techniciansLoading || gasLogsLoading;
 
   // Leak Repair entries logged via the Field Toolkit in the last 30 days, most recent first.
   const leakAlerts = useMemo(
@@ -146,6 +147,14 @@ const ComplianceDashboard: React.FC = () => {
 
     doc.save(`hevacraz-compliance-${new Date().toISOString().slice(0, 10)}.pdf`);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

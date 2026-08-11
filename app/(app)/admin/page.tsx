@@ -2,11 +2,19 @@
 
 import Link from 'next/link';
 import { UserPlus } from 'lucide-react';
-import { useClientSession } from '@/lib/useClientSession';
+import { useAuth } from '@/lib/auth';
 import ComplianceDashboard from '@/components/ComplianceDashboard';
 
 export default function AdminPage() {
-    const session = useClientSession();
+    const { user: session, isLoading } = useAuth();
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D97706]"></div>
+            </div>
+        );
+    }
 
     if (!session) return null;
 

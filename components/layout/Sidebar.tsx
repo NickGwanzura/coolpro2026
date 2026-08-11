@@ -52,7 +52,7 @@ interface NavSection {
 const NAV_SECTIONS: NavSection[] = [
     {
         items: [
-            { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] },
+            { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student', 'contractor'] },
         ],
     },
     {
@@ -103,7 +103,7 @@ const NAV_SECTIONS: NavSection[] = [
         label: 'Registry',
         items: [
             { name: 'Technician Registry', href: '/technician-registry', icon: Users, roles: ['trainer', 'lecturer', 'org_admin'] },
-            { name: 'Certificate Verification', href: '/verify-technician', icon: ShieldCheck, roles: ['trainer', 'lecturer', 'vendor', 'org_admin'] },
+            { name: 'Certificate Verification', href: '/verify-technician', icon: ShieldCheck, roles: ['trainer', 'lecturer', 'vendor', 'org_admin', 'contractor'] },
         ],
     },
     {
