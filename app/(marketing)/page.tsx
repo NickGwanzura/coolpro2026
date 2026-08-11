@@ -198,7 +198,7 @@ export default function HomePage() {
                   backgroundColor: 'rgba(217,119,6,0.1)',
                 }}
               >
-                Beta — User Testing April 2026
+                Live Now
               </span>
             </div>
 

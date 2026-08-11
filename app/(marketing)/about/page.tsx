@@ -191,7 +191,7 @@ export default function AboutPage() {
               className="inline-flex items-center px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] border"
               style={{ borderColor: 'rgba(217,119,6,0.4)', color: '#f5b66b', backgroundColor: 'rgba(217,119,6,0.08)' }}
             >
-              Beta — User Testing April 2026
+              Live Now
             </span>
           </div>
 
