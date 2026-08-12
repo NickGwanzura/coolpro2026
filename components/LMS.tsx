@@ -58,7 +58,7 @@ function CourseCard({ course }: { course: ManagedCourse }) {
             {course.modules.map((mod, i) => (
               <div key={i} className="border border-gray-200 bg-gray-50 rounded-lg p-3">
                 <p className="text-sm font-semibold text-gray-900">{mod.title}</p>
-                <p className="mt-1 text-xs text-gray-500">{mod.content}</p>
+                <p className="mt-1 whitespace-pre-line break-words text-xs leading-5 text-gray-500">{mod.content}</p>
                 <p className="mt-1 text-xs text-gray-400">{mod.minutes} min</p>
                 {(mod.attachments ?? []).length > 0 && (
                   <div className="mt-2 space-y-1">

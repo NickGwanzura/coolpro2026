@@ -31,7 +31,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['lecturer', 'trainer']);
+    session = requireRole(req, ['lecturer', 'trainer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -39,7 +39,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const [row] = await db.select().from(courses).where(eq(courses.id, id)).limit(1);
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (row.lecturerId !== session.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (session.role !== 'org_admin' && row.lecturerId !== session.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (row.status !== 'draft' && row.status !== 'rejected') {
     return NextResponse.json({ error: 'Can only edit draft or rejected courses' }, { status: 409 });
   }

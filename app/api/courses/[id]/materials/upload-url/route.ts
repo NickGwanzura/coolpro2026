@@ -11,7 +11,7 @@ const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500MB, covers course video upl
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['lecturer', 'trainer']);
+    session = requireRole(req, ['lecturer', 'trainer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -19,7 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const [row] = await db.select().from(courses).where(eq(courses.id, id)).limit(1);
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (row.lecturerId !== session.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (session.role !== 'org_admin' && row.lecturerId !== session.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (row.status !== 'draft' && row.status !== 'rejected') {
     return NextResponse.json({ error: 'Can only add materials to draft or rejected courses' }, { status: 409 });
   }

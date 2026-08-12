@@ -84,7 +84,7 @@ function ReviewPanel({
             <div className="p-6 space-y-6">
                 <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Description</p>
-                    <p className="text-sm text-gray-700 leading-6">{course.description || <span className="italic text-gray-400">No description provided.</span>}</p>
+                    <p className="whitespace-pre-line break-words text-sm leading-6 text-gray-700">{course.description || <span className="italic text-gray-400">No description provided.</span>}</p>
                 </div>
 
                 <div className="space-y-3">
@@ -99,7 +99,7 @@ function ReviewPanel({
                                 </p>
                                 <span className="text-xs text-gray-400">{mod.minutes} min</span>
                             </div>
-                            <p className="text-sm text-gray-600 leading-6">{mod.content}</p>
+                            <p className="whitespace-pre-line break-words text-sm leading-6 text-gray-600">{mod.content}</p>
                         </div>
                     ))}
                 </div>
