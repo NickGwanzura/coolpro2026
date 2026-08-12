@@ -50,6 +50,20 @@ const STATUS_BADGE_MAP: Record<string, string> = {
     rejected: 'rejected',
 };
 
+type CourseFilter = 'all' | ManagedCourse['status'];
+
+function validateModuleEntries(modules: CourseModule[]) {
+    if (modules.length === 0) return 'Add at least one module.';
+    for (const [index, module] of modules.entries()) {
+        if (!module.title.trim()) return `Module ${index + 1} needs a title.`;
+        if (!module.content.trim()) return `Module ${index + 1} needs learning content.`;
+        if (!Number.isFinite(Number(module.minutes)) || Number(module.minutes) < 1) {
+            return `Module ${index + 1} needs at least 1 minute.`;
+        }
+    }
+    return '';
+}
+
 // ---------------------------------------------------------------------------
 // Module editor row
 // ---------------------------------------------------------------------------
@@ -267,7 +281,9 @@ function CoursePanel({
 
     async function handleSaveDraft() {
         if (!title.trim()) { setNotice('Course title is required.'); return; }
-        if (modules.length === 0) { setNotice('Add at least one module.'); return; }
+        if (!description.trim()) { setNotice('Course description is required.'); return; }
+        const moduleError = validateModuleEntries(modules);
+        if (moduleError) { setNotice(moduleError); return; }
         try {
             setSaving(true);
             const updated = await updateCourse(course.id, { title: title.trim(), description: description.trim(), modules });
@@ -282,7 +298,9 @@ function CoursePanel({
 
     async function handleSubmit() {
         if (!title.trim()) { setNotice('Course title is required.'); return; }
-        if (modules.length === 0) { setNotice('Add at least one module.'); return; }
+        if (!description.trim()) { setNotice('Course description is required.'); return; }
+        const moduleError = validateModuleEntries(modules);
+        if (moduleError) { setNotice(moduleError); return; }
         setSaving(true);
         try {
             await updateCourse(course.id, { title: title.trim(), description: description.trim(), modules });
@@ -594,7 +612,9 @@ function CreateCourseForm({
 
     async function handleCreate() {
         if (!title.trim()) { setNotice('Course title is required.'); return; }
-        if (modules.length === 0) { setNotice('Add at least one module.'); return; }
+        if (!description.trim()) { setNotice('Course description is required.'); return; }
+        const moduleError = validateModuleEntries(modules);
+        if (moduleError) { setNotice(moduleError); return; }
         setSaving(true);
         setUploadProgress(selectedFiles.length > 0 ? 0 : null);
         try {
@@ -776,6 +796,9 @@ export default function LearnManagePage() {
     const [selectedCourse, setSelectedCourse] = useState<ManagedCourse | null>(null);
     const [selectedSubmission, setSelectedSubmission] = useState<ExamSubmission | null>(null);
     const [showCreate, setShowCreate] = useState(false);
+    const [courseFilter, setCourseFilter] = useState<CourseFilter>('all');
+    const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
+    const [courseActionError, setCourseActionError] = useState('');
 
     if (authLoading) {
         return (
@@ -803,6 +826,7 @@ export default function LearnManagePage() {
     }
 
     const courses = allCourses;
+    const visibleCourses = courseFilter === 'all' ? courses : courses.filter(course => course.status === courseFilter);
     const myCourseIds = new Set(courses.map(c => c.id));
     const submissions = allSubmissions.filter(s => myCourseIds.has(s.courseId));
     const pendingExams = submissions.filter(s => s.status === 'pending').length;
@@ -818,6 +842,20 @@ export default function LearnManagePage() {
 
     function handleCourseDeleted(courseId: string) {
         if (selectedCourse?.id === courseId) setSelectedCourse(null);
+    }
+
+    async function handleTableDelete(course: ManagedCourse) {
+        if (!window.confirm(`Delete “${course.title}”? This cannot be undone.`)) return;
+        setDeletingCourseId(course.id);
+        setCourseActionError('');
+        try {
+            await deleteCourse(course.id);
+            handleCourseDeleted(course.id);
+        } catch (err) {
+            setCourseActionError(err instanceof Error ? err.message : 'Failed to delete course.');
+        } finally {
+            setDeletingCourseId(null);
+        }
     }
 
     function handleGraded(updated: ExamSubmission) {
@@ -864,15 +902,33 @@ export default function LearnManagePage() {
 
             {tab === 'courses' && (
                 <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-500">{courses.length} course{courses.length !== 1 ? 's' : ''} in your portfolio</p>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <p className="text-sm text-gray-500">{visibleCourses.length} of {courses.length} course{courses.length !== 1 ? 's' : ''}</p>
+                            <label className="sr-only" htmlFor="course-status-filter">Filter courses by status</label>
+                            <select
+                                id="course-status-filter"
+                                value={courseFilter}
+                                onChange={event => setCourseFilter(event.target.value as CourseFilter)}
+                                className="min-h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="all">All statuses</option>
+                                <option value="draft">Draft</option>
+                                <option value="pending_nou">Pending NOU</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
                         <button
+                            type="button"
                             onClick={() => { setShowCreate(true); setSelectedCourse(null); }}
-                            className="rounded-lg bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                            className="min-h-11 rounded-lg bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
                         >
                             Create Course
                         </button>
                     </div>
+
+                    {courseActionError && <p role="alert" className="text-sm text-red-600">{courseActionError}</p>}
 
                     {showCreate && user && (
                         <CreateCourseForm
@@ -905,14 +961,14 @@ export default function LearnManagePage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {courses.length === 0 && (
+                                {visibleCourses.length === 0 && (
                                     <tr>
                                         <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
-                                            No courses yet. Create your first course above.
+                                            {courses.length === 0 ? 'No courses yet. Create your first course above.' : 'No courses match this status filter.'}
                                         </td>
                                     </tr>
                                 )}
-                                {courses.map(course => (
+                                {visibleCourses.map(course => (
                                     <tr key={course.id} className="hover:bg-gray-50 transition">
                                         <td className="px-4 py-3 font-medium text-gray-900">{course.title}</td>
                                         <td className="px-4 py-3 text-gray-600">{course.modules.length}</td>
@@ -924,12 +980,25 @@ export default function LearnManagePage() {
                                         </td>
                                         <td className="px-4 py-3 text-gray-500">{formatDate(course.updatedAt)}</td>
                                         <td className="px-4 py-3 text-right">
+                                            <div className="inline-flex items-center gap-3">
                                             <button
+                                                type="button"
                                                 onClick={() => { setSelectedCourse(course); setShowCreate(false); }}
-                                                className="text-sm font-semibold text-blue-600 hover:underline"
+                                                className="min-h-11 text-sm font-semibold text-blue-600 hover:underline"
                                             >
                                                 {course.status === 'pending_nou' || course.status === 'approved' ? 'View' : 'Edit'}
                                             </button>
+                                            {(user.role === 'org_admin' || course.status === 'draft' || course.status === 'rejected') && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleTableDelete(course)}
+                                                    disabled={deletingCourseId === course.id}
+                                                    className="min-h-11 text-sm font-semibold text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    {deletingCourseId === course.id ? 'Deleting…' : 'Delete'}
+                                                </button>
+                                            )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BookOpen, ChevronDown, ChevronUp, Clock, Download, FileText } from 'lucide-react';
+import { BookOpen, CheckCircle2, ChevronDown, ChevronUp, Clock, Download, FileText } from 'lucide-react';
 import { useCourses, getCourseMaterialDownloadUrl, type ManagedCourse } from '@/lib/platformStore';
 
 function totalMinutes(course: ManagedCourse) {
@@ -24,15 +24,59 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+type CourseProgress = { started: boolean; completedModules: number[] };
+
+function progressKey(courseId: string) {
+  return `coolpro_course_progress_${courseId}`;
+}
+
+function readProgress(course: ManagedCourse): CourseProgress {
+  if (typeof window === 'undefined') return { started: false, completedModules: [] };
+  try {
+    const saved = window.localStorage.getItem(progressKey(course.id));
+    if (!saved) return { started: false, completedModules: [] };
+    const progress = JSON.parse(saved) as Partial<CourseProgress>;
+    return {
+      started: progress.started === true,
+      completedModules: Array.isArray(progress.completedModules)
+        ? progress.completedModules.filter(index => Number.isInteger(index) && index >= 0 && index < course.modules.length)
+        : [],
+    };
+  } catch {
+    window.localStorage.removeItem(progressKey(course.id));
+    return { started: false, completedModules: [] };
+  }
+}
+
 function CourseCard({ course }: { course: ManagedCourse }) {
   const [expanded, setExpanded] = useState(false);
-  const [started, setStarted] = useState(false);
+  const [progress, setProgress] = useState<CourseProgress>(() => readProgress(course));
   const [error, setError] = useState('');
   const curriculumId = `course-curriculum-${course.id}`;
+  const { started, completedModules } = progress;
+  const completionPercent = course.modules.length === 0
+    ? 0
+    : Math.round((completedModules.length / course.modules.length) * 100);
+
+  function saveProgress(nextStarted: boolean, nextCompletedModules: number[]) {
+    const nextProgress = {
+      started: nextStarted,
+      completedModules: nextCompletedModules,
+    } satisfies CourseProgress;
+    setProgress(nextProgress);
+    window.localStorage.setItem(progressKey(course.id), JSON.stringify(nextProgress));
+  }
 
   function handleStartCourse() {
-    setStarted(true);
+    saveProgress(true, completedModules);
     setExpanded(true);
+  }
+
+  function toggleModuleComplete(index: number) {
+    const nextCompletedModules = completedModules.includes(index)
+      ? completedModules.filter(item => item !== index)
+      : [...completedModules, index].sort((a, b) => a - b);
+    saveProgress(true, nextCompletedModules);
   }
 
   async function handleDownload(r2Key: string) {
@@ -66,6 +110,16 @@ function CourseCard({ course }: { course: ManagedCourse }) {
             <Clock className="h-4 w-4 text-gray-400" aria-hidden="true" />
             {formatDuration(totalMinutes(course))}
           </span>
+        </div>
+
+        <div className="mb-4 rounded-lg bg-gray-50 px-3 py-2.5" aria-label={`${completedModules.length} of ${course.modules.length} modules completed`}>
+          <div className="mb-1.5 flex items-center justify-between gap-3 text-xs font-medium text-gray-600">
+            <span>{completedModules.length}/{course.modules.length} modules complete</span>
+            <span>{completionPercent}%</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
+            <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-200" style={{ width: `${completionPercent}%` }} />
+          </div>
         </div>
 
         <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
@@ -104,6 +158,15 @@ function CourseCard({ course }: { course: ManagedCourse }) {
                 </summary>
                 <div className="border-t border-gray-200 px-4 py-3">
                   <p className="whitespace-pre-line break-words text-sm leading-6 text-gray-600">{mod.content}</p>
+                  <button
+                    type="button"
+                    onClick={() => toggleModuleComplete(i)}
+                    aria-pressed={completedModules.includes(i)}
+                    className={`mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${completedModules.includes(i) ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                    {completedModules.includes(i) ? 'Completed' : 'Mark complete'}
+                  </button>
                   {(mod.attachments ?? []).length > 0 && (
                     <div className="mt-3 space-y-2 border-t border-gray-100 pt-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Materials</p>
