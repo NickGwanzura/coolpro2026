@@ -173,6 +173,7 @@ export {
     useCourse,
     createCourse,
     updateCourse,
+    deleteCourse,
     submitCourse as submitCourseForApproval,
     approveCourse,
     rejectCourse,

@@ -8,6 +8,7 @@ import {
     useExamSubmissions,
     createCourse,
     updateCourse,
+    deleteCourse,
     submitCourseForApproval,
     gradeExamSubmission,
     uploadCourseMaterial,
@@ -221,10 +222,14 @@ function CoursePanel({
     course,
     onClose,
     onSaved,
+    onDeleted,
+    canDelete,
 }: {
     course: ManagedCourse;
     onClose: () => void;
     onSaved: (updated: ManagedCourse) => void;
+    onDeleted: (courseId: string) => void;
+    canDelete: boolean;
 }) {
     const isLocked = course.status === 'pending_nou' || course.status === 'approved';
     const [mode] = useState<EditorMode>(isLocked ? 'view' : 'edit');
@@ -233,6 +238,7 @@ function CoursePanel({
     const [modules, setModules] = useState<CourseModule[]>(course.modules);
     const [notice, setNotice] = useState('');
     const [saving, setSaving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     const readOnly = mode === 'view' || isLocked;
 
@@ -290,6 +296,20 @@ function CoursePanel({
         }
     }
 
+    async function handleDelete() {
+        if (!window.confirm(`Delete “${course.title}”? This cannot be undone.`)) return;
+        setDeleting(true);
+        setNotice('');
+        try {
+            await deleteCourse(course.id);
+            onDeleted(course.id);
+        } catch (err) {
+            setNotice(err instanceof Error ? err.message : 'Failed to delete course.');
+        } finally {
+            setDeleting(false);
+        }
+    }
+
     return (
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">
@@ -299,9 +319,14 @@ function CoursePanel({
                     </p>
                     <h2 className="mt-1 text-lg font-bold text-gray-900">{course.title}</h2>
                 </div>
-                <button onClick={onClose} className="text-sm text-gray-500 hover:text-gray-800">
-                    Close
-                </button>
+                <div className="flex items-center gap-3">
+                    {canDelete && (
+                        <button type="button" onClick={handleDelete} disabled={deleting || saving} className="text-sm font-semibold text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50">
+                            {deleting ? 'Deleting…' : 'Delete'}
+                        </button>
+                    )}
+                    <button type="button" onClick={onClose} className="text-sm text-gray-500 hover:text-gray-800">Close</button>
+                </div>
             </div>
 
             <div className="p-6 space-y-5">
@@ -379,6 +404,10 @@ function CoursePanel({
                             Submit for NOU Approval
                         </button>
                     </div>
+                )}
+
+                {canDelete && !isLocked && (
+                    <p className="text-xs text-gray-500">Deleting removes this course and any uploaded course materials.</p>
                 )}
 
                 {notice && (
@@ -615,6 +644,7 @@ function CreateCourseForm({
 
             <div className="p-6 space-y-5">
                 <div className="space-y-2">
+                    <p className="text-xs text-gray-500">Give learners a clear outcome and the main topics they will cover.</p>
                     <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Title</label>
                     <input
                         value={title}
@@ -635,6 +665,7 @@ function CreateCourseForm({
                 </div>
                 <div className="space-y-3">
                     <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Modules</label>
+                    <p className="text-xs text-gray-500">Break the course into focused topics. Add an estimated time and attach supporting files to Module 1 after creation.</p>
                     {modules.map((mod, i) => (
                         <ModuleRow
                             key={i}
@@ -785,6 +816,10 @@ export default function LearnManagePage() {
         setSelectedCourse(course);
     }
 
+    function handleCourseDeleted(courseId: string) {
+        if (selectedCourse?.id === courseId) setSelectedCourse(null);
+    }
+
     function handleGraded(updated: ExamSubmission) {
         if (selectedSubmission?.id === updated.id) setSelectedSubmission(updated);
     }
@@ -853,6 +888,8 @@ export default function LearnManagePage() {
                             course={selectedCourse}
                             onClose={() => setSelectedCourse(null)}
                             onSaved={handleCourseUpdated}
+                            onDeleted={handleCourseDeleted}
+                            canDelete={user.role === 'org_admin' || selectedCourse.status === 'draft' || selectedCourse.status === 'rejected'}
                         />
                     )}
 

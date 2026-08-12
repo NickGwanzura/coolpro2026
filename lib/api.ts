@@ -83,6 +83,15 @@ async function patch<T>(url: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function del<T>(url: string): Promise<T> {
+  const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(data.error ?? `Request failed: ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 // ---------------------------------------------------------------------------
 // Courses
 // ---------------------------------------------------------------------------
@@ -111,6 +120,12 @@ export async function updateCourse(
   await mutate('/api/courses');
   await mutate(`/api/courses/${id}`);
   return result;
+}
+
+export async function deleteCourse(id: string): Promise<void> {
+  await del<{ deleted: true }>(`/api/courses/${id}`);
+  await mutate('/api/courses');
+  await mutate(`/api/courses/${id}`, undefined, { revalidate: false });
 }
 
 export async function submitCourse(id: string): Promise<ManagedCourse> {

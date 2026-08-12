@@ -26,8 +26,14 @@ function formatFileSize(bytes: number) {
 
 function CourseCard({ course }: { course: ManagedCourse }) {
   const [expanded, setExpanded] = useState(false);
+  const [started, setStarted] = useState(false);
   const [error, setError] = useState('');
   const curriculumId = `course-curriculum-${course.id}`;
+
+  function handleStartCourse() {
+    setStarted(true);
+    setExpanded(true);
+  }
 
   async function handleDownload(r2Key: string) {
     setError('');
@@ -62,16 +68,25 @@ function CourseCard({ course }: { course: ManagedCourse }) {
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setExpanded(prev => !prev)}
-          aria-expanded={expanded}
-          aria-controls={curriculumId}
-          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
-        >
-          {expanded ? <ChevronUp className="h-4 w-4" aria-hidden="true" /> : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
-          {expanded ? 'Hide curriculum' : 'View curriculum'}
-        </button>
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+          <button
+            type="button"
+            onClick={handleStartCourse}
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2"
+          >
+            {started ? 'Continue course' : 'Start course'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpanded(prev => !prev)}
+            aria-expanded={expanded}
+            aria-controls={curriculumId}
+            className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+          >
+            {expanded ? <ChevronUp className="h-4 w-4" aria-hidden="true" /> : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
+            {expanded ? 'Hide curriculum' : 'View curriculum'}
+          </button>
+        </div>
 
         {expanded && (
           <div id={curriculumId} className="mt-4 space-y-2" aria-label={`${course.title} curriculum`}>
