@@ -36,7 +36,12 @@ export async function POST(req: Request) {
       .where(eq(users.email, email.trim().toLowerCase()))
       .limit(1);
   } catch (err) {
-    console.error('[auth/login] DB lookup failed');
+    // Keep credentials and connection strings out of logs while retaining enough
+    // detail to diagnose production connectivity/configuration failures.
+    console.error(
+      '[auth/login] DB lookup failed:',
+      err instanceof Error ? `${err.name}: ${err.message}` : 'Unknown database error',
+    );
     return NextResponse.json({ error: 'Login service unavailable' }, { status: 500 });
   }
 
