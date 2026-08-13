@@ -76,6 +76,7 @@ function ModuleRow({
     onAttachmentsChange,
     onRemove,
     readOnly,
+    showMaterials = true,
 }: {
     mod: CourseModule;
     index: number;
@@ -84,6 +85,7 @@ function ModuleRow({
     onAttachmentsChange: (index: number, attachments: CourseAttachment[]) => void;
     onRemove: (index: number) => void;
     readOnly: boolean;
+    showMaterials?: boolean;
 }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -174,7 +176,7 @@ function ModuleRow({
             />
             <span className="ml-2 text-xs text-gray-400">min</span>
 
-            <div className="space-y-2 pt-2">
+            {showMaterials && <div className="space-y-2 pt-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Materials</p>
                 {attachments.length === 0 && <p className="text-xs text-gray-400">No files attached.</p>}
                 {attachments.map(attachment => (
@@ -221,7 +223,7 @@ function ModuleRow({
                     <p className="text-xs text-gray-400">Save the course as a draft first to attach files.</p>
                 )}
                 {error && <p className="text-xs text-red-500">{error}</p>}
-            </div>
+            </div>}
         </div>
     );
 }
@@ -578,14 +580,26 @@ function CreateCourseForm({
     onCreated: (c: ManagedCourse) => void;
     onCancel: () => void;
 }) {
-    const courseFilesInputRef = useRef<HTMLInputElement>(null);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [modules, setModules] = useState<CourseModule[]>([{ title: '', content: '', minutes: 30 }]);
-    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [selectedFilesByModule, setSelectedFilesByModule] = useState<Record<number, File[]>>({});
+    const [step, setStep] = useState(1);
     const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const [notice, setNotice] = useState('');
     const [saving, setSaving] = useState(false);
+    const materialInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+    const stepLabels = ['Details', 'Curriculum', 'Materials', 'Preview'];
+    const selectedFileCount = Object.values(selectedFilesByModule).reduce((sum, files) => sum + files.length, 0);
+    const totalMinutes = modules.reduce((sum, module) => sum + Number(module.minutes || 0), 0);
+
+    function formatMinutes(minutes: number) {
+        if (minutes < 60) return `${minutes} min`;
+        const hours = Math.floor(minutes / 60);
+        const remaining = minutes % 60;
+        return remaining > 0 ? `${hours} hr ${remaining} min` : `${hours} hr`;
+    }
 
     function handleModuleChange(index: number, field: keyof CourseModule, value: string | number) {
         setModules(prev => prev.map((m, i) => i === index ? { ...m, [field]: value } : m));
@@ -597,26 +611,58 @@ function CreateCourseForm({
 
     function handleModuleRemove(index: number) {
         setModules(prev => prev.filter((_, i) => i !== index));
+        setSelectedFilesByModule(prev => Object.fromEntries(
+            Object.entries(prev)
+                .filter(([moduleIndex]) => Number(moduleIndex) !== index)
+                .map(([moduleIndex, files]) => [
+                    Number(moduleIndex) > index ? Number(moduleIndex) - 1 : Number(moduleIndex),
+                    files,
+                ]),
+        ));
     }
 
-    function handleCourseFilesSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    function handleCourseFilesSelect(moduleIndex: number, e: React.ChangeEvent<HTMLInputElement>) {
         const files = Array.from(e.target.files ?? []);
         e.target.value = '';
         if (files.length === 0) return;
-        setSelectedFiles(prev => [...prev, ...files]);
+        setSelectedFilesByModule(prev => ({
+            ...prev,
+            [moduleIndex]: [...(prev[moduleIndex] ?? []), ...files],
+        }));
     }
 
-    function removeSelectedFile(index: number) {
-        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    function removeSelectedFile(moduleIndex: number, fileIndex: number) {
+        setSelectedFilesByModule(prev => ({
+            ...prev,
+            [moduleIndex]: (prev[moduleIndex] ?? []).filter((_, index) => index !== fileIndex),
+        }));
+    }
+
+    function validateStep(nextStep: number) {
+        if (nextStep >= 2 && !title.trim()) return 'Course title is required.';
+        if (nextStep >= 2 && !description.trim()) return 'Course description is required.';
+        if (nextStep >= 3) {
+            const moduleError = validateModuleEntries(modules);
+            if (moduleError) return moduleError;
+        }
+        return '';
+    }
+
+    function goToStep(nextStep: number) {
+        const validationError = validateStep(nextStep);
+        if (validationError) {
+            setNotice(validationError);
+            return;
+        }
+        setNotice('');
+        setStep(nextStep);
     }
 
     async function handleCreate() {
-        if (!title.trim()) { setNotice('Course title is required.'); return; }
-        if (!description.trim()) { setNotice('Course description is required.'); return; }
         const moduleError = validateModuleEntries(modules);
         if (moduleError) { setNotice(moduleError); return; }
         setSaving(true);
-        setUploadProgress(selectedFiles.length > 0 ? 0 : null);
+        setUploadProgress(selectedFileCount > 0 ? 0 : null);
         try {
             const draftModules = modules.map((mod, index) => ({
                 ...mod,
@@ -626,22 +672,28 @@ function CreateCourseForm({
             }));
             const course = await createCourse({ lecturerId, lecturerName, title: title.trim(), description: description.trim(), modules: draftModules });
 
-            if (selectedFiles.length === 0) {
+            if (selectedFileCount === 0) {
                 onCreated(course);
                 return;
             }
 
-            const uploaded: CourseAttachment[] = [];
-            for (const [fileIndex, file] of selectedFiles.entries()) {
-                const attachment = await uploadCourseMaterial(course.id, file, percent => {
-                    setUploadProgress(Math.round(((fileIndex + percent / 100) / selectedFiles.length) * 100));
-                });
-                uploaded.push(attachment);
+            const updatedModules = [...course.modules];
+            let uploadedCount = 0;
+            for (const [moduleIndexString, files] of Object.entries(selectedFilesByModule)) {
+                const moduleIndex = Number(moduleIndexString);
+                const uploaded: CourseAttachment[] = [];
+                for (const file of files) {
+                    const attachment = await uploadCourseMaterial(course.id, file, percent => {
+                        setUploadProgress(Math.round(((uploadedCount + percent / 100) / selectedFileCount) * 100));
+                    });
+                    uploaded.push(attachment);
+                    uploadedCount += 1;
+                }
+                updatedModules[moduleIndex] = {
+                    ...updatedModules[moduleIndex],
+                    attachments: [...(updatedModules[moduleIndex].attachments ?? []), ...uploaded],
+                };
             }
-
-            const updatedModules = course.modules.map((mod, index) => (
-                index === 0 ? { ...mod, attachments: [...(mod.attachments ?? []), ...uploaded] } : mod
-            ));
             const updatedCourse = await updateCourse(course.id, { modules: updatedModules });
             onCreated(updatedCourse);
         } catch (err) {
@@ -659,121 +711,116 @@ function CreateCourseForm({
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-400">New Course</p>
                     <h2 className="mt-1 text-lg font-bold text-gray-900">Create Course</h2>
                 </div>
-                <button onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-800">Cancel</button>
+                <button type="button" onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-800">Cancel</button>
             </div>
 
-            <div className="p-6 space-y-5">
-                <div className="space-y-2">
-                    <p className="text-xs text-gray-500">Give learners a clear outcome and the main topics they will cover.</p>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Title</label>
-                    <input
-                        value={title}
-                        onChange={e => setTitle(e.target.value)}
-                        placeholder="Course title"
-                        className="w-full border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Description</label>
-                    <textarea
-                        value={description}
-                        onChange={e => setDescription(e.target.value)}
-                        rows={3}
-                        placeholder="Course objectives and overview"
-                        className="w-full border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
-                    />
-                </div>
-                <div className="space-y-3">
-                    <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Modules</label>
-                    <p className="text-xs text-gray-500">Break the course into focused topics. Add an estimated time and attach supporting files to Module 1 after creation.</p>
-                    {modules.map((mod, i) => (
-                        <ModuleRow
-                            key={i}
-                            mod={mod}
-                            index={i}
-                            onChange={handleModuleChange}
-                            onAttachmentsChange={handleAttachmentsChange}
-                            onRemove={handleModuleRemove}
-                            readOnly={false}
-                        />
-                    ))}
-                    <button
-                        type="button"
-                        onClick={() => setModules(prev => [...prev, { title: '', content: '', minutes: 30 }])}
-                        className="text-sm font-semibold text-blue-600 hover:underline"
-                    >
-                        + Add Module
-                    </button>
-                </div>
-                <div className="rounded-lg border border-dashed border-[#D97706]/50 bg-amber-50/60 p-4">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-start gap-3">
-                            <div className="rounded-lg bg-white p-2 text-[#D97706] shadow-sm">
-                                <UploadCloud className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold text-gray-900">Upload course materials</p>
-                                <p className="mt-1 text-xs text-gray-600">
-                                    Add PDFs, slides, videos, images, or worksheets now. They will attach to Module 1 after the draft is created.
-                                </p>
-                            </div>
+            <div className="border-b border-gray-200 px-6 py-4">
+                <ol className="grid grid-cols-4 gap-2" aria-label="Course creation steps">
+                    {stepLabels.map((label, index) => {
+                        const stepNumber = index + 1;
+                        const active = step === stepNumber;
+                        const complete = step > stepNumber;
+                        return (
+                            <li key={label}>
+                                <button type="button" onClick={() => goToStep(stepNumber)} className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-semibold transition ${active ? 'bg-orange-50 text-orange-700' : complete ? 'text-emerald-700 hover:bg-emerald-50' : 'text-gray-500 hover:bg-gray-50'}`}>
+                                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs ${active ? 'bg-[#FF6B35] text-white' : complete ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{complete ? '✓' : stepNumber}</span>
+                                    <span className="hidden sm:inline">{label}</span>
+                                </button>
+                            </li>
+                        );
+                    })}
+                </ol>
+            </div>
+
+            <div className="space-y-5 p-6">
+                {step === 1 && (
+                    <div className="space-y-5">
+                        <div>
+                            <p className="text-sm font-semibold text-gray-900">Start with the learner-facing basics</p>
+                            <p className="mt-1 text-sm leading-6 text-gray-500">Give learners a clear outcome and the main topics they will cover.</p>
                         </div>
-                        <input
-                            ref={courseFilesInputRef}
-                            type="file"
-                            multiple
-                            className="hidden"
-                            onChange={handleCourseFilesSelect}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => courseFilesInputRef.current?.click()}
-                            disabled={saving}
-                            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-[#D97706] shadow-sm ring-1 ring-amber-200 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            <UploadCloud className="h-4 w-4" />
-                            Choose files
-                        </button>
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500" htmlFor="new-course-title">Title</label>
+                            <input id="new-course-title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Course title" className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500" htmlFor="new-course-description">Description</label>
+                            <textarea id="new-course-description" value={description} onChange={e => setDescription(e.target.value)} rows={5} placeholder="Course objectives and overview" className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
                     </div>
-                    {selectedFiles.length > 0 && (
-                        <div className="mt-4 space-y-2">
-                            {selectedFiles.map((file, index) => (
-                                <div key={`${file.name}-${file.lastModified}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2">
-                                    <span className="flex min-w-0 items-center gap-2 text-sm text-gray-700">
-                                        <Paperclip className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                                        <span className="truncate">{file.name}</span>
-                                        <span className="shrink-0 text-xs text-gray-400">{formatFileSize(file.size)}</span>
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() => removeSelectedFile(index)}
-                                        disabled={saving}
-                                        className="text-gray-400 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-                                        aria-label="Remove selected file"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    {uploadProgress !== null && (
-                        <div className="mt-4 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-semibold text-amber-800">
-                            Uploading materials... {uploadProgress}%
-                        </div>
-                    )}
-                </div>
-                <button
-                    type="button"
-                    onClick={handleCreate}
-                    disabled={saving}
-                    className="rounded-lg bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                    {saving ? 'Creating...' : selectedFiles.length > 0 ? 'Create Course & Upload Files' : 'Create Course'}
-                </button>
-                {notice && (
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">{notice}</div>
                 )}
+
+                {step === 2 && (
+                    <div className="space-y-4">
+                        <div>
+                            <p className="text-sm font-semibold text-gray-900">Build the curriculum</p>
+                            <p className="mt-1 text-sm leading-6 text-gray-500">Keep each module focused on one topic and add a realistic completion time.</p>
+                        </div>
+                        {modules.map((mod, i) => (
+                            <ModuleRow key={i} mod={mod} index={i} onChange={handleModuleChange} onAttachmentsChange={handleAttachmentsChange} onRemove={handleModuleRemove} readOnly={false} showMaterials={false} />
+                        ))}
+                        <button type="button" onClick={() => setModules(prev => [...prev, { title: '', content: '', minutes: 30 }])} className="min-h-11 text-sm font-semibold text-blue-700 hover:underline">+ Add module</button>
+                    </div>
+                )}
+
+                {step === 3 && (
+                    <div className="space-y-4">
+                        <div>
+                            <p className="text-sm font-semibold text-gray-900">Attach materials to the right module</p>
+                            <p className="mt-1 text-sm leading-6 text-gray-500">Files stay grouped with the module where learners will use them.</p>
+                        </div>
+                        {modules.map((mod, moduleIndex) => {
+                            const files = selectedFilesByModule[moduleIndex] ?? [];
+                            return (
+                                <div key={moduleIndex} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Module {moduleIndex + 1}</p>
+                                            <p className="mt-1 text-sm font-semibold text-gray-900">{mod.title.trim() || `Module ${moduleIndex + 1}`}</p>
+                                        </div>
+                                        <input ref={element => { materialInputRefs.current[moduleIndex] = element; }} type="file" multiple className="hidden" onChange={event => handleCourseFilesSelect(moduleIndex, event)} />
+                                        <button type="button" onClick={() => materialInputRefs.current[moduleIndex]?.click()} disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 ring-1 ring-gray-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"><UploadCloud className="h-4 w-4" aria-hidden="true" /> Add files</button>
+                                    </div>
+                                    {files.length > 0 ? (
+                                        <div className="mt-3 space-y-2">
+                                            {files.map((file, fileIndex) => (
+                                                <div key={`${file.name}-${file.lastModified}-${fileIndex}`} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                                                    <span className="flex min-w-0 items-center gap-2 text-sm text-gray-700"><Paperclip className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden="true" /><span className="truncate">{file.name}</span><span className="shrink-0 text-xs text-gray-400">{formatFileSize(file.size)}</span></span>
+                                                    <button type="button" onClick={() => removeSelectedFile(moduleIndex, fileIndex)} disabled={saving} className="min-h-11 min-w-11 text-gray-400 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50" aria-label={`Remove ${file.name}`}><X className="mx-auto h-4 w-4" aria-hidden="true" /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : <p className="mt-3 text-xs text-gray-500">No files selected for this module.</p>}
+                                </div>
+                            );
+                        })}
+                        {uploadProgress !== null && <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800">Uploading materials… {uploadProgress}%</div>}
+                    </div>
+                )}
+
+                {step === 4 && (
+                    <div className="space-y-5">
+                        <div>
+                            <p className="text-sm font-semibold text-gray-900">Preview before creating</p>
+                            <p className="mt-1 text-sm leading-6 text-gray-500">This is how the course summary will appear to learners.</p>
+                        </div>
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
+                            <h3 className="text-lg font-bold text-gray-950">{title.trim() || 'Untitled course'}</h3>
+                            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-600">{description.trim() || 'No description provided.'}</p>
+                            <div className="mt-4 flex flex-wrap gap-4 text-xs font-medium text-gray-600"><span>{modules.length} modules</span><span>{formatMinutes(totalMinutes)}</span><span>{selectedFileCount} material{selectedFileCount === 1 ? '' : 's'}</span></div>
+                        </div>
+                        <div className="space-y-2">
+                            {modules.map((mod, index) => <div key={index} className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-white">{index + 1}</span><span className="min-w-0 flex-1 text-sm font-semibold text-gray-900">{mod.title.trim() || `Module ${index + 1}`}</span><span className="text-xs text-gray-500">{formatMinutes(Number(mod.minutes || 0))}</span></div>)}
+                        </div>
+                    </div>
+                )}
+
+                {notice && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{notice}</div>}
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+                    <button type="button" onClick={() => step === 1 ? onCancel() : goToStep(step - 1)} disabled={saving} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60">{step === 1 ? 'Cancel' : 'Back'}</button>
+                    {step < 4 ? <button type="button" onClick={() => goToStep(step + 1)} disabled={saving} className="min-h-11 rounded-lg bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">Continue</button> : <button type="button" onClick={handleCreate} disabled={saving} className="min-h-11 rounded-lg bg-[#FF6B35] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{saving ? (selectedFileCount > 0 ? 'Creating and uploading…' : 'Creating…') : 'Create course draft'}</button>}
+                </div>
             </div>
         </div>
     );
