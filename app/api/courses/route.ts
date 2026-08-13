@@ -9,7 +9,7 @@ import { toManagedCourse, validateCourseBasics, validateCourseModules } from './
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['lecturer', 'trainer', 'org_admin', 'student']);
+    session = requireRole(req, ['lecturer', 'trainer', 'org_admin', 'student', 'technician']);
   } catch (e) {
     return e as Response;
   }
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
 
   if (session.role === 'lecturer' || session.role === 'trainer') {
     rows = await db.select().from(courses).where(eq(courses.lecturerId, session.id));
-  } else if (session.role === 'student') {
+  } else if (session.role === 'student' || session.role === 'technician') {
     rows = await db.select().from(courses).where(eq(courses.status, 'approved'));
   } else {
     rows = await db.select().from(courses);

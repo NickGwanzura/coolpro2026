@@ -2,11 +2,13 @@
 
 import TrainerLearningHub from '@/components/TrainerLearningHub';
 import LMS from '@/components/LMS';
+import LearnerDashboard from '@/components/LearnerDashboard';
 import { useAuth } from '@/lib/auth';
 
 export default function LearnPage() {
     const { user: session, isLoading } = useAuth();
     const isTrainer = session?.role === 'trainer' || session?.role === 'lecturer';
+    const isLearner = session?.role === 'student' || session?.role === 'technician';
 
     if (isLoading) {
         return (
@@ -28,7 +30,14 @@ export default function LearnPage() {
                     </p>
                 </div>
             </div>
-            {isTrainer && session ? <TrainerLearningHub session={session} /> : <LMS />}
+            {isTrainer && session ? (
+                <TrainerLearningHub session={session} />
+            ) : (
+                <>
+                    {isLearner && session && <LearnerDashboard session={session} />}
+                    <LMS />
+                </>
+            )}
         </div>
     );
 }
