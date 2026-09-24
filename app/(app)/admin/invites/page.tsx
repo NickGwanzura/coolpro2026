@@ -22,7 +22,7 @@ const STATUS_STYLES: Record<InviteStatus, string> = {
 export default function AdminInvitesPage() {
   const { data, isLoading } = useInvites();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('technician');
+  const [role, setRole] = useState('lecturer');
   const [region, setRegion] = useState('Harare');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
