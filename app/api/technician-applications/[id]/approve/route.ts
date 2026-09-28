@@ -59,14 +59,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const membershipNumber = await generateMembershipNumber();
   const membershipExpiry = `${today.getFullYear()}-12-31`;
 
-  // Neon HTTP executes a batch as one database transaction: either the account, registry
-  // record, application state, and membership all persist, or none of them do.
-  await db.batch([
-    db.insert(users).values({
+  // Keep the account, registry record, application state, and membership atomic.
+  await db.transaction(async (tx) => {
+    await tx.insert(users).values({
       id: userId, name: app.name, email: app.email, passwordHash: app.passwordHash,
       role: 'technician', region: app.region, status: 'active', isDemo: false,
-    }),
-    db.insert(technicians).values({
+    });
+    await tx.insert(technicians).values({
       id: technicianId,
       name: app.name,
       nationalId: app.nationalId,
@@ -86,15 +85,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       registrationDate: today.toISOString().split('T')[0],
       expiryDate: expiry.toISOString().split('T')[0],
       status: 'active',
-    }),
-    db.update(technicianApplications).set({
+    });
+    await tx.update(technicianApplications).set({
       status: 'approved',
       reviewedBy: session.name,
       reviewedAt: new Date(),
       approvedTechnicianId: technicianId,
-    })
-    .where(eq(technicianApplications.id, id)),
-    db.insert(memberships).values({
+    }).where(eq(technicianApplications.id, id));
+    await tx.insert(memberships).values({
       id: membershipId,
       technicianId,
       applicationId: app.id,
@@ -106,8 +104,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       expiryDate: membershipExpiry,
       approvedBy: session.name,
       approvedAt: today,
-    }),
-  ]);
+    });
+  });
 
   recordAuditEvent({
     entityType: 'technician_application',

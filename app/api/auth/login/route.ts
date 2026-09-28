@@ -47,10 +47,11 @@ export async function POST(req: Request) {
   } catch (err) {
     // Keep credentials and connection strings out of logs while retaining enough
     // detail to diagnose production connectivity/configuration failures.
-    console.error(
-      '[auth/login] DB lookup failed:',
-      err instanceof Error ? `${err.name}: ${err.message}` : 'Unknown database error',
-    );
+    const errorCode =
+      typeof err === 'object' && err !== null && 'code' in err && typeof err.code === 'string'
+        ? err.code
+        : 'unknown';
+    console.error('[auth/login] DB lookup failed:', { errorCode });
     return NextResponse.json({ error: 'Login service unavailable' }, { status: 500 });
   }
 

@@ -1,11 +1,12 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import * as schema from './schema/index';
 
 type DrizzleDB = ReturnType<typeof drizzle<typeof schema>>;
 
 let _db: DrizzleDB | null = null;
+let _pool: Pool | null = null;
 
 function getDb(): DrizzleDB {
   if (_db) return _db;
@@ -13,7 +14,13 @@ function getDb(): DrizzleDB {
   if (!url) {
     throw new Error('DATABASE_URL is not set');
   }
-  _db = drizzle(neon(url), { schema });
+  _pool = new Pool({
+    connectionString: url,
+    max: 10,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+  });
+  _db = drizzle(_pool, { schema });
 
   // Dev-only warning: alert if the users table is empty so login failures are obvious.
   if (process.env.NODE_ENV !== 'production') {
