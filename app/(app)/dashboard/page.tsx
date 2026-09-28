@@ -1,6 +1,6 @@
 'use client';
 
-import { CSSProperties, useMemo, useState } from 'react';
+import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import {
     useTechnicians,
@@ -48,6 +48,16 @@ export default function DashboardPage() {
     const { user: session, isLoading } = useAuth();
     const [dateRange, setDateRange] = useState('today');
     const [regionFilter, setRegionFilter] = useState('all');
+    const [nowMs, setNowMs] = useState(0);
+
+    useEffect(() => {
+        const initialTick = window.setTimeout(() => setNowMs(Date.now()), 0);
+        const interval = window.setInterval(() => setNowMs(Date.now()), 60_000);
+        return () => {
+            window.clearTimeout(initialTick);
+            window.clearInterval(interval);
+        };
+    }, []);
     const isAdmin = session?.role === 'org_admin';
     const isTechnician = session?.role === 'technician';
     // Contractors currently share the technician dashboard view (data + layout); a
@@ -78,7 +88,6 @@ export default function DashboardPage() {
     // Technician KPIs — computed from real DB data
     const technicianStats = useMemo(() => {
         const completedJobs = plannerJobs.filter(j => j.status === 'completed').length;
-        const nowMs = Date.now();
         const rangeMs = rangeMsFor(dateRange as SimpleDateRange);
         const rangeStart = nowMs - rangeMs;
         const jobsInRange = plannerJobs.filter(j => new Date(j.scheduledDate).getTime() >= rangeStart);
@@ -126,7 +135,7 @@ export default function DashboardPage() {
                 trend: expiringCerts > 0 ? `${expiringCerts} expiring soon` : `${validCerts} active`
             },
         ];
-    }, [plannerJobs, cocRequests, certificateRecords, dateRange, refrigerantLogs]);
+    }, [plannerJobs, cocRequests, certificateRecords, dateRange, refrigerantLogs, nowMs]);
 
     // Vendor KPIs — computed from the vendor's own reorders, compliance applications, and ledger
     const vendorStats = useMemo(() => {
@@ -225,9 +234,8 @@ export default function DashboardPage() {
     }, [managedCourses]);
 
     const adminMetrics = useMemo(() => {
-        const now = Date.now();
         const rangeMs = rangeMsFor(dateRange as SimpleDateRange);
-        const rangeStart = now - rangeMs;
+        const rangeStart = nowMs - rangeMs;
 
         const regionFilteredTechs = regionFilter === 'all'
             ? technicians
@@ -255,7 +263,7 @@ export default function DashboardPage() {
             pendingReorderReviews,
             regions,
         };
-    }, [dateRange, regionFilter, technicians, reorders]);
+    }, [dateRange, regionFilter, technicians, reorders, nowMs]);
 
     // Admin KPIs
     const adminStats = [

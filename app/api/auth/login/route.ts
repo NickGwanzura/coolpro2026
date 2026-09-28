@@ -4,7 +4,11 @@ import { db } from '@/db/client';
 import { users } from '@/db/schema/index';
 import { signSession, sessionCookie } from '@/lib/server/auth';
 import { verifyPassword } from '@/lib/server/password';
+import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
 import type { UserSession } from '@/lib/session-types';
+
+const LOGIN_RATE_LIMIT = 30;
+const LOGIN_RATE_WINDOW_MS = 15 * 60 * 1000;
 
 function toUserSession(user: typeof users.$inferSelect, region?: string): UserSession {
   return {
@@ -18,13 +22,18 @@ function toUserSession(user: typeof users.$inferSelect, region?: string): UserSe
 }
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({})) as {
-    email?: string;
-    password?: string;
-  };
-  const { email, password } = body;
+  if (!checkRateLimit(`login:${getClientIp(req)}`, LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW_MS)) {
+    return NextResponse.json(
+      { error: 'Too many login attempts. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(LOGIN_RATE_WINDOW_MS / 1000) } },
+    );
+  }
 
-  if (!email || !password) {
+  const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+  const password = typeof body.password === 'string' ? body.password : '';
+
+  if (!email || !password || email.length > 254 || password.length > 1024) {
     return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
   }
 
@@ -33,7 +42,7 @@ export async function POST(req: Request) {
     [user] = await db
       .select()
       .from(users)
-      .where(eq(users.email, email.trim().toLowerCase()))
+      .where(eq(users.email, email))
       .limit(1);
   } catch (err) {
     // Keep credentials and connection strings out of logs while retaining enough
