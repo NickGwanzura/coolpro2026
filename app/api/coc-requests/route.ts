@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
-import { and, desc, eq, or } from 'drizzle-orm';
+import { randomBytes } from 'node:crypto';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { cocRequests, installations, plannerJobs } from '@/db/schema/index';
+import { cocRequests, installations } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { toCocRequest } from '@/lib/server/request-serializers';
 import type { CocRequest } from '@/types/index';
 
 function certificateNumber() {
-  return `COC-${Date.now().toString(36).toUpperCase()}`;
+  return `COC-${randomBytes(12).toString('hex').toUpperCase()}`;
 }
 
 export async function GET(req: Request) {
@@ -40,19 +41,16 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({})) as Partial<CocRequest>;
 
-  const required: Array<keyof CocRequest> = ['clientName', 'location', 'equipmentType', 'installationDate'];
-  for (const key of required) {
-    if (!body[key]) {
-      return NextResponse.json({ error: `${key} is required` }, { status: 400 });
-    }
+  if (!body.installationId) {
+    return NextResponse.json({ error: 'A saved installation is required' }, { status: 400 });
   }
-  if (!body.complianceCheck) {
-    return NextResponse.json({ error: 'Compliance confirmation is required' }, { status: 400 });
+  if (body.complianceCheck !== true) {
+    return NextResponse.json({ error: 'Explicit compliance confirmation is required' }, { status: 400 });
   }
 
   let linkedInstallation: typeof installations.$inferSelect | null = null;
 
-  if (body.installationId) {
+  {
     const [installation] = await db
       .select()
       .from(installations)
@@ -61,70 +59,56 @@ export async function POST(req: Request) {
     if (!installation) {
       return NextResponse.json({ error: 'Installation not found for this technician' }, { status: 404 });
     }
+    if (installation.cocRequested) {
+      return NextResponse.json({ error: 'A COC request already exists for this installation' }, { status: 409 });
+    }
+    const snapshot = installation.checklistSnapshot;
+    if (!installation.location?.trim() || !snapshot || !Array.isArray(snapshot.items) ||
+      snapshot.totalItems !== snapshot.items.length || snapshot.completedItems !== snapshot.totalItems ||
+      snapshot.items.some((item) => item.checked !== true)) {
+      return NextResponse.json({ error: 'Installation must have a complete, saved checklist and site location' }, { status: 400 });
+    }
     linkedInstallation = installation;
   }
 
-  if (body.plannerJobId) {
-    const [job] = await db
-      .select()
-      .from(plannerJobs)
-      .where(and(eq(plannerJobs.id, body.plannerJobId), eq(plannerJobs.technicianId, session.id)))
-      .limit(1);
-    if (!job) {
-      return NextResponse.json({ error: 'Planner job not found for this technician' }, { status: 404 });
-    }
+  let inserted: typeof cocRequests.$inferSelect;
+  try {
+    inserted = await db.transaction(async (tx) => {
+      const [claimed] = await tx.update(installations)
+        .set({ cocRequested: true, cocApproved: false, updatedAt: new Date() })
+        .where(and(
+          eq(installations.id, body.installationId!),
+          eq(installations.technicianId, session.id),
+          eq(installations.cocRequested, false),
+        ))
+        .returning();
+      if (!claimed) throw new Error('COC_ALREADY_REQUESTED');
 
-  }
-
-  if (body.plannerJobId || body.installationId) {
-    const duplicateConditions = [
-      body.plannerJobId ? eq(cocRequests.plannerJobId, body.plannerJobId) : undefined,
-      body.installationId ? eq(cocRequests.installationId, body.installationId) : undefined,
-    ].filter(Boolean) as NonNullable<ReturnType<typeof eq>>[];
-
-    const [existingRequest] = duplicateConditions.length > 0
-      ? await db
-          .select()
-          .from(cocRequests)
-          .where(and(eq(cocRequests.technicianId, session.id), or(...duplicateConditions)!))
-          .limit(1)
-      : [];
-    if (existingRequest) {
-      return NextResponse.json({ error: 'A COC request already exists for this job or installation' }, { status: 409 });
-    }
-  }
-
-  const [inserted] = await db
-    .insert(cocRequests)
-    .values({
+      const [request] = await tx.insert(cocRequests).values({
       certificateNumber: certificateNumber(),
-      plannerJobId: body.plannerJobId ?? null,
-      installationId: body.installationId ?? null,
+      plannerJobId: null,
+      installationId: linkedInstallation!.id,
       technicianId: session.id,
       technicianName: session.name,
-      clientName: body.clientName!,
-      location: body.location!,
-      equipmentType: body.equipmentType!,
-      serialNumber: body.serialNumber ?? null,
-      installationDate: body.installationDate!,
-      details: body.details ?? linkedInstallation?.jobDetails ?? null,
-      checklistSnapshot: body.checklistSnapshot ?? linkedInstallation?.checklistSnapshot ?? null,
-      evidenceImages: body.evidenceImages ?? linkedInstallation?.images ?? [],
-      complianceCheck: body.complianceCheck ?? false,
+      clientName: linkedInstallation!.clientName,
+      location: linkedInstallation!.location!,
+      equipmentType: linkedInstallation!.jobType,
+      serialNumber: null,
+      installationDate: linkedInstallation!.installationDate.toISOString().slice(0, 10),
+      details: linkedInstallation!.jobDetails,
+      checklistSnapshot: linkedInstallation!.checklistSnapshot,
+      evidenceImages: linkedInstallation!.images,
+      complianceCheck: true,
       status: 'submitted',
-    })
-    .returning();
-
-  if (body.installationId) {
-    await db
-      .update(installations)
-      .set({
-        cocRequested: true,
-        cocApproved: false,
-        cocRequestId: inserted.id,
-        updatedAt: new Date(),
-      })
-      .where(eq(installations.id, body.installationId));
+      }).returning();
+      await tx.update(installations).set({ cocRequestId: request.id }).where(eq(installations.id, linkedInstallation!.id));
+      return request;
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'COC_ALREADY_REQUESTED') {
+      return NextResponse.json({ error: 'A COC request already exists for this installation' }, { status: 409 });
+    }
+    throw error;
   }
 
   return NextResponse.json(toCocRequest(inserted), { status: 201 });

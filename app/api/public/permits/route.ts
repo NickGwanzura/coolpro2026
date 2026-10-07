@@ -10,13 +10,13 @@ export async function GET(req: Request) {
   const q = url.searchParams.get('q');
   const token = url.searchParams.get('token');
 
-  if (!q && !token) {
-    return NextResponse.json({ error: 'q or token is required' }, { status: 400 });
+  if (!q || !token || q.length > 100 || token.length > 200) {
+    return NextResponse.json({ error: 'Permit number and verification token are required' }, { status: 400 });
   }
 
   const conditions = [eq(tradePermits.status, 'approved')];
-  if (q) conditions.push(eq(tradePermits.permitNumber, q.trim().toUpperCase()));
-  if (token) conditions.push(eq(tradePermits.verificationToken, token));
+  conditions.push(eq(tradePermits.permitNumber, q.trim().toUpperCase()));
+  conditions.push(eq(tradePermits.verificationToken, token));
 
   const [row] = await db.select().from(tradePermits).where(and(...conditions)).limit(1);
 
@@ -27,10 +27,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     permitNumber: row.permitNumber,
     permitType: row.permitType,
-    applicantCompany: row.applicantCompany,
     refrigerantLabel: row.refrigerantLabel,
-    quantityKg: Number(row.quantityKg),
-    countryOfOriginOrDestination: row.countryOfOriginOrDestination,
     status: row.status,
     issuedDate: row.issuedDate,
     expiryDate: row.expiryDate,

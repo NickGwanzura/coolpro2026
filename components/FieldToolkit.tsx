@@ -26,7 +26,7 @@ import {
 import { useAuth } from '../lib/auth';
 import { CocRequest, Installation, InstallationChecklistSnapshot, JobType, JobTypeLabels, Refrigerant, RefrigerantLog } from '../types';
 import { jsPDF } from 'jspdf';
-import { readCollection, STORAGE_KEYS } from '@/lib/platformStore';
+import { STORAGE_KEYS } from '@/lib/platformStore';
 import { createCocRequest, createGasLogs, searchRefrigerantsOnce, useApprovedSuppliers, useCocRequests, useInstallations, createInstallation } from '@/lib/api';
 import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 import { CocPdfButton } from '@/components/CocPdfButton';
@@ -53,6 +53,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
   // Installation State
   const [installationForm, setInstallationForm] = useState({
     clientName: '',
+    location: '',
     jobDetails: '',
     floorSpace: '',
     jobType: 'COLD_ROOM' as JobType,
@@ -60,7 +61,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Logbook State — starts empty; real entries come from the DB via createGasLogs
+  // Keep this user's pending queue with the full payload so an offline reload can retry it.
   const [logs, setLogs] = useState<RefrigerantLog[]>([]);
 
   const [formData, setFormData] = useState({
@@ -77,6 +78,8 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
   });
 
   const [pendingSyncIds, setPendingSyncIds] = useState<string[]>([]);
+  const pendingQueueKey = user?.id ? `${STORAGE_KEYS.fieldToolkitPendingSync}:${user.id}` : null;
+  const [hydratedQueueKey, setHydratedQueueKey] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [checklistNotice, setChecklistNotice] = useState('');
   const [prefillNotice, setPrefillNotice] = useState('');
@@ -85,21 +88,42 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
   const [installationStatusFilter, setInstallationStatusFilter] = useState<'all' | Installation['status'] | 'coc_pending' | 'coc_ready'>('all');
 
   useEffect(() => {
-    setPendingSyncIds(readCollection<string>(STORAGE_KEYS.fieldToolkitPendingSync, []));
+    setHydratedQueueKey(null);
+    if (pendingQueueKey) {
+      try {
+        const stored = JSON.parse(window.localStorage.getItem(pendingQueueKey) ?? '{"ids":[],"logs":[]}') as { ids?: string[]; logs?: RefrigerantLog[] };
+        setPendingSyncIds(Array.isArray(stored.ids) ? stored.ids : []);
+        setLogs(Array.isArray(stored.logs) ? stored.logs : []);
+      } catch {
+        setPendingSyncIds([]);
+        setLogs([]);
+      }
+      setHydratedQueueKey(pendingQueueKey);
+    } else {
+      setPendingSyncIds([]);
+      setLogs([]);
+    }
     setIsOnline(navigator.onLine);
-  }, []);
+  }, [pendingQueueKey]);
 
   // Installations are DB-backed via useInstallations hook — no localStorage mirror needed
 
   useEffect(() => {
     // Pending sync IDs persisted to localStorage for offline resilience
-    try { window.localStorage.setItem(STORAGE_KEYS.fieldToolkitPendingSync, JSON.stringify(pendingSyncIds)); } catch {}
-  }, [pendingSyncIds]);
+    if (!pendingQueueKey || hydratedQueueKey !== pendingQueueKey) return;
+    try {
+      window.localStorage.setItem(pendingQueueKey, JSON.stringify({
+        ids: pendingSyncIds,
+        logs: logs.filter((log) => pendingSyncIds.includes(log.id)),
+      }));
+    } catch (error) {
+      console.error('Could not persist offline gas log queue:', error);
+    }
+  }, [pendingQueueKey, hydratedQueueKey, pendingSyncIds, logs]);
 
   const syncPendingLogs = React.useCallback(async (ids: string[], allLogs: RefrigerantLog[]) => {
     const logsToSync = allLogs.filter(l => ids.includes(l.id));
     if (logsToSync.length === 0) {
-      setPendingSyncIds(prev => prev.filter(id => !ids.includes(id)));
       return;
     }
     try {
@@ -190,7 +214,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
   const handleSaveChecklist = () => {
     const snapshot = buildChecklistSnapshot();
     const entry = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       ...snapshot,
     };
     try {
@@ -220,9 +244,9 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
     // Pressure Testing
     { category: 'PRESSURE TEST WITH DRY NITROGEN', items: [
       { text: 'System isolated from compressors', source: 'SANS 5001-1', url: 'https://www.sabs.co.za' },
-      { text: 'High-side test pressure: 1.5x working pressure (min 300 psi)', source: 'Manufacturer Spec', url: null },
-      { text: 'Low-side test pressure: 150-200 psi', source: 'Manufacturer Spec', url: null },
-      { text: 'Pressure hold test: 24 hours minimum', source: 'Industry Standard', url: null },
+      { text: 'Test pressure selected from manufacturer limits and applicable approved procedure', source: 'Manufacturer Spec', url: null },
+      { text: 'Record actual high-side and low-side test pressures and verify component ratings', source: 'Manufacturer Spec', url: null },
+      { text: 'Pressure hold duration selected from the approved procedure and documented', source: 'Approved Procedure', url: null },
       { text: 'No pressure drop recorded', source: 'SANS 5001-1', url: 'https://www.sabs.co.za' },
     ]},
     // Evacuation
@@ -274,20 +298,34 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
   ];
 
   // Handle image upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newImages: string[] = [];
-      Array.from(files).forEach(file => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    if (uploadedImages.length + files.length > 10) {
+      setInstallationNotice('A maximum of 10 evidence photos can be attached.');
+      e.target.value = '';
+      return;
+    }
+    const existingImageBytes = uploadedImages.reduce((total, image) => total + Math.ceil(image.length * 0.75), 0);
+    if (files.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) ||
+      existingImageBytes + files.reduce((total, file) => total + file.size, 0) > 8 * 1024 * 1024) {
+      setInstallationNotice('Evidence photos must be JPEG, PNG, or WebP, no larger than 2 MB each and 8 MB per installation.');
+      e.target.value = '';
+      return;
+    }
+    try {
+      const images = await Promise.all(files.map((file) => new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onloadend = () => {
-          newImages.push(reader.result as string);
-          if (newImages.length === files.length) {
-            setUploadedImages(prev => [...prev, ...newImages]);
-          }
-        };
+        reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Could not read image'));
+        reader.onerror = () => reject(new Error('Could not read image'));
         reader.readAsDataURL(file);
-      });
+      })));
+      setUploadedImages((prev) => [...prev, ...images]);
+      setInstallationNotice('');
+    } catch {
+      setInstallationNotice('One or more evidence photos could not be read. Please try again.');
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -299,15 +337,15 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
   const handleInstallationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setInstallationNotice('');
-    if (!installationForm.clientName.trim() || !installationForm.jobDetails.trim()) {
-      setInstallationNotice('Client name and job details are required before saving an installation.');
+    if (!installationForm.clientName.trim() || !installationForm.location.trim() || !installationForm.jobDetails.trim()) {
+      setInstallationNotice('Client name, site location, and job details are required before saving an installation.');
       return;
     }
 
     try {
       await createInstallation({
         clientName: installationForm.clientName.trim(),
-        location: undefined,
+        location: installationForm.location.trim(),
         jobDetails: installationForm.jobDetails.trim(),
         floorSpace: installationForm.floorSpace.trim(),
         jobType: installationForm.jobType,
@@ -317,6 +355,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
       await mutateInstallations();
       setInstallationForm({
         clientName: '',
+        location: '',
         jobDetails: '',
         floorSpace: '',
         jobType: 'COLD_ROOM',
@@ -333,20 +372,18 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
   // Request COC
   const requestCOC = async (installation: Installation) => {
     setInstallationNotice('');
-    if (!installation.checklistSnapshot) {
-      setInstallationNotice('Complete and save the installation checklist before requesting a COC.');
+    if (!installation.checklistSnapshot || installation.checklistSnapshot.completedItems !== installation.checklistSnapshot.totalItems || installation.checklistSnapshot.items.some(item => !item.checked)) {
+      setInstallationNotice('Complete every checklist item and save the checklist before requesting a COC.');
       return;
     }
     try {
       await createCocRequest({
         installationId: installation.id,
         clientName: installation.clientName,
-        location: installation.location || 'Location not captured',
+        location: installation.location || '',
         equipmentType: JobTypeLabels[installation.jobType as JobType] ?? installation.jobType,
         installationDate: installation.installationDate.slice(0, 10),
         details: installation.jobDetails,
-        checklistSnapshot: installation.checklistSnapshot,
-        evidenceImages: installation.images,
         complianceCheck: true,
       });
       await mutateInstallations();
@@ -393,7 +430,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
     );
 
     const newLog: RefrigerantLog = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       technicianId: user?.id || 'unknown',
       technicianName: user?.name || 'Anonymous',
       clientName: formData.clientName,
@@ -411,7 +448,7 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
       timestamp: new Date().toISOString(),
     };
 
-    setLogs([newLog, ...logs]);
+    setLogs(prev => [newLog, ...prev]);
     setPendingSyncIds(prev => [...prev, newLog.id]);
 
     createGasLogs([newLog])
@@ -635,6 +672,15 @@ const FieldToolkit: React.FC<FieldToolkitProps> = ({ prefillRefrigerantCode, onP
                       onChange={(e) => setInstallationForm({ ...installationForm, clientName: e.target.value })}
                       className="min-h-11 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-[#D97706] focus:ring-2 focus:ring-[#D97706]/20"
                       placeholder="Shoprite Bulawayo"
+                    />
+                  </TrackerField>
+                  <TrackerField label="Site Location">
+                    <input
+                      required
+                      value={installationForm.location}
+                      onChange={(e) => setInstallationForm({ ...installationForm, location: e.target.value })}
+                      className="min-h-11 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-[#D97706] focus:ring-2 focus:ring-[#D97706]/20"
+                      placeholder="Town / site address"
                     />
                   </TrackerField>
                   <TrackerField label="Job Type">
@@ -1110,6 +1156,7 @@ function InstallationCard({
   onRequestCoc: (installation: Installation) => void;
   cocRequest?: CocRequest;
 }) {
+  const [complianceConfirmed, setComplianceConfirmed] = useState(false);
   const statusClass =
     installation.status === 'approved'
       ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
@@ -1192,16 +1239,28 @@ function InstallationCard({
 
         <div className="flex shrink-0 flex-wrap gap-2 xl:justify-end">
           {!installation.cocRequested && (
-            <button
-              type="button"
-              onClick={() => onRequestCoc(installation)}
-              disabled={!installation.checklistSnapshot}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
-              title={installation.checklistSnapshot ? 'Request COC' : 'Complete and save checklist first'}
-            >
-              <FileCheck className="h-4 w-4" />
-              {installation.checklistSnapshot ? 'Request COC' : 'Checklist required'}
-            </button>
+            <div className="max-w-xs space-y-2">
+              <label className="flex items-start gap-2 text-xs leading-5 text-stone-600">
+                <input
+                  type="checkbox"
+                  checked={complianceConfirmed}
+                  onChange={(event) => setComplianceConfirmed(event.target.checked)}
+                  disabled={!checklistComplete}
+                  className="mt-1"
+                />
+                I confirm the recorded checklist and evidence accurately reflect the work completed.
+              </label>
+              <button
+                type="button"
+                onClick={() => onRequestCoc(installation)}
+                disabled={!checklistComplete || !complianceConfirmed || !installation.location?.trim()}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                title={checklistComplete ? 'Request COC' : 'Complete and save every checklist item first'}
+              >
+                <FileCheck className="h-4 w-4" />
+                {checklistComplete ? 'Request COC' : 'Checklist required'}
+              </button>
+            </div>
           )}
           {installation.cocRequested && !installation.cocApproved && (
             <span className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">

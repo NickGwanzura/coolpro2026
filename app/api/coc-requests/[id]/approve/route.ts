@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { cocRequests, installations } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { toCocRequest } from '@/lib/server/request-serializers';
 
 function generateVerificationToken() {
-  return `verify-${randomBytes(8).toString('hex')}`;
+  return `verify-${randomBytes(32).toString('hex')}`;
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -28,32 +28,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'COC request is missing the technician compliance confirmation.' }, { status: 400 });
   }
 
-  const [updated] = await db
-    .update(cocRequests)
-    .set({
-      status: 'approved',
-      reviewedBy: session.name,
-      reviewedAt: new Date(),
-      issuedDate: new Date().toISOString().slice(0, 10),
-      reviewNote: null,
-      verificationToken: existing.verificationToken ?? generateVerificationToken(),
-    })
-    .where(eq(cocRequests.id, id))
-    .returning();
-
-  if (updated.installationId) {
-    await db
-      .update(installations)
+  const updated = await db.transaction(async (tx) => {
+    const now = new Date();
+    const [request] = await tx.update(cocRequests)
       .set({
         status: 'approved',
-        cocRequested: true,
-        cocApproved: true,
-        cocRequestId: updated.id,
-        cocApprovalDate: new Date(),
-        updatedAt: new Date(),
+        reviewedBy: session.name,
+        reviewedAt: now,
+        issuedDate: now.toISOString().slice(0, 10),
+        reviewNote: null,
+        verificationToken: existing.verificationToken ?? generateVerificationToken(),
       })
-      .where(eq(installations.id, updated.installationId));
-  }
+      .where(and(eq(cocRequests.id, id), eq(cocRequests.status, 'submitted')))
+      .returning();
+    if (!request) return null;
+    if (request.installationId) {
+      await tx.update(installations)
+        .set({ status: 'approved', cocRequested: true, cocApproved: true, cocRequestId: request.id, cocApprovalDate: now, updatedAt: now })
+        .where(eq(installations.id, request.installationId));
+    }
+    return request;
+  });
+  if (!updated) return NextResponse.json({ error: 'COC request is no longer pending review' }, { status: 409 });
 
   return NextResponse.json(toCocRequest(updated));
 }

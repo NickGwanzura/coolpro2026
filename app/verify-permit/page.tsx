@@ -13,19 +13,20 @@ function formatDate(value: string | null) {
 function VerifyPermitContent() {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
+  const [token, setToken] = useState(searchParams.get('token') ?? '');
   const [result, setResult] = useState<PublicPermitVerification | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  const runSearch = async (permitNumber: string, token?: string | null) => {
-    if (!permitNumber.trim()) return;
+  const runSearch = async (permitNumber: string, verificationToken = token) => {
+    if (!permitNumber.trim() || !verificationToken.trim()) return;
     setLoading(true);
     setError(null);
     setSearched(true);
     try {
       const qs = new URLSearchParams({ q: permitNumber.trim() });
-      if (token) qs.set('token', token);
+      qs.set('token', verificationToken.trim());
       const res = await fetch(`/api/public/permits?${qs.toString()}`);
       const data = await res.json();
       if (!res.ok) {
@@ -44,9 +45,9 @@ function VerifyPermitContent() {
 
   useEffect(() => {
     const initialQuery = searchParams.get('q');
-    const token = searchParams.get('token');
-    if (initialQuery) {
-      runSearch(initialQuery, token);
+    const initialToken = searchParams.get('token');
+    if (initialQuery && initialToken) {
+      runSearch(initialQuery, initialToken);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -66,9 +67,9 @@ function VerifyPermitContent() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              runSearch(query);
+              runSearch(query, token);
             }}
-            className="mt-8 flex gap-2"
+            className="mt-8 flex flex-col gap-2 sm:flex-row"
           >
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -80,6 +81,14 @@ function VerifyPermitContent() {
                 className="w-full border border-gray-200 py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] focus:border-transparent"
               />
             </div>
+            <input
+              type="text"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="Verification token"
+              aria-label="Verification token"
+              className="border border-gray-200 px-4 py-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] sm:max-w-xs"
+            />
             <button
               type="submit"
               disabled={loading}
@@ -123,20 +132,8 @@ function VerifyPermitContent() {
                   <p className="mt-1 font-medium capitalize text-gray-900">{result.permitType}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Company</p>
-                  <p className="mt-1 font-medium text-gray-900">{result.applicantCompany}</p>
-                </div>
-                <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Refrigerant</p>
                   <p className="mt-1 font-medium text-gray-900">{result.refrigerantLabel}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Quantity</p>
-                  <p className="mt-1 font-medium text-gray-900">{result.quantityKg} kg</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Country</p>
-                  <p className="mt-1 font-medium text-gray-900">{result.countryOfOriginOrDestination}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Issued</p>

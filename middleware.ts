@@ -27,6 +27,8 @@ const PROTECTED_ROUTE_PREFIXES = [
     '/recycling',
     '/emergency-mode',
     '/contractor-onboarding',
+    '/field-operations',
+    '/supplier-onboarding',
 ] as const;
 
 const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
@@ -46,8 +48,10 @@ const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
     { prefix: '/suppliers/verify-buyer', roles: ['vendor'] },
     { prefix: '/suppliers', roles: ['vendor', 'org_admin'] },
     { prefix: '/supplier-compliance', roles: ['vendor'] },
+    { prefix: '/supplier-onboarding', roles: ['vendor', 'org_admin'] },
     { prefix: '/technician-registry', roles: ['trainer', 'lecturer', 'org_admin'] },
     { prefix: '/job-planner', roles: ['technician'] },
+    { prefix: '/field-operations', roles: ['technician', 'org_admin'] },
     { prefix: '/field-scheduling', roles: ['technician', 'org_admin'] },
     { prefix: '/jobs/request-coc', roles: ['technician'] },
     { prefix: '/jobs', roles: ['technician', 'org_admin'] },
@@ -74,6 +78,7 @@ const ROUTE_ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
 
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    const matchesPath = (path: string, prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
 
     const sessionToken = request.cookies.get('coolpro_session')?.value ?? null;
     const session = sessionToken ? parseSessionUnsafe(sessionToken) : null;
@@ -81,7 +86,7 @@ export function middleware(request: NextRequest) {
     const isAuthenticated = session !== null;
     const role = session?.role ?? null;
 
-    const isProtectedRoute = PROTECTED_ROUTE_PREFIXES.some(prefix => pathname.startsWith(prefix));
+    const isProtectedRoute = PROTECTED_ROUTE_PREFIXES.some(prefix => matchesPath(pathname, prefix));
 
     if (isProtectedRoute && !isAuthenticated) {
         const loginUrl = new URL('/login', request.url);
@@ -99,7 +104,7 @@ export function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
-    const matchedRule = ROUTE_ROLE_RULES.find(({ prefix }) => pathname.startsWith(prefix));
+    const matchedRule = ROUTE_ROLE_RULES.find(({ prefix }) => matchesPath(pathname, prefix));
     if (matchedRule) {
         if (!role || !matchedRule.roles.includes(role)) {
             return NextResponse.redirect(new URL('/dashboard', request.url));

@@ -7,11 +7,11 @@ import { requireRole } from '@/lib/server/auth';
 import { toTrainerCertificateRequest } from '@/lib/server/request-serializers';
 
 function generateCertificateNumber() {
-  return `HEV-${Date.now().toString().slice(-6)}`;
+  return `HEV-${randomBytes(12).toString('hex').toUpperCase()}`;
 }
 
 function generateVerificationToken() {
-  return `verify-${randomBytes(8).toString('hex')}`;
+  return `verify-${randomBytes(32).toString('hex')}`;
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

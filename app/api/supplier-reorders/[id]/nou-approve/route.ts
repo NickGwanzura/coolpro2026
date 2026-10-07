@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNotNull, ne } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { supplierReorders } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
@@ -34,9 +34,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const { id } = await params;
-  const [row] = await db.select().from(supplierReorders).where(eq(supplierReorders.id, id)).limit(1);
-  if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
   const [updated] = await db
     .update(supplierReorders)
     .set({
@@ -44,8 +41,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       nouReviewerId: session.id,
       nouReviewedAt: new Date(),
     })
-    .where(eq(supplierReorders.id, id))
+    .where(and(
+      eq(supplierReorders.id, id),
+      eq(supplierReorders.status, 'pending_nou'),
+      isNotNull(supplierReorders.hevacrazReviewerId),
+      ne(supplierReorders.hevacrazReviewerId, session.id),
+    ))
     .returning();
+
+  if (!updated) return NextResponse.json({ error: 'A different admin must review the HEVACRAZ-approved reorder before this action' }, { status: 409 });
 
   return NextResponse.json(toSupplierReorder(updated));
 }

@@ -161,8 +161,8 @@ export default function ApprovalsPage() {
         return <div className="p-8 text-sm text-slate-500">Loading...</div>;
     }
 
-    // TODO: Add a distinct NOU reviewer role so HEVACRAZ and NOU stages
-    // can be performed by different administrators (currently both gate on org_admin).
+    // Both workflow stages use the admin role, while the API enforces two distinct
+    // human reviewers by comparing their account IDs between stages.
 
     async function handleHevacrazApprove(id: string) {
         setActing(true);

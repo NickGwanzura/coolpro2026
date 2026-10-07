@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { desc, eq, sql } from 'drizzle-orm';
+import { randomBytes } from 'node:crypto';
+import { desc, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { tradePermits } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
@@ -8,7 +9,7 @@ import type { TradePermit } from '@/types/index';
 import { toTradePermit } from '@/lib/server/request-serializers';
 
 function permitNumber() {
-  return `PMT-${Date.now().toString(36).toUpperCase()}`;
+  return `PMT-${randomBytes(12).toString('hex').toUpperCase()}`;
 }
 
 export async function GET(req: Request) {
@@ -54,6 +55,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `${key} is required` }, { status: 400 });
     }
   }
+  const quantityKg = Number(body.quantityKg);
+  if (!Number.isFinite(quantityKg) || quantityKg <= 0 || quantityKg > 1_000_000) {
+    return NextResponse.json({ error: 'quantityKg must be a positive value within the supported range' }, { status: 400 });
+  }
 
   const [inserted] = await db
     .insert(tradePermits)
@@ -65,7 +70,7 @@ export async function POST(req: Request) {
       applicantEmail: session.email,
       refrigerantId: body.refrigerantId ?? null,
       refrigerantLabel: body.refrigerantLabel!,
-      quantityKg: body.quantityKg!.toString(),
+      quantityKg: quantityKg.toString(),
       countryOfOriginOrDestination: body.countryOfOriginOrDestination!,
       status: 'pending',
       notes: body.notes ?? null,

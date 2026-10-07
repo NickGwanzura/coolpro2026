@@ -1,9 +1,32 @@
-import { sql } from 'drizzle-orm';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import { NextResponse } from 'next/server';
 import { db } from '@/db/client';
-import { gasUsageLogs } from '@/db/schema/index';
+import { gasUsageLogs, refrigerants, supplierApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { RefrigerantLog } from '@/types/index';
+
+const gasLogSchema = z.object({
+  id: z.uuid(),
+  clientName: z.string().trim().min(1).max(200),
+  location: z.string().trim().max(300).optional().default(''),
+  plannerJobId: z.uuid().optional(),
+  jobType: z.enum(['C40_FREEZER', 'C60_FREEZER', 'C90_FREEZER', 'COLD_ROOM', 'FREEZER_ROOM']),
+  refrigerantId: z.number().int().positive().optional(),
+  refrigerantType: z.string().trim().min(1).max(120),
+  amount: z.number().finite().positive().max(10000),
+  actionType: z.enum(['Charge', 'Recovery', 'Leak Repair']),
+  timestamp: z.iso.datetime().transform((value) => new Date(value)),
+  approvedSupplierId: z.uuid().optional(),
+  pesepayTransactionId: z.string().trim().max(200).optional(),
+});
+const gasLogBatchSchema = z.object({ logs: z.array(gasLogSchema).min(1).max(100) });
+
+function numericReference(value: string | null | undefined): string | null {
+  if (!value || !/^-?\d+(?:\.\d+)?$/.test(value.trim())) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed.toString() : null;
+}
 
 function toRefrigerantLog(row: typeof gasUsageLogs.$inferSelect): RefrigerantLog {
   return {
@@ -36,63 +59,75 @@ function toRefrigerantLog(row: typeof gasUsageLogs.$inferSelect): RefrigerantLog
 export async function POST(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
+    session = await requireRole(req, ['technician']);
   } catch (e) {
     return e as Response;
   }
 
-  let logs: RefrigerantLog[];
+  let logs: z.infer<typeof gasLogBatchSchema>['logs'];
   try {
-    const body = await req.json();
-    logs = body.logs as RefrigerantLog[];
-    if (!Array.isArray(logs)) {
-      return NextResponse.json({ error: 'Expected an array of logs under the "logs" key' }, { status: 400 });
-    }
+    const parsed = gasLogBatchSchema.safeParse(await req.json());
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid gas log batch', details: parsed.error.issues }, { status: 400 });
+    logs = parsed.data.logs;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  // Technicians can only ever log gas usage under their own identity — the client-supplied
-  // technicianId/technicianName is ignored for that role to prevent misattribution. Reviewer
-  // roles (trainer/lecturer/org_admin) are trusted to log on a technician's behalf.
-
-  // Validate FK integrity: refrigerantType requires a refrigerantId to prevent orphaned text refs
-  for (const log of logs) {
-    if (log.refrigerantType && !log.refrigerantId) {
-      return NextResponse.json({
-        error: `refrigerantId is required when refrigerantType is provided (log for "${log.clientName}")`,
-      }, { status: 400 });
-    }
+  if (logs.some((log) => log.timestamp.getTime() > Date.now() + 24 * 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Log timestamps cannot be more than 24 hours in the future' }, { status: 400 });
+  }
+  const refrigerantIds = [...new Set(logs.flatMap((log) => log.refrigerantId ? [log.refrigerantId] : []))];
+  const refrigerantRows = refrigerantIds.length
+    ? await db.select().from(refrigerants).where(sql`${refrigerants.id} in (${sql.join(refrigerantIds.map((id) => sql`${id}`), sql`, `)})`)
+    : [];
+  const refrigerantById = new Map(refrigerantRows.map((row) => [row.id, row]));
+  if (logs.some((log) => log.refrigerantId && !refrigerantById.has(log.refrigerantId))) {
+    return NextResponse.json({ error: 'One or more refrigerant IDs do not exist' }, { status: 400 });
+  }
+  const supplierIds = [...new Set(logs.flatMap((log) => log.approvedSupplierId ? [log.approvedSupplierId] : []))];
+  const supplierRows = supplierIds.length
+    ? await db.select().from(supplierApplications).where(and(
+        sql`${supplierApplications.id} in (${sql.join(supplierIds.map((id) => sql`${id}`), sql`, `)})`,
+        eq(supplierApplications.status, 'approved'),
+      ))
+    : [];
+  const suppliersById = new Map(supplierRows.map((row) => [row.id, row]));
+  if (supplierIds.some((id) => !suppliersById.has(id))) {
+    return NextResponse.json({ error: 'Supplier must be an approved supplier' }, { status: 400 });
   }
 
   const inserted = await db
     .insert(gasUsageLogs)
     .values(
       logs.map((log) => ({
-        technicianId: session.role === 'technician' ? session.id : log.technicianId,
-        technicianName: session.role === 'technician' ? session.name : log.technicianName,
+        clientLogId: log.id,
+        technicianId: session.id,
+        technicianName: session.name,
         clientName: log.clientName,
         location: log.location ?? '',
         plannerJobId: log.plannerJobId ?? null,
         jobType: log.jobType,
         refrigerantId: log.refrigerantId ?? null,
-        refrigerantType: log.refrigerantType,
-        refrigerantClass: log.refrigerantClass ?? null,
+        refrigerantType: log.refrigerantId
+          ? (refrigerantById.get(log.refrigerantId)?.ashraeCode || refrigerantById.get(log.refrigerantId)?.odsName || log.refrigerantType)
+          : log.refrigerantType,
+        refrigerantClass: log.refrigerantId ? refrigerantById.get(log.refrigerantId)?.ashraeSafetyGroup ?? null : null,
         amount: log.amount.toString(),
         actionType: log.actionType,
         timestamp: new Date(log.timestamp),
         approvedSupplierId: log.approvedSupplierId ?? null,
-        approvedSupplierName: log.approvedSupplierName ?? null,
-        supplierVerified: log.supplierVerified ?? null,
+        approvedSupplierName: log.approvedSupplierId ? suppliersById.get(log.approvedSupplierId)?.companyName ?? null : null,
+        supplierVerified: Boolean(log.approvedSupplierId),
         pesepayTransactionId: log.pesepayTransactionId ?? null,
-        odp: log.odp ? log.odp.toString() : null,
-        gwp: log.gwp ? log.gwp.toString() : null,
-        co2EqEmissions: log.co2EqEmissions ? log.co2EqEmissions.toString() : null,
-        ashraeSafetyClass: log.ashraeSafetyClass ?? null,
-        supplierId: log.supplierId ?? null,
-        purchaseTransactionId: log.purchaseTransactionId ?? null,
+        odp: log.refrigerantId ? numericReference(refrigerantById.get(log.refrigerantId)?.odp) : null,
+        gwp: log.refrigerantId ? numericReference(refrigerantById.get(log.refrigerantId)?.gwp) : null,
+        co2EqEmissions: null,
+        ashraeSafetyClass: log.refrigerantId ? refrigerantById.get(log.refrigerantId)?.ashraeSafetyGroup ?? null : null,
+        supplierId: log.approvedSupplierId ?? null,
+        purchaseTransactionId: null,
       }))
     )
+    .onConflictDoNothing({ target: gasUsageLogs.clientLogId })
     .returning();
 
   return NextResponse.json(inserted.map(toRefrigerantLog), { status: 201 });
@@ -109,25 +144,28 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
-  const limit = Math.min(Number(url.searchParams.get('limit')) || 100, 500);
+  const requestedLimit = Number(url.searchParams.get('limit') ?? 100);
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
+    return NextResponse.json({ error: 'limit must be a positive integer' }, { status: 400 });
+  }
+  const limit = Math.min(requestedLimit, 500);
 
-  let query = db.select().from(gasUsageLogs).$dynamic();
-
-  // Filter by technician if role is technician (only see their own logs)
-  if (session.role === 'technician') {
-    query = query.where(
-      sql`${gasUsageLogs.technicianId} = ${session.id}::uuid`
-    );
+  const fromDate = from ? new Date(from) : undefined;
+  const toDate = to ? new Date(to) : undefined;
+  if ((fromDate && Number.isNaN(fromDate.getTime())) || (toDate && Number.isNaN(toDate.getTime()))) {
+    return NextResponse.json({ error: 'Invalid date filter' }, { status: 400 });
+  }
+  if (fromDate && toDate && fromDate > toDate) {
+    return NextResponse.json({ error: 'from must be before or equal to to' }, { status: 400 });
   }
 
-  if (from) {
-    query = query.where(sql`${gasUsageLogs.timestamp} >= ${new Date(from)}::timestamptz`);
-  }
-  if (to) {
-    query = query.where(sql`${gasUsageLogs.timestamp} <= ${new Date(to)}::timestamptz`);
-  }
+  const conditions = [];
+  if (session.role === 'technician') conditions.push(eq(gasUsageLogs.technicianId, session.id));
+  if (fromDate) conditions.push(gte(gasUsageLogs.timestamp, fromDate));
+  if (toDate) conditions.push(lte(gasUsageLogs.timestamp, toDate));
 
-  const rows = await query
+  const rows = await db.select().from(gasUsageLogs)
+    .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(sql`${gasUsageLogs.timestamp} DESC`)
     .limit(limit);
 

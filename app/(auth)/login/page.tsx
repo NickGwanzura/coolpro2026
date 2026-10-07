@@ -19,7 +19,15 @@ function LoginPageContent() {
 
   const isSupplierFlow = searchParams.get('flow') === 'supplier';
   const activeMode = manualMode ?? (isSupplierFlow ? 'supplier' : 'signin');
-  const nextPath = searchParams.get('next') || (isSupplierFlow ? '/suppliers' : '/dashboard');
+  const requestedNextPath = searchParams.get('next');
+  const nextPath = (() => {
+    const fallback = isSupplierFlow ? '/suppliers' : '/dashboard';
+    if (!requestedNextPath || !requestedNextPath.startsWith('/') || requestedNextPath.startsWith('//') || requestedNextPath.includes('\\')) {
+      return fallback;
+    }
+    if (/[\\\u0000-\u001f]/.test(requestedNextPath)) return fallback;
+    return requestedNextPath;
+  })();
 
   const redirectAfterLogin = () => {
     // Hard navigation to avoid any stale client bundle / SWR cache.

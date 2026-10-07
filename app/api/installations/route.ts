@@ -1,9 +1,28 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { installations } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { Installation } from '@/types/index';
+
+const checklistSchema = z.object({
+  checklistType: z.enum(['installation', 'regassing']),
+  completedItems: z.number().int().nonnegative(),
+  totalItems: z.number().int().positive().max(100),
+  completedAt: z.iso.datetime(),
+  items: z.array(z.object({
+    id: z.string().min(1).max(200),
+    text: z.string().min(1).max(500),
+    category: z.string().min(1).max(100),
+    checked: z.boolean(),
+    source: z.string().max(200).nullable().optional(),
+  })).min(1).max(100),
+}).refine((snapshot) =>
+  snapshot === null || snapshot === undefined ||
+  (snapshot.totalItems === snapshot.items.length && snapshot.completedItems === snapshot.items.filter((item) => item.checked).length),
+  'Checklist counts must match the recorded items and checked states',
+).nullable().optional();
 
 function toInstallation(row: typeof installations.$inferSelect): Installation {
   return {
@@ -57,8 +76,20 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({})) as Partial<Installation>;
 
-  if (!body.clientName || !body.jobDetails) {
-    return NextResponse.json({ error: 'clientName and jobDetails are required' }, { status: 400 });
+  if (!body.clientName?.trim() || !body.location?.trim() || !body.jobDetails?.trim()) {
+    return NextResponse.json({ error: 'clientName, location, and jobDetails are required' }, { status: 400 });
+  }
+  if (body.clientName.length > 200 || body.location.length > 300 || body.jobDetails.length > 10000 || (body.floorSpace?.length ?? 0) > 100) {
+    return NextResponse.json({ error: 'Installation fields exceed supported lengths' }, { status: 400 });
+  }
+  if (body.jobType && !['C40_FREEZER', 'C60_FREEZER', 'C90_FREEZER', 'COLD_ROOM', 'FREEZER_ROOM'].includes(body.jobType)) {
+    return NextResponse.json({ error: 'Invalid jobType' }, { status: 400 });
+  }
+  const checklistResult = checklistSchema.safeParse(body.checklistSnapshot);
+  if (!checklistResult.success) return NextResponse.json({ error: 'Invalid checklist snapshot' }, { status: 400 });
+  const images = body.images ?? [];
+  if (!Array.isArray(images) || images.length > 10 || images.reduce((total, image) => total + (typeof image === 'string' ? image.length : Infinity), 0) > 11_000_000 || images.some((image) => typeof image !== 'string' || image.length > 3_000_000 || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image))) {
+    return NextResponse.json({ error: 'Evidence must be at most 10 JPEG, PNG, or WebP images within the size limit' }, { status: 400 });
   }
 
   if (body.cocRequested || body.cocApproved || body.status) {
@@ -70,15 +101,15 @@ export async function POST(req: Request) {
     .values({
       technicianId: session.id,
       technicianName: session.name,
-      clientName: body.clientName!,
-      location: body.location ?? null,
-      jobDetails: body.jobDetails!,
+      clientName: body.clientName.trim(),
+      location: body.location.trim(),
+      jobDetails: body.jobDetails.trim(),
       floorSpace: body.floorSpace ?? null,
       jobType: body.jobType ?? 'COLD_ROOM',
       installationDate: new Date(),
       status: 'pending',
-      images: body.images ?? [],
-      checklistSnapshot: body.checklistSnapshot ?? null,
+      images,
+      checklistSnapshot: checklistResult.data ?? null,
       cocRequested: false,
       cocApproved: false,
       cocRequestId: null,

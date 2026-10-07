@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { cocRequests, installations } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
@@ -24,32 +24,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'A rejection note is required.' }, { status: 400 });
   }
 
-  const [updated] = await db
-    .update(cocRequests)
-    .set({
-      status: 'rejected',
-      reviewedBy: session.name,
-      reviewedAt: new Date(),
-      reviewNote: body.notes.trim(),
-      issuedDate: null,
-      verificationToken: null,
-    })
-    .where(eq(cocRequests.id, id))
-    .returning();
-
-  if (updated.installationId) {
-    await db
-      .update(installations)
-      .set({
-        status: 'rejected',
-        cocRequested: true,
-        cocApproved: false,
-        cocRequestId: updated.id,
-        cocApprovalDate: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(installations.id, updated.installationId));
-  }
+  const updated = await db.transaction(async (tx) => {
+    const now = new Date();
+    const [request] = await tx.update(cocRequests)
+      .set({ status: 'rejected', reviewedBy: session.name, reviewedAt: now, reviewNote: body.notes!.trim(), issuedDate: null, verificationToken: null })
+      .where(and(eq(cocRequests.id, id), eq(cocRequests.status, 'submitted')))
+      .returning();
+    if (!request) return null;
+    if (request.installationId) {
+      await tx.update(installations)
+        .set({ status: 'rejected', cocRequested: true, cocApproved: false, cocRequestId: request.id, cocApprovalDate: null, updatedAt: now })
+        .where(eq(installations.id, request.installationId));
+    }
+    return request;
+  });
+  if (!updated) return NextResponse.json({ error: 'COC request is no longer pending review' }, { status: 409 });
 
   return NextResponse.json(toCocRequest(updated));
 }

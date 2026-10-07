@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { and, eq, gte, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/db/client';
 import { gasUsageLogs } from '@/db/schema/index';
@@ -17,22 +17,21 @@ export async function GET(req: Request) {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
 
-  // Build query
-  let query = db.select().from(gasUsageLogs).$dynamic();
-
-  // Technicians only see their own logs
-  if (session.role === 'technician') {
-    query = query.where(sql`${gasUsageLogs.technicianId} = ${session.id}::uuid`);
+  const fromDate = from ? new Date(from) : undefined;
+  const toDate = to ? new Date(to) : undefined;
+  if ((fromDate && Number.isNaN(fromDate.getTime())) || (toDate && Number.isNaN(toDate.getTime()))) {
+    return NextResponse.json({ error: 'Invalid date filter' }, { status: 400 });
+  }
+  if (fromDate && toDate && fromDate > toDate) {
+    return NextResponse.json({ error: 'from must be before or equal to to' }, { status: 400 });
   }
 
-  if (from) {
-    query = query.where(sql`${gasUsageLogs.timestamp} >= ${new Date(from)}::timestamptz`);
-  }
-  if (to) {
-    query = query.where(sql`${gasUsageLogs.timestamp} <= ${new Date(to)}::timestamptz`);
-  }
-
-  const rows = await query;
+  const conditions = [];
+  if (session.role === 'technician') conditions.push(eq(gasUsageLogs.technicianId, session.id));
+  if (fromDate) conditions.push(gte(gasUsageLogs.timestamp, fromDate));
+  if (toDate) conditions.push(lte(gasUsageLogs.timestamp, toDate));
+  const rows = await db.select().from(gasUsageLogs)
+    .where(conditions.length ? and(...conditions) : undefined);
 
   // Aggregate by job type
   const byJobType = new Map<JobType, {

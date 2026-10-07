@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { tradePermits } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
@@ -19,9 +19,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const [updated] = await db
     .update(tradePermits)
     .set({ status: 'rejected', reviewedBy: session.name, reviewedAt: new Date(), reviewNote: body.notes ?? null })
-    .where(eq(tradePermits.id, id))
+    .where(and(eq(tradePermits.id, id), eq(tradePermits.status, 'pending')))
     .returning();
 
-  if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!updated) return NextResponse.json({ error: 'Permit is missing or no longer pending review' }, { status: 409 });
   return NextResponse.json(toTradePermit(updated));
 }

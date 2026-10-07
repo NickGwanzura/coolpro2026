@@ -10,13 +10,13 @@ export async function GET(req: Request) {
   const q = url.searchParams.get('q');
   const token = url.searchParams.get('token');
 
-  if (!q && !token) {
-    return NextResponse.json({ error: 'q or token is required' }, { status: 400 });
+  if (!q || !token || q.length > 100 || token.length > 200) {
+    return NextResponse.json({ error: 'Certificate number and verification token are required' }, { status: 400 });
   }
 
   const conditions = [eq(cocRequests.status, 'approved')];
-  if (q) conditions.push(eq(cocRequests.certificateNumber, q.trim().toUpperCase()));
-  if (token) conditions.push(eq(cocRequests.verificationToken, token));
+  conditions.push(eq(cocRequests.certificateNumber, q.trim().toUpperCase()));
+  conditions.push(eq(cocRequests.verificationToken, token));
 
   const [row] = await db.select().from(cocRequests).where(and(...conditions)).limit(1);
 
@@ -27,8 +27,6 @@ export async function GET(req: Request) {
   return NextResponse.json({
     certificateNumber: row.certificateNumber,
     technicianName: row.technicianName,
-    clientName: row.clientName,
-    location: row.location,
     equipmentType: row.equipmentType,
     installationDate: row.installationDate,
     status: row.status,

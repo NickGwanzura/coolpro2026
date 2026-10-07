@@ -60,8 +60,6 @@ export default function DashboardPage() {
     }, []);
     const isAdmin = session?.role === 'org_admin';
     const isTechnician = session?.role === 'technician';
-    // Contractors currently share the technician dashboard view (data + layout); a
-    // contractor-specific section can be split out later once contractor-only data exists.
     const isContractor = session?.role === 'contractor';
     const isVendor = session?.role === 'vendor';
     const isTrainerOrLecturer = session?.role === 'trainer' || session?.role === 'lecturer';
@@ -69,9 +67,9 @@ export default function DashboardPage() {
 
     const { data: technicians = [] } = useTechnicians(undefined, isAdmin);
     const { data: reorders = [] } = useReorders(isAdmin || isVendor);
-    const { data: plannerJobs = [] } = usePlannerJobs(isTechnician || isContractor || isAdmin);
-    const { data: gasLogsData } = useGasLogs(undefined, undefined, 50, isTechnician || isContractor || isAdmin || isTrainerOrLecturer);
-    const { data: cocRequests = [] } = useCocRequests(isTechnician || isContractor || isAdmin);
+    const { data: plannerJobs = [] } = usePlannerJobs(isTechnician || isAdmin);
+    const { data: gasLogsData } = useGasLogs(undefined, undefined, 50, isTechnician || isAdmin || isTrainerOrLecturer);
+    const { data: cocRequests = [] } = useCocRequests(isTechnician || isAdmin);
     const { data: complianceApps = [] } = useSupplierComplianceApplications(isVendor);
     const { data: vendorLedger = [] } = useSupplierLedger(undefined, isVendor);
     const { data: managedCourses = [] } = useCourses(isTrainerOrLecturer || isStudent);
@@ -87,10 +85,12 @@ export default function DashboardPage() {
 
     // Technician KPIs — computed from real DB data
     const technicianStats = useMemo(() => {
-        const completedJobs = plannerJobs.filter(j => j.status === 'completed').length;
         const rangeMs = rangeMsFor(dateRange as SimpleDateRange);
         const rangeStart = nowMs - rangeMs;
-        const jobsInRange = plannerJobs.filter(j => new Date(j.scheduledDate).getTime() >= rangeStart);
+                const jobsInRange = plannerJobs.filter(j => {
+                    const scheduledAt = new Date(j.scheduledDate).getTime();
+                    return scheduledAt >= rangeStart && scheduledAt <= nowMs;
+                });
         const jobsCompletedInRange = jobsInRange.filter(j => j.status === 'completed').length;
 
         const pendingCocs = cocRequests.filter(c => c.status === 'submitted').length;
@@ -108,7 +108,7 @@ export default function DashboardPage() {
         return [
             {
                 label: 'Jobs Completed',
-                value: String(jobsCompletedInRange || completedJobs),
+                value: String(jobsCompletedInRange),
                 icon: ClipboardCheck,
                 color: 'blue',
                 trend: dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : 'This month'
@@ -866,8 +866,14 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* ── Technician-only sections (also shown to contractors, who share this view for now) ── */}
-            {(isTechnician || isContractor) && (
+            {isContractor && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+                    Contractor reporting is not available yet. Technician-only job and refrigerant records are not shown in this account.
+                </div>
+            )}
+
+            {/* ── Technician-only sections ── */}
+            {isTechnician && (
                 <>
                     {/* Upcoming Schedule + Certifications */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

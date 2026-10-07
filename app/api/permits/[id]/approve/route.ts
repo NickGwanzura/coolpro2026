@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { tradePermits } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { toTradePermit } from '@/lib/server/request-serializers';
 
 function generateVerificationToken() {
-  return `verify-${randomBytes(8).toString('hex')}`;
+  return `verify-${randomBytes(32).toString('hex')}`;
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -19,9 +19,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const { id } = await params;
-  const [existing] = await db.select().from(tradePermits).where(eq(tradePermits.id, id)).limit(1);
-  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
   const issuedDate = new Date().toISOString().slice(0, 10);
   const expiry = new Date();
   expiry.setFullYear(expiry.getFullYear() + 1);
@@ -34,10 +31,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       reviewedAt: new Date(),
       issuedDate,
       expiryDate: expiry.toISOString().slice(0, 10),
-      verificationToken: existing.verificationToken ?? generateVerificationToken(),
+      verificationToken: generateVerificationToken(),
     })
-    .where(eq(tradePermits.id, id))
+    .where(and(eq(tradePermits.id, id), eq(tradePermits.status, 'pending')))
     .returning();
+
+  if (!updated) return NextResponse.json({ error: 'Permit is missing or no longer pending review' }, { status: 409 });
 
   return NextResponse.json(toTradePermit(updated));
 }

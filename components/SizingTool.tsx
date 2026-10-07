@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { SizingInputs, JobType, JobTypeLabels, JobTypeDefaults, JobTypeImages, JobTypeDescriptions, ProcessingMode, ProcessingModeLabels, ProcessingModeDescriptions } from '../types';
-import { INSULATION_U_VALUES, Icons, REFRIGERANTS } from '../constants';
+import { INSULATION_U_VALUES } from '../constants';
 import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download, Snowflake, ExternalLink, Gauge, ArrowUpDown, Droplets, Save } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
@@ -90,13 +90,6 @@ const PT_CURVES: Record<RefrigerantCode, { temp: number; pressure: number }[]> =
     { temp: 30, pressure: 10.6 },
     { temp: 40, pressure: 13.6 },
   ],
-};
-
-const MAX_OPERATING_PRESSURE: Record<RefrigerantCode, number> = {
-  'R-290': 10,
-  'R-32': 16,
-  'R-744': 60,
-  'R-22': 13,
 };
 
 const CONVERTER_OPTIONS: Record<ConverterType, { units: string[] }> = {
@@ -444,15 +437,52 @@ const SizingTool: React.FC = () => {
   };
 
   const saveSizingCase = () => {
+    if (sizingInputIssues.length > 0) return;
     const entry = { id: crypto.randomUUID(), savedAt: new Date().toISOString(), inputs, calculatedLoadKw: results.total };
     const existing = JSON.parse(localStorage.getItem('hevacraz-sizing-cases') ?? '[]') as unknown[];
     localStorage.setItem('hevacraz-sizing-cases', JSON.stringify([entry, ...existing].slice(0, 20)));
     setSavedAt(entry.savedAt);
   };
 
+  const sizingInputIssues = [
+    ...(Object.values(inputs).some((value) => typeof value === 'number' && !Number.isFinite(value))
+      ? ['Every numeric input must be finite.'] : []),
+    ...(['roomWidth', 'roomLength', 'roomHeight', 'insulationThickness', 'loadingTimeHours'] as const)
+      .filter((key) => !Number.isFinite(inputs[key]) || inputs[key] <= 0)
+      .map((key) => `${key} must be a finite value greater than zero.`),
+    ...(['productMass', 'productCp'] as const)
+      .filter((key) => !Number.isFinite(inputs[key]) || inputs[key] < 0)
+      .map((key) => `${key} must be a finite non-negative value.`),
+    ...(inputs.targetTemp >= inputs.ambientTemp ? ['Target temperature must be below ambient temperature for this cooling estimate.'] : []),
+    ...(inputs.processingMode === 'HOLDING' && (inputs.holdRH < 0 || inputs.holdRH > 100)
+      ? ['Relative humidity must be between 0% and 100%.'] : []),
+    ...(inputs.processingMode === 'FREEZING' && (!Number.isFinite(inputs.freezeRateCHour) || inputs.freezeRateCHour <= 0)
+      ? ['Freezing rate must be greater than zero.'] : []),
+  ];
+
   const results = useMemo(() => {
     const isHolding = inputs.processingMode === 'HOLDING';
-    const area = 2 * (inputs.roomWidth * inputs.roomHeight + inputs.roomLength * inputs.roomHeight) + (inputs.roomWidth * inputs.roomLength);
+    if (
+      Object.values(inputs).some((value) => typeof value === 'number' && !Number.isFinite(value)) ||
+      !Number.isFinite(inputs.roomWidth) || inputs.roomWidth <= 0 ||
+      !Number.isFinite(inputs.roomLength) || inputs.roomLength <= 0 ||
+      !Number.isFinite(inputs.roomHeight) || inputs.roomHeight <= 0 ||
+      !Number.isFinite(inputs.insulationThickness) || inputs.insulationThickness <= 0 ||
+      !Number.isFinite(inputs.loadingTimeHours) || inputs.loadingTimeHours <= 0 ||
+      !Number.isFinite(inputs.productMass) || inputs.productMass < 0 ||
+      !Number.isFinite(inputs.productCp) || inputs.productCp < 0 ||
+      inputs.targetTemp >= inputs.ambientTemp ||
+      (inputs.processingMode === 'HOLDING' && (inputs.holdRH < 0 || inputs.holdRH > 100)) ||
+      (inputs.processingMode === 'FREEZING' && (!Number.isFinite(inputs.freezeRateCHour) || inputs.freezeRateCHour <= 0))
+    ) {
+      return {
+        transmission: 0, product: 0, infiltration: 0, defrost: 0, internal: 0, total: 0, safetyMargin: 0,
+        safetyPct: 0, rhInfiltrationMultiplier: 1, recoveryInfiltrationMultiplier: 1,
+        isHolding, isFreezing: inputs.processingMode === 'FREEZING', freezingTimeHours: 0, criticalZoneHours: 0,
+        freezeTargetCore: inputs.freezeStorageTemp, freezeThicknessFactor: 1, jobType: inputs.jobType,
+      };
+    }
+    const area = 2 * (inputs.roomWidth * inputs.roomLength + inputs.roomWidth * inputs.roomHeight + inputs.roomLength * inputs.roomHeight);
     const floorArea = inputs.roomWidth * inputs.roomLength;
     const uValue = (INSULATION_U_VALUES[inputs.insulationType as keyof typeof INSULATION_U_VALUES] || 0.022) / (inputs.insulationThickness / 1000);
     const tempDiff = inputs.ambientTemp - inputs.targetTemp;
@@ -504,7 +534,7 @@ const SizingTool: React.FC = () => {
     // Core freezing time = (Product Temp - Target Core) / Freezing Rate × Thickness Factor
     // Thickness factor: baseline at 50mm = 1.0, each additional 100mm adds 20% more time
     const isFreezing = inputs.processingMode === 'FREEZING';
-    const freezeTargetCore = -18; // Universal standard for safe long-term preservation
+    const freezeTargetCore = inputs.freezeStorageTemp;
     const freezeThicknessFactor = 1 + 0.2 * Math.max(0, (inputs.freezeProductThicknessMm - 50) / 100);
     const freezingTimeHours = isFreezing
       ? Math.max(0, (inputs.productTemp - freezeTargetCore) / inputs.freezeRateCHour) * freezeThicknessFactor
@@ -674,8 +704,18 @@ const SizingTool: React.FC = () => {
         </div>
       </div>
 
+      <div role="note" className="border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+        Advisory tool only. The cooling-load estimate is not validated for equipment selection and does not model product phase-change latent heat or site-specific ventilation/infiltration. Have a competent refrigeration designer verify the load, refrigerant, components, and operating limits before installation.
+      </div>
+
       {activeCalculator === 'wizard' ? (
         <>
+      {sizingInputIssues.length > 0 && (
+        <div role="alert" className="border border-rose-300 bg-rose-50 p-4 text-sm text-rose-900">
+          <p className="font-semibold">Correct the sizing inputs before using this estimate.</p>
+          <ul className="mt-2 list-inside list-disc">{sizingInputIssues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
+        </div>
+      )}
       {/* Step Indicator */}
       <div className="flex items-center justify-center">
         <div className="flex items-center gap-2">
@@ -1304,23 +1344,15 @@ const SizingTool: React.FC = () => {
                         <div className="border-t border-cyan-200 pt-2">
                           <span className="text-xs text-cyan-700 font-medium block mb-1">Recommended Refrigerants</span>
                           <div className="flex flex-wrap gap-1.5">
-                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-semibold">R-744 (CO₂)</span>
-                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-semibold">R-290 (Propane)</span>
-                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold">R-32</span>
+                            <span className="text-[10px] text-cyan-700">Select only a refrigerant approved for the equipment, charge, site conditions, and applicable requirements.</span>
                           </div>
-                          <p className="text-[10px] text-cyan-500 mt-1">SI 49 of 2023 Compliant</p>
                         </div>
                       </div>
                     </div>
                   ) : (
                     <div className="p-4 bg-gray-50 border border-gray-100 flex flex-col justify-center">
                       <p className="text-sm font-semibold text-gray-700 mb-3">Recommended Refrigerants</p>
-                      <div className="flex flex-wrap gap-2">
-                        <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-semibold">R-744 (CO₂)</span>
-                        <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-semibold">R-290 (Propane)</span>
-                        <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-semibold">R-32</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">SI 49 of 2023 Compliant</p>
+                      <p className="text-xs text-gray-600">Select a refrigerant only after verifying equipment approval, charge limits, site conditions, and applicable requirements.</p>
                     </div>
                   )}
                 </div>
@@ -1328,7 +1360,7 @@ const SizingTool: React.FC = () => {
                 <div className="p-4 bg-emerald-50 border border-emerald-100">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-emerald-900">Preliminary equipment guidance</p>
-                    <button type="button" onClick={saveSizingCase} className="inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"><Save className="h-3.5 w-3.5" /> {savedAt ? 'Case saved locally' : 'Save sizing case'}</button>
+                    <button type="button" onClick={saveSizingCase} disabled={sizingInputIssues.length > 0} className="inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"><Save className="h-3.5 w-3.5" /> {savedAt ? 'Case saved locally' : 'Save sizing case'}</button>
                   </div>
                   <p className="mb-4 text-xs leading-5 text-emerald-800">Confirm refrigerant, evaporating and condensing temperatures, line length/elevation, pressure drop, and manufacturer performance data before ordering equipment.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1649,13 +1681,6 @@ const SizingTool: React.FC = () => {
                   stroke="rgba(255,255,255,0.08)"
                 />
               ))}
-              <rect
-                x="70"
-                y={30 + (1 - MAX_OPERATING_PRESSURE[selectedRefrigerant] / 64) * 230}
-                width="590"
-                height={280 - (30 + (1 - MAX_OPERATING_PRESSURE[selectedRefrigerant] / 64) * 230)}
-                fill="rgba(239,68,68,0.12)"
-              />
               {Object.entries(PT_CURVES).map(([code, curve]) => {
                 const points = curve
                   .map((point) => {
@@ -1700,9 +1725,9 @@ const SizingTool: React.FC = () => {
               <p className="text-sm font-semibold text-gray-500">Safety Class</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{REFRIGERANT_REFERENCE[selectedRefrigerant].ashraeSafetyClass}</p>
             </div>
-            <div className="border border-red-100 bg-red-50 p-5">
-              <p className="text-sm font-semibold text-red-700">Max Operating Pressure</p>
-              <p className="mt-2 text-2xl font-bold text-red-900">{MAX_OPERATING_PRESSURE[selectedRefrigerant]} bar</p>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
+              <p className="text-sm font-semibold text-amber-900">Reference range</p>
+              <p className="mt-2 text-sm text-amber-800">Illustrative chart only; not an operating limit or service setpoint.</p>
             </div>
           </div>
         </div>

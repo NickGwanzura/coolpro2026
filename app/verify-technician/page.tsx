@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
@@ -19,7 +19,6 @@ import {
   ShieldCheck,
   User,
 } from 'lucide-react';
-import useSWR from 'swr';
 import { CertificateQRCode } from '@/components/CertificateQRCode';
 import { SITE_URL } from '@/lib/site-url';
 import type { CertificateRecord, Technician } from '@/types/index';
@@ -42,6 +41,7 @@ function getInitialPortalState() {
     return {
       searchMode: 'registration' as SearchMode,
       searchQuery: '',
+      verificationToken: '',
       notFound: false,
     };
   }
@@ -55,6 +55,7 @@ function getInitialPortalState() {
   return {
     searchMode,
     searchQuery: query,
+    verificationToken: params.get('token') ?? '',
     notFound: false,
   };
 }
@@ -118,19 +119,12 @@ export default function VerifyTechnicianPage() {
   const [searchResult, setSearchResult] = useState<VerificationResult | null>(null);
   const [notFound, setNotFound] = useState(initialState.notFound);
   const [isSearching, setIsSearching] = useState(false);
+  const [verificationToken, setVerificationToken] = useState(initialState.verificationToken);
   const [showActivity, setShowActivity] = useState(false);
 
-  const { data: techniciansData, isLoading: techniciansLoading } = useSWR<Technician[]>(
-    '/api/public/technicians',
-    (url: string) => fetch(url).then((res) => (res.ok ? res.json() : []))
-  );
-  const technicians = useMemo(() => techniciansData ?? [], [techniciansData]);
 
-  const { data: certificatesData } = useSWR<CertificateRecord[]>(
-    '/api/public/certificates',
-    (url: string) => fetch(url).then((res) => (res.ok ? res.json() : []))
-  );
-  const availableCertificates = useMemo(() => certificatesData ?? [], [certificatesData]);
+  // Certificate records are fetched only for an exact number + secret token. Never
+  // download the full issued-certificate registry into a public browser.
 
   // Public technician listings never include contact details (to prevent bulk PII
   // scraping) — once a specific technician is matched, fetch their single record by id
@@ -138,46 +132,66 @@ export default function VerifyTechnicianPage() {
   const applySearchResult = (match: VerificationResult | null) => {
     setSearchResult(match);
     setNotFound(!match);
-    const technicianId = match?.technician?.id;
-    if (!technicianId) return;
-    fetch(`/api/public/technicians?id=${encodeURIComponent(technicianId)}`)
-      .then((res) => (res.ok ? res.json() as Promise<Technician> : null))
-      .then((enriched) => {
-        if (!enriched) return;
-        setSearchResult((prev) =>
-          prev && prev.technician?.id === enriched.id ? { ...prev, technician: enriched } : prev
-        );
-      })
-      .catch(() => {
-        // Contact-detail enrichment is best-effort; the match itself already succeeded.
-      });
   };
 
-  // Re-run initial URL query once technicians and certificates are loaded
+  const searchTechnicians = useCallback(async (query: string): Promise<Technician[]> => {
+    if (!query.trim()) return [];
+    try {
+      const response = await fetch(`/api/public/technicians?q=${encodeURIComponent(query.trim())}`);
+      return response.ok ? await response.json() as Technician[] : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const lookupCertificate = useCallback(async (query: string, token: string): Promise<VerificationResult | null> => {
+    if (!query.trim() || !token.trim()) return null;
+    try {
+      const params = new URLSearchParams({ q: query.trim(), token: token.trim() });
+      const response = await fetch(`/api/public/certificates?${params}`);
+      if (!response.ok) return null;
+      const records = await response.json() as CertificateRecord[];
+      const certificate = records[0];
+      if (!certificate) return null;
+      return {
+        technician: null,
+        certificate,
+        matchSource: 'certificate',
+      };
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Initial public lookups fetch only the exact query, never the complete registry.
   const [initialQueryRun, setInitialQueryRun] = useState(false);
   useEffect(() => {
-    if (!initialQueryRun && !techniciansLoading && technicians.length > 0 && initialState.searchQuery) {
-      const timer = window.setTimeout(() => {
-        const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const token = params?.get('token');
-        const match = findVerificationResult(initialState.searchQuery, initialState.searchMode, technicians, availableCertificates, token);
-        applySearchResult(match);
-        setInitialQueryRun(true);
-      }, 0);
-      return () => window.clearTimeout(timer);
+    if (!initialQueryRun && initialState.searchQuery) {
+      const token = initialState.verificationToken;
+      if (initialState.searchMode === 'certificate') {
+        void lookupCertificate(initialState.searchQuery, token).then((match) => {
+          applySearchResult(match);
+          setInitialQueryRun(true);
+        });
+      } else {
+        void searchTechnicians(initialState.searchQuery).then((matches) => {
+          applySearchResult(findVerificationResult(initialState.searchQuery, initialState.searchMode, matches, []));
+          setInitialQueryRun(true);
+        });
+      }
     }
-  }, [techniciansLoading, technicians, initialQueryRun, initialState, availableCertificates]);
+  }, [initialQueryRun, initialState, lookupCertificate, searchTechnicians]);
 
   const recentActivity = useMemo(
     () =>
-      availableCertificates.slice(0, 5).map((certificate) => ({
-        id: certificate.id,
-        name: certificate.technicianName,
-        certificateNumber: certificate.certificateNumber,
-        time: formatDate(certificate.issueDate),
-        verified: certificate.status === 'valid',
-      })),
-    [availableCertificates]
+      searchResult?.certificate ? [{
+        id: searchResult.certificate.id,
+        name: searchResult.certificate.technicianName,
+        certificateNumber: searchResult.certificate.certificateNumber,
+        time: formatDate(searchResult.certificate.issueDate),
+        verified: searchResult.certificate.status === 'valid',
+      }] : [],
+    [searchResult]
   );
 
   const handleSearch = (event: React.FormEvent) => {
@@ -187,17 +201,23 @@ export default function VerifyTechnicianPage() {
     setIsSearching(true);
     setNotFound(false);
 
-    window.setTimeout(() => {
-      const match = findVerificationResult(searchQuery, searchMode, technicians, availableCertificates);
-      applySearchResult(match);
-      setIsSearching(false);
-    }, 300);
+    if (searchMode === 'certificate') {
+      void lookupCertificate(searchQuery, verificationToken).then((match) => {
+        applySearchResult(match);
+        setIsSearching(false);
+      });
+    } else {
+      void searchTechnicians(searchQuery).then((matches) => {
+        applySearchResult(findVerificationResult(searchQuery, searchMode, matches, []));
+        setIsSearching(false);
+      });
+    }
   };
 
   const suggestedQueries = {
-    registration: technicians.slice(0, 4).map((item) => item.registrationNumber),
-    name: technicians.slice(0, 4).map((item) => item.name),
-    certificate: availableCertificates.slice(0, 4).map((item) => item.certificateNumber),
+    registration: [],
+    name: [],
+    certificate: [],
   };
 
   const technician = searchResult?.technician ?? null;
@@ -322,6 +342,16 @@ export default function VerifyTechnicianPage() {
                     className="w-full border-2 border-slate-200 px-6 py-4 pl-12 text-lg transition-colors focus:border-blue-500 focus:outline-none"
                   />
                 </div>
+                {searchMode === 'certificate' && (
+                  <input
+                    type="text"
+                    value={verificationToken}
+                    onChange={(event) => setVerificationToken(event.target.value)}
+                    placeholder="Verification token"
+                    aria-label="Certificate verification token"
+                    className="w-full border-2 border-slate-200 px-5 py-4 font-mono focus:border-blue-500 focus:outline-none md:max-w-xs"
+                  />
+                )}
                 <button
                   type="submit"
                   disabled={isSearching}
@@ -334,7 +364,11 @@ export default function VerifyTechnicianPage() {
           </form>
 
           <div className="mt-6 border-t border-slate-100 pt-6">
-            <p className="mb-3 text-sm text-slate-500">Try a {searchMode} search (from live registry):</p>
+            <p className="mb-3 text-sm text-slate-500">
+              {searchMode === 'certificate'
+                ? 'Certificate lookups require the exact certificate number and its verification token.'
+                : 'Search the live registry by an exact registration number or the beginning of a technician name.'}
+            </p>
             <div className="flex flex-wrap gap-2">
               {suggestedQueries[searchMode].map((entry) => (
                 <button

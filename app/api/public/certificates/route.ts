@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { and, eq, ilike, or } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { trainerCertificateRequests } from '@/db/schema/index';
 import type { CertificateRecord } from '@/types/index';
@@ -31,24 +31,21 @@ export async function GET(req: Request) {
   const q = url.searchParams.get('q');
   const token = url.searchParams.get('token');
 
-  const conditions = [eq(trainerCertificateRequests.status, 'issued')];
-  if (q) {
-    conditions.push(
-      or(
-        ilike(trainerCertificateRequests.certificateNumber, `%${q}%`),
-        eq(trainerCertificateRequests.verificationToken, q),
-      )!,
-    );
+  if (!q || !token || q.length > 100 || token.length > 200) {
+    return NextResponse.json({ error: 'An exact certificate number and verification token are required' }, { status: 400 });
   }
-  if (token) {
-    conditions.push(eq(trainerCertificateRequests.verificationToken, token));
-  }
+
+  const conditions = [
+    eq(trainerCertificateRequests.status, 'issued'),
+    eq(trainerCertificateRequests.certificateNumber, q.trim().toUpperCase()),
+    eq(trainerCertificateRequests.verificationToken, token),
+  ];
 
   const rows = await db
     .select()
     .from(trainerCertificateRequests)
     .where(and(...conditions))
-    .limit(200);
+    .limit(1);
 
   return NextResponse.json(rows.map(toCertificateRecord).filter((r): r is CertificateRecord => r !== null));
 }

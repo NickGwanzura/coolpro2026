@@ -316,7 +316,7 @@ export default function ReportingPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {/* Date filter for timeline */}
+                    {/* Date filter only affects the activity timeline, not summary cards or export. */}
                     <div className="rounded-lg flex items-center border border-gray-200 bg-white divide-x divide-gray-200">
                         {(['all', 'today', 'week', 'month'] as const).map((range) => (
                             <button
@@ -341,6 +341,10 @@ export default function ReportingPage() {
                     </button>
                 </div>
             </div>
+
+            <p className="-mt-4 text-xs text-gray-500">
+                Summary cards and CSV export show all-time totals. The date selector below filters only the activity timeline.
+            </p>
 
             {/* ── Summary Cards ── */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
