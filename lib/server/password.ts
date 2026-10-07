@@ -12,5 +12,7 @@ export function verifyPassword(password: string, hash: string): Promise<boolean>
 }
 
 export function isPasswordStrongEnough(password: string): boolean {
-  return typeof password === 'string' && password.length >= MIN_PASSWORD_LENGTH;
+  return typeof password === 'string' &&
+    password.length >= MIN_PASSWORD_LENGTH &&
+    Buffer.byteLength(password, 'utf8') <= 72;
 }

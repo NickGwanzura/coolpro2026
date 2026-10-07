@@ -6,7 +6,7 @@ const ALL_ROLES = ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', '
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireRole(req, ALL_ROLES);
+    await requireRole(req, ALL_ROLES);
   } catch (e) {
     return e as Response;
   }

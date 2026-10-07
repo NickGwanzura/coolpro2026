@@ -11,7 +11,7 @@ const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500MB, covers course video upl
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['lecturer', 'trainer', 'org_admin']);
+    session = await requireRole(req, ['lecturer', 'trainer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

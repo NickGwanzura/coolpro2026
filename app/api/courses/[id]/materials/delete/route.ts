@@ -13,7 +13,7 @@ export async function POST(
   const { id } = await params;
   let session;
   try {
-    session = requireRole(req, ['trainer', 'lecturer', 'org_admin']);
+    session = await requireRole(req, ['trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

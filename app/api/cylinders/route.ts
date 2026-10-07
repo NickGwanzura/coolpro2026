@@ -31,7 +31,7 @@ function toCylinder(row: typeof cylinders.$inferSelect): Cylinder {
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician', 'vendor', 'org_admin']);
+    session = await requireRole(req, ['technician', 'vendor', 'org_admin']);
     if (session.role === 'vendor') session = await requireApprovedSupplier(req);
   } catch (e) {
     return e as Response;
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician', 'vendor', 'org_admin']);
+    session = await requireRole(req, ['technician', 'vendor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

@@ -141,6 +141,13 @@
       "when": 1786351580474,
       "tag": "0019_flaky_madame_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791377047162,
+      "tag": "0020_password_reset_tokens",
+      "breakpoints": true
     }
   ]
 }

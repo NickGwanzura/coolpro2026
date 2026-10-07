@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 /**
  * In-memory, per-process rate limiter. Deliberately simple — this only holds correctly on a
  * single running instance (fine for the current one-instance deploy). If this service
@@ -32,7 +34,9 @@ export function checkRateLimit(key: string, limit: number, windowMs: number): bo
 }
 
 export function getClientIp(req: Request): string {
-  const forwarded = req.headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0].trim();
-  return req.headers.get('x-real-ip') ?? 'unknown';
+  // X-Forwarded-For can contain a client-supplied value before the proxy-appended
+  // address. Trust the single-hop value set by the ingress instead; otherwise use
+  // one shared fallback bucket rather than allowing arbitrary rate-limit identities.
+  const realIp = req.headers.get('x-real-ip')?.trim();
+  return realIp && isIP(realIp) ? realIp : 'unknown';
 }

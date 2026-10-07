@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Search, ShieldCheck, AlertCircle, Users2, UserPlus, KeyRound, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { useAdminUsers, updateAdminUser } from '@/lib/api';
+import { useAdminUsers, updateAdminUser, requestAdminPasswordReset } from '@/lib/api';
 import type { AdminUserRecord } from '@/types/index';
 
 const ROLES = [
@@ -32,7 +32,6 @@ function UserRow({ user, isSelf }: { user: AdminUserRecord; isSelf: boolean }) {
   const [savingField, setSavingField] = useState<'role' | 'status' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetNotice, setResetNotice] = useState<string | null>(null);
   const [savingReset, setSavingReset] = useState(false);
@@ -61,19 +60,13 @@ function UserRow({ user, isSelf }: { user: AdminUserRecord; isSelf: boolean }) {
     }
   };
 
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePasswordReset = async () => {
     setResetError(null);
     setResetNotice(null);
-    if (newPassword.length < 8) {
-      setResetError('New password must be at least 8 characters.');
-      return;
-    }
     setSavingReset(true);
     try {
-      await updateAdminUser(user.id, { newPassword });
-      setResetNotice('Password reset. The change is recorded in the audit trail.');
-      setNewPassword('');
+      await requestAdminPasswordReset(user.id);
+      setResetNotice(`A one-time reset link was sent to ${user.email}.`);
       setResetOpen(false);
     } catch (err) {
       setResetError(err instanceof Error ? err.message : 'Failed to reset password');
@@ -137,31 +130,23 @@ function UserRow({ user, isSelf }: { user: AdminUserRecord; isSelf: boolean }) {
       </div>
 
       {resetOpen && (
-        <form onSubmit={handlePasswordReset} className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5">
-          <label htmlFor={`reset-${user.id}`} className="text-xs font-semibold text-amber-800">
-            New password
-          </label>
-          <input
-            id={`reset-${user.id}`}
-            type="text"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Min 8 characters"
-            minLength={8}
-            required
-            className="min-w-0 flex-1 rounded border border-amber-300 bg-white px-2 py-1.5 text-sm text-gray-900 outline-none focus:border-amber-400"
-          />
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5">
+          <p className="min-w-0 flex-1 text-xs text-amber-900">
+            Send a single-use reset link to <strong>{user.email}</strong>. It expires after 30 minutes.
+          </p>
           <button
-            type="submit"
+            type="button"
+            onClick={() => void handlePasswordReset()}
             disabled={savingReset}
             className="rounded bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
           >
-            {savingReset ? 'Resetting…' : 'Set Password'}
+            {savingReset ? 'Sending…' : 'Send reset link'}
           </button>
           {resetError && <p className="w-full text-[11px] text-rose-600">{resetError}</p>}
           {resetNotice && <p className="w-full text-[11px] text-emerald-700">{resetNotice}</p>}
-        </form>
+        </div>
       )}
+      {resetNotice && !resetOpen && <p className="mt-2 text-[11px] text-emerald-700">{resetNotice}</p>}
     </div>
   );
 }

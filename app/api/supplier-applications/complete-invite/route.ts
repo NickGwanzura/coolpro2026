@@ -25,7 +25,7 @@ function isSupplierSurveyComplete(data: SupplierSurveyData | undefined): boolean
 }
 
 export async function POST(req: Request) {
-  const session = readSessionFromRequest(req);
+  const session = await readSessionFromRequest(req);
   if (!session || session.role !== 'vendor') return NextResponse.json({ error: 'A supplier invitation is required.' }, { status: 403 });
 
   const body = await req.json() as Partial<SupplierRegistration>;

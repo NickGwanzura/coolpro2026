@@ -1,4 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
+import { eq } from 'drizzle-orm';
+import { db } from '@/db/client';
+import { users } from '@/db/schema/users';
 import type { SessionPayload } from './auth-edge';
 import { getSessionSecret } from './session-secret';
 
@@ -40,16 +43,31 @@ export function verifySession(token: string): SessionPayload | null {
   }
 }
 
-export function readSessionFromRequest(req: Request): SessionPayload | null {
+export async function readSessionFromRequest(req: Request): Promise<SessionPayload | null> {
   const cookieHeader = req.headers.get('cookie') ?? '';
   const match = cookieHeader.split(';').map(s => s.trim()).find(s => s.startsWith(`${SESSION_COOKIE}=`));
   if (!match) return null;
   const token = match.slice(SESSION_COOKIE.length + 1);
-  return verifySession(token);
+  const session = verifySession(token);
+  if (!session) return null;
+
+  const [user] = await db
+    .select({ status: users.status, sessionVersion: users.sessionVersion })
+    .from(users)
+    .where(eq(users.id, session.id))
+    .limit(1);
+
+  if (
+    !user ||
+    user.status !== 'active' ||
+    session.sessionVersion !== user.sessionVersion
+  ) return null;
+
+  return session;
 }
 
-export function requireRole(req: Request, allowedRoles: string[]): SessionPayload {
-  const session = readSessionFromRequest(req);
+export async function requireRole(req: Request, allowedRoles: string[]): Promise<SessionPayload> {
+  const session = await readSessionFromRequest(req);
   if (!session) throw new Response('Unauthorized', { status: 401 });
   if (!allowedRoles.includes(session.role)) throw new Response('Forbidden', { status: 403 });
   return session;

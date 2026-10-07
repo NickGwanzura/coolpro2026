@@ -1,4 +1,5 @@
 export * from './users';
+export * from './password-reset';
 export * from './courses';
 export * from './suppliers';
 export * from './technicians';

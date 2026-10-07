@@ -5,44 +5,16 @@ import { tradePermits } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { requireApprovedSupplier } from '@/lib/server/supplier-access';
 import type { TradePermit } from '@/types/index';
+import { toTradePermit } from '@/lib/server/request-serializers';
 
 function permitNumber() {
   return `PMT-${Date.now().toString(36).toUpperCase()}`;
 }
 
-export function toTradePermit(row: typeof tradePermits.$inferSelect): TradePermit {
-  return {
-    id: row.id,
-    permitNumber: row.permitNumber,
-    permitType: row.permitType as TradePermit['permitType'],
-    applicantName: row.applicantName,
-    applicantCompany: row.applicantCompany,
-    applicantEmail: row.applicantEmail,
-    refrigerantId: row.refrigerantId ?? undefined,
-    refrigerantLabel: row.refrigerantLabel,
-    quantityKg: Number(row.quantityKg),
-    countryOfOriginOrDestination: row.countryOfOriginOrDestination,
-    status: row.status as TradePermit['status'],
-    issuedDate: row.issuedDate ?? undefined,
-    expiryDate: row.expiryDate ?? undefined,
-    verificationToken: row.verificationToken ?? undefined,
-    verificationUrl:
-      row.verificationToken && row.status === 'approved'
-        ? `/verify-permit?q=${encodeURIComponent(row.permitNumber)}&token=${row.verificationToken}`
-        : undefined,
-    reviewedBy: row.reviewedBy ?? undefined,
-    reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
-    reviewNote: row.reviewNote ?? undefined,
-    notes: row.notes ?? undefined,
-    submittedAt: row.submittedAt.toISOString(),
-    createdAt: row.createdAt.toISOString(),
-  };
-}
-
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['vendor', 'org_admin']);
+    session = await requireRole(req, ['vendor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

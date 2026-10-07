@@ -5,7 +5,7 @@ import { users } from '@/db/schema/index';
 import { readSessionFromRequest } from '@/lib/server/auth';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = readSessionFromRequest(req);
+  const session = await readSessionFromRequest(req);
   if (!session) return new Response('Unauthorized', { status: 401 });
 
   const { id } = await params;

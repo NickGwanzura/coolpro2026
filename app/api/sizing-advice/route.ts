@@ -8,7 +8,7 @@ const RATE_WINDOW_MS = 5 * 60 * 1000;
 const MAX_PROMPT_LENGTH = 4000;
 
 export async function POST(req: Request) {
-  const session = readSessionFromRequest(req);
+  const session = await readSessionFromRequest(req);
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

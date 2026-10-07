@@ -8,7 +8,7 @@ import { toManagedCourse, validateCourseBasics, validateCourseModules } from '..
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['lecturer', 'trainer', 'org_admin']);
+    session = await requireRole(req, ['lecturer', 'trainer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

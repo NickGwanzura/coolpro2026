@@ -79,6 +79,7 @@ export async function POST(req: Request) {
     email: user.email,
     name: user.name,
     region: user.region,
+    sessionVersion: user.sessionVersion,
   };
 
   const token = signSession(sessionPayload);

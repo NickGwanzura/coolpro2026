@@ -33,7 +33,7 @@ function toSupplierLedgerEntry(row: typeof supplierLedger.$inferSelect): Supplie
 }
 
 export async function GET(req: Request) {
-  const session = readSessionFromRequest(req);
+  const session = await readSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const url = new URL(req.url);
@@ -65,7 +65,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['org_admin', 'vendor']);
+    session = await requireRole(req, ['org_admin', 'vendor']);
     if (session.role === 'vendor') session = await requireApprovedSupplier(req);
   } catch (e) {
     return e as Response;

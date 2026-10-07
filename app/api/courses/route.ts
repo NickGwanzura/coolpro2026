@@ -9,7 +9,7 @@ import { toManagedCourse, validateCourseBasics, validateCourseModules } from './
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['lecturer', 'trainer', 'org_admin', 'student', 'technician']);
+    session = await requireRole(req, ['lecturer', 'trainer', 'org_admin', 'student', 'technician']);
   } catch (e) {
     return e as Response;
   }
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['lecturer', 'trainer', 'org_admin']);
+    session = await requireRole(req, ['lecturer', 'trainer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

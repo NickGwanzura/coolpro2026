@@ -13,7 +13,7 @@ function parseBool(value: string | null): boolean | undefined {
 
 export async function GET(req: Request) {
   try {
-    requireRole(req, ALL_ROLES);
+    await requireRole(req, ALL_ROLES);
   } catch (e) {
     return e as Response;
   }

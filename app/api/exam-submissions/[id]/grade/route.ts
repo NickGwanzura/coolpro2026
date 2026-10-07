@@ -25,7 +25,7 @@ function toExamSubmission(row: typeof examSubmissions.$inferSelect): ExamSubmiss
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['trainer', 'lecturer']);
+    session = await requireRole(req, ['trainer', 'lecturer']);
   } catch (e) {
     return e as Response;
   }

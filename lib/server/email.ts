@@ -98,7 +98,8 @@ export async function sendInviteEmail(input: {
 }): Promise<{ sent: boolean }> {
   const resend = getResendClient();
   if (!resend) {
-    console.log('[email] RESEND_API_KEY not set — invite email not sent:', input.email, '->', input.inviteUrl);
+    // Invite URLs are bearer credentials; never write them (or recipient addresses) to logs.
+    console.warn('[email] RESEND_API_KEY not set — invite email not sent.');
     return { sent: false };
   }
 
@@ -579,6 +580,43 @@ export async function sendContactEmails(input: {
     return { sent: true };
   } catch (err) {
     console.error('[email] Failed to send contact email:', err instanceof Error ? err.message : err);
+    return { sent: false };
+  }
+}
+
+export async function sendPasswordResetEmail(input: {
+  email: string;
+  resetUrl: string;
+}): Promise<{ sent: boolean }> {
+  const resend = getResendClient();
+  if (!resend) return { sent: false };
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: input.email,
+      subject: 'Reset your NOU / HEVACRAZ password',
+      html: emailShell(`
+        <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Account security</p>
+        <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Reset your password</p>
+        <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
+          We received a request to reset the password for your HEVACRAZ Compliance Platform account.
+          Use the secure link below within 30 minutes. If you didn't request this, you can ignore this email.
+        </p>
+        <a href="${escapeHtml(input.resetUrl)}"
+           style="display: inline-block; margin-top: 18px; background: ${BRAND.amber}; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 22px; border-radius: 4px;">
+          Reset password
+        </a>
+      `, 'A password reset was requested for your HEVACRAZ account.'),
+    });
+
+    if (error) {
+      console.error('[email] Resend rejected password reset email:', error.message);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error('[email] Failed to send password reset email:', err instanceof Error ? err.message : err);
     return { sent: false };
   }
 }

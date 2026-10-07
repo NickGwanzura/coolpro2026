@@ -40,7 +40,7 @@ function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['org_admin']);
+    session = await requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }

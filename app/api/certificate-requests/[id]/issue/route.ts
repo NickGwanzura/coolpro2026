@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { trainerCertificateRequests } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
-import { toTrainerCertificateRequest } from '../../route';
+import { toTrainerCertificateRequest } from '@/lib/server/request-serializers';
 
 function generateCertificateNumber() {
   return `HEV-${Date.now().toString().slice(-6)}`;
@@ -16,7 +16,7 @@ function generateVerificationToken() {
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireRole(req, ['org_admin']);
+    await requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }

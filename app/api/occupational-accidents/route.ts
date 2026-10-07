@@ -37,7 +37,7 @@ function toOccupationalAccident(row: typeof occupationalAccidents.$inferSelect):
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, REPORTER_ROLES);
+    session = await requireRole(req, REPORTER_ROLES);
   } catch (e) {
     return e as Response;
   }
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, REPORTER_ROLES);
+    session = await requireRole(req, REPORTER_ROLES);
   } catch (e) {
     return e as Response;
   }

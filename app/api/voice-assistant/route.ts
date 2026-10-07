@@ -11,7 +11,7 @@ const MAX_HISTORY_TURNS = 6;
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, [...VALID_ROLES]);
+    session = await requireRole(req, [...VALID_ROLES]);
   } catch (e) {
     return e as Response;
   }

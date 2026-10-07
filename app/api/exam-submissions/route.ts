@@ -25,7 +25,7 @@ function toExamSubmission(row: typeof examSubmissions.$inferSelect): ExamSubmiss
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician', 'student', 'trainer', 'lecturer', 'org_admin']);
+    session = await requireRole(req, ['technician', 'student', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -59,7 +59,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician', 'student']);
+    session = await requireRole(req, ['technician', 'student']);
   } catch (e) {
     return e as Response;
   }

@@ -26,7 +26,7 @@ function toMembership(row: typeof memberships.$inferSelect): Membership {
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireRole(req, ['org_admin']);
+    await requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -42,7 +42,7 @@ const RENEWABLE_STATUSES: Membership['status'][] = ['active', 'expired', 'suspen
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['org_admin']);
+    session = await requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }

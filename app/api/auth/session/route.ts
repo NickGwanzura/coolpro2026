@@ -6,7 +6,7 @@ import { readSessionFromRequest } from '@/lib/server/auth';
 import type { UserSession } from '@/lib/session-types';
 
 export async function GET(req: Request) {
-  const session = readSessionFromRequest(req);
+  const session = await readSessionFromRequest(req);
   if (!session) {
     return NextResponse.json({ user: null });
   }

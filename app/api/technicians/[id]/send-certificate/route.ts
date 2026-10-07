@@ -10,7 +10,7 @@ const MAX_PDF_BASE64_LENGTH = 8 * 1024 * 1024; // ~6MB decoded, generous for a s
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireRole(req, ['trainer', 'lecturer', 'org_admin']);
+    await requireRole(req, ['trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

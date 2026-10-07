@@ -32,7 +32,7 @@ export async function GET() {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['trainer', 'lecturer']);
+    session = await requireRole(req, ['trainer', 'lecturer']);
   } catch (e) {
     return e as Response;
   }

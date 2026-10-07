@@ -36,7 +36,7 @@ function toTechnician(row: typeof technicians.$inferSelect, includeSensitive = f
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
+    session = await requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -55,7 +55,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['trainer', 'lecturer', 'org_admin']);
+    session = await requireRole(req, ['trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -96,7 +96,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireRole(req, ['org_admin']);
+    await requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }

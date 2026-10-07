@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
+import { applicationAuditLog } from '@/db/schema/audit';
 import { users } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import {
@@ -8,7 +9,7 @@ import {
   verifyPassword,
   isPasswordStrongEnough,
 } from '@/lib/server/password';
-import { recordAuditEvent } from '@/lib/server/audit';
+import { signSession, sessionCookie } from '@/lib/server/auth';
 
 /**
  * Self-service password change. Requires the caller to be authenticated and
@@ -20,7 +21,7 @@ import { recordAuditEvent } from '@/lib/server/audit';
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, [
+    session = await requireRole(req, [
       'technician',
       'trainer',
       'lecturer',
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
 
   if (!isPasswordStrongEnough(newPassword)) {
     return NextResponse.json(
-      { error: `New password must be at least ${8} characters` },
+      { error: 'New password must be at least 8 characters and no more than 72 UTF-8 bytes.' },
       { status: 400 },
     );
   }
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
   const currentMatches = await verifyPassword(currentPassword, user.passwordHash);
   if (!currentMatches) {
     // Wrong current password — log the attempt for audit so failed resets leave a trail.
-    await recordAuditEvent({
+    await db.insert(applicationAuditLog).values({
       entityType: 'user',
       entityId: user.id,
       action: 'password_reset_attempt',
@@ -87,21 +88,40 @@ export async function POST(req: Request) {
 
   const newHash = await hashPassword(newPassword);
 
-  await db
-    .update(users)
-    .set({ passwordHash: newHash, updatedAt: new Date() })
-    .where(eq(users.id, user.id));
+  const now = new Date();
+  const [updated] = await db.transaction(async (tx) => {
+    const [updatedUser] = await tx
+      .update(users)
+      .set({
+        passwordHash: newHash,
+        updatedAt: now,
+        sessionVersion: sql`${users.sessionVersion} + 1`,
+      })
+      .where(and(eq(users.id, user.id), eq(users.status, 'active')))
+      .returning({ sessionVersion: users.sessionVersion });
 
-  await recordAuditEvent({
-    entityType: 'user',
-    entityId: user.id,
-    action: 'password_reset',
-    previousStatus: 'active',
-    newStatus: 'active',
-    performedBy: session.email,
-    performedByRole: session.role,
-    notes: 'Self-service password reset succeeded.',
+    if (!updatedUser) throw new Error('Account is no longer active');
+
+    await tx.insert(applicationAuditLog).values({
+      entityType: 'user',
+      entityId: user.id,
+      action: 'password_reset',
+      previousStatus: 'active',
+      newStatus: 'active',
+      performedBy: session.email,
+      performedByRole: session.role,
+      notes: 'Self-service password change succeeded.',
+    });
+    return [updatedUser];
   });
 
-  return NextResponse.json({ ok: true });
+  const token = signSession({
+    id: user.id,
+    role: user.role,
+    email: user.email,
+    name: user.name,
+    region: user.region,
+    sessionVersion: updated.sessionVersion,
+  });
+  return NextResponse.json({ ok: true }, { headers: { 'Set-Cookie': sessionCookie(token) } });
 }

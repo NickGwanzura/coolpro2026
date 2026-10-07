@@ -31,7 +31,7 @@ export async function PATCH(
 ) {
   let session;
   try {
-    session = requireRole(req, ['org_admin', 'technician']);
+    session = await requireRole(req, ['org_admin', 'technician']);
   } catch (e) {
     return e as Response;
   }

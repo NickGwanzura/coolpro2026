@@ -902,11 +902,15 @@ export function useAdminUsers(q?: string) {
 
 export async function updateAdminUser(
   id: string,
-  body: Partial<Pick<AdminUserRecord, 'role' | 'status' | 'region' | 'name'>> & { newPassword?: string },
+  body: Partial<Pick<AdminUserRecord, 'role' | 'status' | 'region' | 'name'>>,
 ): Promise<AdminUserRecord> {
   const result = await patch<AdminUserRecord>(`/api/admin/users/${id}`, body);
   await mutate((key) => typeof key === 'string' && key.startsWith('/api/admin/users'));
   return result;
+}
+
+export async function requestAdminPasswordReset(id: string): Promise<void> {
+  await post<{ ok: true }>(`/api/admin/users/${id}/password-reset`);
 }
 
 // ---------------------------------------------------------------------------

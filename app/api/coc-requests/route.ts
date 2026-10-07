@@ -3,48 +3,17 @@ import { and, desc, eq, or } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { cocRequests, installations, plannerJobs } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { toCocRequest } from '@/lib/server/request-serializers';
 import type { CocRequest } from '@/types/index';
 
 function certificateNumber() {
   return `COC-${Date.now().toString(36).toUpperCase()}`;
 }
 
-export function toCocRequest(row: typeof cocRequests.$inferSelect): CocRequest {
-  return {
-    id: row.id,
-    certificateNumber: row.certificateNumber,
-    plannerJobId: row.plannerJobId ?? undefined,
-    installationId: row.installationId ?? undefined,
-    technicianId: row.technicianId,
-    technicianName: row.technicianName,
-    clientName: row.clientName,
-    location: row.location,
-    equipmentType: row.equipmentType,
-    serialNumber: row.serialNumber ?? undefined,
-    installationDate: row.installationDate,
-    details: row.details ?? undefined,
-    checklistSnapshot: row.checklistSnapshot ?? null,
-    evidenceImages: row.evidenceImages ?? [],
-    complianceCheck: row.complianceCheck,
-    status: row.status as CocRequest['status'],
-    verificationToken: row.verificationToken ?? undefined,
-    verificationUrl:
-      row.verificationToken && row.status === 'approved'
-        ? `/verify-coc?q=${encodeURIComponent(row.certificateNumber)}&token=${row.verificationToken}`
-        : undefined,
-    reviewedBy: row.reviewedBy ?? undefined,
-    reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
-    reviewNote: row.reviewNote ?? undefined,
-    issuedDate: row.issuedDate ?? undefined,
-    submittedAt: row.submittedAt.toISOString(),
-    createdAt: row.createdAt.toISOString(),
-  };
-}
-
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician', 'org_admin']);
+    session = await requireRole(req, ['technician', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -64,7 +33,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician']);
+    session = await requireRole(req, ['technician']);
   } catch (e) {
     return e as Response;
   }

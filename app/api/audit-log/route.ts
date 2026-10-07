@@ -22,7 +22,7 @@ function toAuditLogEntry(row: typeof applicationAuditLog.$inferSelect): AuditLog
 
 export async function GET(req: Request) {
   try {
-    requireRole(req, ['org_admin']);
+    await requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }

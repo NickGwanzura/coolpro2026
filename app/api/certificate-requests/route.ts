@@ -3,44 +3,13 @@ import { desc, eq, inArray } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { trainerCertificateRequests, technicians } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { toTrainerCertificateRequest } from '@/lib/server/request-serializers';
 import type { TrainerCertificateRequest } from '@/types/index';
-
-export function toTrainerCertificateRequest(
-  row: typeof trainerCertificateRequests.$inferSelect,
-): TrainerCertificateRequest {
-  return {
-    id: row.id,
-    technicianId: row.technicianId,
-    technicianName: row.technicianName,
-    technicianRegistrationNumber: row.technicianRegistrationNumber,
-    technicianCompany: row.technicianCompany,
-    trainerName: row.trainerName,
-    trainerEmail: row.trainerEmail,
-    courseTitle: row.courseTitle,
-    examDate: row.examDate,
-    theoryScore: row.theoryScore,
-    practicalScore: row.practicalScore,
-    overallScore: row.overallScore,
-    notes: row.notes ?? undefined,
-    status: row.status as TrainerCertificateRequest['status'],
-    submittedAt: row.submittedAt.toISOString(),
-    reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
-    adminReviewer: row.adminReviewer ?? undefined,
-    certificateNumber: row.certificateNumber ?? undefined,
-    issuedAt: row.issuedAt?.toISOString() ?? undefined,
-    verificationToken: row.verificationToken ?? undefined,
-    verificationUrl:
-      row.certificateNumber && row.verificationToken
-        ? `/verify-technician?mode=certificate&q=${encodeURIComponent(row.certificateNumber)}&token=${row.verificationToken}`
-        : undefined,
-    cpdCredits: row.cpdCredits ?? undefined,
-  };
-}
 
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['trainer', 'lecturer', 'org_admin', 'technician']);
+    session = await requireRole(req, ['trainer', 'lecturer', 'org_admin', 'technician']);
   } catch (e) {
     return e as Response;
   }
@@ -70,7 +39,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['trainer', 'lecturer']);
+    session = await requireRole(req, ['trainer', 'lecturer']);
   } catch (e) {
     return e as Response;
   }

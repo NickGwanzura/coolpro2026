@@ -8,7 +8,7 @@ import { JobType, JobTypeLabels, GasUsageByJobTypeEntry, GasUsageByJobTypeRespon
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
+    session = await requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

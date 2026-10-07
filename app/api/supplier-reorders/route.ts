@@ -29,7 +29,7 @@ function toSupplierReorder(row: typeof supplierReorders.$inferSelect): SupplierR
 export async function GET(req: Request) {
   let session;
   try {
-    session = requireRole(req, ['vendor', 'org_admin']);
+    session = await requireRole(req, ['vendor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

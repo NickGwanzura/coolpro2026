@@ -62,7 +62,7 @@ function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): 
 }
 
 export async function GET(req: Request) {
-  const session = readSessionFromRequest(req);
+  const session = await readSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   if (session.role === 'vendor') {

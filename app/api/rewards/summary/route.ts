@@ -3,7 +3,7 @@ import { readSessionFromRequest } from '@/lib/server/auth';
 import { computeTechnicianRewardSummary, computeVendorRewardSummary } from '@/lib/server/rewards';
 
 export async function GET(req: Request) {
-  const session = readSessionFromRequest(req);
+  const session = await readSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const url = new URL(req.url);

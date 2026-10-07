@@ -32,7 +32,7 @@ function toContractorApplication(row: typeof contractorApplications.$inferSelect
 // Admin directory listing.
 export async function GET(req: Request) {
   try {
-    requireRole(req, ['org_admin']);
+    await requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
 
 // Self-submission of the onboarding questionnaire by the now-authenticated contractor.
 export async function PATCH(req: Request) {
-  const session = readSessionFromRequest(req);
+  const session = await readSessionFromRequest(req);
   if (!session || session.role !== 'contractor') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

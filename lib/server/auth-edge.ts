@@ -6,6 +6,7 @@ export interface SessionPayload {
   email: string;
   name: string;
   region: string;
+  sessionVersion: number;
   exp: number;
 }
 

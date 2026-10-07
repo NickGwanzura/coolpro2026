@@ -3,16 +3,15 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { users, userStatusEnum } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
-import { hashPassword, isPasswordStrongEnough } from '@/lib/server/password';
-import { recordAuditEvent } from '@/lib/server/audit';
 import { VALID_ROLES } from '@/lib/roles';
+import { sql } from 'drizzle-orm';
 
 const VALID_STATUSES = userStatusEnum.enumValues;
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = requireRole(req, ['org_admin']);
+    session = await requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -23,7 +22,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     status?: string;
     region?: string;
     name?: string;
-    newPassword?: string;
   };
 
   const [existing] = await db.select().from(users).where(eq(users.id, id)).limit(1);
@@ -74,33 +72,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     update.name = body.name.trim();
   }
 
-  // Admin-initiated password reset. Acting admin must be org_admin (checked above).
-  // The reset is hashed (bcrypt) and written to the audit trail with the acting
-  // admin as performer and the target user as entity.
-  if (body.newPassword !== undefined) {
-    if (!body.newPassword) {
-      return NextResponse.json({ error: 'New password cannot be empty' }, { status: 400 });
-    }
-    if (!isPasswordStrongEnough(body.newPassword)) {
-      return NextResponse.json(
-        { error: `New password must be at least ${8} characters` },
-        { status: 400 },
-      );
-    }
-    update.passwordHash = await hashPassword(body.newPassword);
-    await recordAuditEvent({
-      entityType: 'user',
-      entityId: existing.id,
-      action: 'password_reset',
-      previousStatus: 'active',
-      newStatus: 'active',
-      performedBy: session.email,
-      performedByRole: session.role,
-      notes: `Admin reset password for ${existing.email}.`,
-    });
-  }
+  const revokeSessions = (body.role !== undefined && body.role !== existing.role) ||
+    (body.status !== undefined && body.status !== existing.status);
 
-  const [updated] = await db.update(users).set(update).where(eq(users.id, id)).returning();
+  const [updated] = await db.update(users).set(revokeSessions
+    ? { ...update, sessionVersion: sql`${users.sessionVersion} + 1` }
+    : update).where(eq(users.id, id)).returning();
   const { passwordHash: _passwordHash, ...rest } = updated;
   return NextResponse.json(rest);
 }

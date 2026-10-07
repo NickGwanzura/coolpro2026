@@ -13,6 +13,7 @@ type AcceptedInviteUserRow = {
   role: UserSession['role'];
   region: string;
   isDemo: boolean;
+  sessionVersion: number;
 };
 
 function isUniqueViolation(err: unknown): boolean {
@@ -63,7 +64,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
         INSERT INTO users (name, email, password_hash, role, region, status, is_demo)
         SELECT ${name}, email, ${passwordHash}, role, region, 'active', false
         FROM claimed_invite
-        RETURNING id, name, email, role, region, is_demo
+        RETURNING id, name, email, role, region, is_demo, session_version
       )
       SELECT
         id,
@@ -71,7 +72,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
         email,
         role,
         region,
-        is_demo AS "isDemo"
+        is_demo AS "isDemo",
+        session_version AS "sessionVersion"
       FROM created_user
     `);
     user = (result.rows as AcceptedInviteUserRow[])[0];
@@ -101,6 +103,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     email: user.email,
     name: user.name,
     region: user.region,
+    sessionVersion: user.sessionVersion,
   });
 
   return NextResponse.json(

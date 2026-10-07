@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { supplierComplianceApplications } from '@/db/schema/index';
-import { readSessionFromRequest, requireRole } from '@/lib/server/auth';
+import { readSessionFromRequest } from '@/lib/server/auth';
 import { requireApprovedSupplier } from '@/lib/server/supplier-access';
 import type { SupplierComplianceApplication } from '@/types/index';
 
@@ -23,7 +23,7 @@ function toSupplierComplianceApplication(row: typeof supplierComplianceApplicati
 }
 
 export async function GET(req: Request) {
-  const session = readSessionFromRequest(req);
+  const session = await readSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   if (session.role === 'vendor') {

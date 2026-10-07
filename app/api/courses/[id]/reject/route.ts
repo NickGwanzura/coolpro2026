@@ -7,7 +7,7 @@ import { toManagedCourse } from '../../course-validation';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    requireRole(req, ['org_admin']);
+    await requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }

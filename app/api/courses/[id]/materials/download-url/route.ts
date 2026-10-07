@@ -7,7 +7,7 @@ import { createMaterialDownloadUrl } from '@/lib/server/r2';
 import { courseReferencesMaterial } from '../../../course-validation';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = readSessionFromRequest(req);
+  const session = await readSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
