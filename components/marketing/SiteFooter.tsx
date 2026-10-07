@@ -166,25 +166,25 @@ export function SiteFooter() {
 
         <div className="border-t border-white/10 mt-14 pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
           <p>&copy; {year} HEVACRAZ. All rights reserved.</p>
-          <div className="flex items-center gap-5">
-            <a href="#" className="hover:text-white transition-colors">Privacy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms</a>
-            <a href="#" className="hover:text-white transition-colors">Cookies</a>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link href="/privacy#cookies" className="hover:text-white transition-colors">Cookies</Link>
           </div>
         </div>
 
-        <div className="mt-4 text-center sm:text-right text-xs text-gray-500">
-          <p>
-            Developed and maintained by{' '}
+        <div className="mt-5 flex justify-center sm:justify-end">
             <a
               href="https://spiritusglobal.tech"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-400 hover:text-white transition-colors"
+              aria-label="Developer: Spiritus (opens in a new tab)"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs text-gray-400 transition-colors hover:border-amber-400/50 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706]"
             >
-              Spiritus
+              <span className="text-gray-500">Developer</span>
+              <span aria-hidden="true">·</span>
+              <span className="font-semibold text-gray-200">Spiritus</span>
             </a>
-          </p>
         </div>
       </div>
     </footer>

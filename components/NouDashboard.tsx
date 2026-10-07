@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/components/ui/Toast';
+import { Drilldown } from '@/components/ui/Drilldown';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
 import { useCourses, useReorders, useVerifications, useSupplierApplications, useSupplierLedger, useSupplierComplianceApplications, useTechnicians, useGasLogs } from '@/lib/api';
 import type { SupplierQuotaStatus, NOUDiscrepancyAlert, NOUGreyMarketAlert } from '@/types/index';
@@ -546,6 +547,21 @@ export default function NouDashboard() {
               <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-gray-400">
                 {item.hint}
               </p>
+              <Drilldown label="Metric details" className="mt-2 border-t border-gray-100 pt-1">
+                {item.label === 'Registered Technicians' ? (
+                  <p>Counts all technician records currently loaded from the registry ({liveStats.totalTechnicians}). Status is not filtered for this total.</p>
+                ) : item.label === 'Purchased Kg' ? (
+                  <div>
+                    <p>Approved reorder quantities whose purpose is not marked as recovery:</p>
+                    <ul className="mt-2 space-y-1">{approvedReordersByGas.map(([gas, kg]) => <li key={gas} className="flex justify-between gap-3"><span>{gas}</span><span className="tabular-nums">{kg.toLocaleString()} kg</span></li>)}</ul>
+                    <p className="mt-2">This breakdown is year-to-date; the headline KPI is based on all approved reorders returned by the API.</p>
+                  </div>
+                ) : item.label === 'Recovered Kg' ? (
+                  <p>Sum of approved reorder records whose purpose contains “recover”. This reflects supplier return/recovery records, not technician field recovery logs.</p>
+                ) : (
+                  <p>Estimated as recovered kilograms × the refrigerant GWP reference, converted to tonnes of CO₂-equivalent and rounded to a whole tonne. Refrigerants without a configured GWP are excluded from the estimate.</p>
+                )}
+              </Drilldown>
             </article>
           );
         })}
@@ -564,6 +580,9 @@ export default function NouDashboard() {
             </div>
           </div>
           <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-gray-400">Valid certs in registry</p>
+          <Drilldown label="Metric details" className="mt-2 border-t border-gray-100 pt-1">
+            <p>Counts individual technician certification records marked valid. Technicians without a valid certification do not contribute to this count.</p>
+          </Drilldown>
         </article>
 
         <article className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -577,6 +596,9 @@ export default function NouDashboard() {
             </div>
           </div>
           <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-gray-400">Awaiting NOU sign-off</p>
+          <Drilldown label="Metric details" className="mt-2 border-t border-gray-100 pt-1">
+            <p>Counts courses whose current status is pending_nou. Drafts and courses awaiting other review stages are not included.</p>
+          </Drilldown>
         </article>
 
         <article className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -590,6 +612,9 @@ export default function NouDashboard() {
             </div>
           </div>
           <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-gray-400">Gas reorders pending</p>
+          <Drilldown label="Metric details" className="mt-2 border-t border-gray-100 pt-1">
+            <p>Counts reorder records currently in pending_nou status; records awaiting HEVACRAZ review are not included.</p>
+          </Drilldown>
         </article>
 
         <article className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -603,6 +628,9 @@ export default function NouDashboard() {
             </div>
           </div>
           <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-gray-400">Vendor checks run</p>
+          <Drilldown label="Metric details" className="mt-2 border-t border-gray-100 pt-1">
+            <p>Counts vendor verification records created in the current calendar month, based on the application’s local month boundary.</p>
+          </Drilldown>
         </article>
       </section>
 

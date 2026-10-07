@@ -6,6 +6,7 @@ import { buildPreJobChecklist, getRiskSummary } from '@/lib/refrigerantIntellige
 import { RefrigerantRiskBadge } from '@/components/RefrigerantRiskBadge';
 import { useWhatGasSyncStatus } from '@/lib/api';
 import type { WhatGasRefrigerantProfile, SafetyAlertColor } from '@/types/index';
+import { Drilldown } from '@/components/ui/Drilldown';
 
 type Summary = {
     color: SafetyAlertColor;
@@ -163,6 +164,12 @@ export function RefrigerantIntelligencePanel({
                                     {item}
                                 </div>
                             ))}
+                        </div>
+                        <div className="mt-4 rounded-md border border-white/10 bg-white/5">
+                            <Drilldown label="Using this safety guidance" className="text-gray-100 [&>summary]:text-gray-100 [&>summary:hover]:bg-white/10 [&>div]:text-gray-300">
+                                <p>Use this checklist as a pre-job prompt, not as a substitute for the equipment manufacturer’s instructions, the site risk assessment, or the refrigerant safety data sheet.</p>
+                                <p className="mt-2">Confirm the refrigerant identity and safety class against the cylinder label and authoritative current documentation before work. Site conditions and charge size can change the required controls.</p>
+                            </Drilldown>
                         </div>
                     </article>
                 </div>

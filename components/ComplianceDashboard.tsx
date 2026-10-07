@@ -6,6 +6,7 @@ import { Download, ShieldCheck, AlertTriangle, TrendingDown, TrendingUp } from '
 import OccupationalAccidentSection from './OccupationalAccidentSection';
 import { useReorders, useTechnicians, useGasLogs } from '@/lib/api';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
+import { Drilldown } from '@/components/ui/Drilldown';
 
 const NATURAL_REFRIGERANTS = new Set(['R-290', 'R-600a', 'R-744', 'R-717', 'R-1270']);
 
@@ -19,10 +20,10 @@ interface KpiCardProps {
 }
 
 const KpiCard: React.FC<KpiCardProps> = ({ label, value, unit, trend, positive, description }) => (
-  <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-default">
-    <div className="flex justify-between items-start mb-3">
+  <div className="min-w-0 bg-white p-4 sm:p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all">
+    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
       <p className="text-sm font-semibold text-gray-500">{label}</p>
-      <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${positive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+      <span className={`inline-flex max-w-full flex-wrap items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${positive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
         }`}>
         {positive ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
         {trend}
@@ -32,7 +33,10 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, unit, trend, positive, 
       <span className="text-3xl font-bold text-gray-900">{value}</span>
       <span className="text-sm font-medium text-gray-400">{unit}</span>
     </div>
-    <p className="mt-3 text-xs text-gray-500">{description}</p>
+    <Drilldown label="Calculation and scope" className="mt-3 border-t border-gray-100 pt-1">
+      <p>{description}</p>
+      <p className="mt-2">Trend/context: {trend}. The metric reflects the records currently available to this report.</p>
+    </Drilldown>
   </div>
 );
 

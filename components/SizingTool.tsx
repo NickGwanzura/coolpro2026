@@ -1,10 +1,10 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { SizingInputs, JobType, JobTypeLabels, JobTypeDefaults, JobTypeImages, JobTypeDescriptions, ProcessingMode, ProcessingModeLabels, ProcessingModeDescriptions } from '../types';
-import { INSULATION_U_VALUES } from '../constants';
-import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download, Snowflake, ExternalLink, Gauge, ArrowUpDown, Droplets, Save } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, Download, Snowflake, ExternalLink, Gauge, ArrowUpDown, Droplets, Save, Info } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
+import { calculateCoolingLoads } from '@/lib/sizing-calculations';
 
 // HEVACRAZ brand palette (mirrors tailwind.config hevac-* colors) for PDF export
 const PDF_BRAND = {
@@ -31,23 +31,51 @@ async function loadImageAsDataUrl(path: string): Promise<string | null> {
   }
 }
 
-// Technical References/Sources
+// Technical references used to guide and cross-check the preliminary estimates.
 const SIZING_SOURCES = [
-  { name: 'SANS 5001-1', description: 'South African National Standard for Refrigeration', url: 'https://www.sabs.co.za' },
-  { name: 'ASHRAE Fundamentals', description: 'American Society of Heating, Refrigerating and Air-Conditioning Engineers', url: 'https://www.ashrae.org' },
-  { name: 'Manufacturer Data', description: 'Equipment specifications and performance data', url: null },
-  { name: 'SANS 10142-1', description: 'Wiring of Premises (Electrical)', url: 'https://www.sabs.co.za' },
+  {
+    name: 'ASHRAE Handbook — Refrigerated-Facility Loads, Chapter 24 (2026)',
+    description: 'Load categories and calculation guidance for transmission, product, infiltration, internal and equipment loads.',
+    url: 'https://handbook.ashrae.org/Handbooks/R26/IP/R26_Ch24/r26_ch24_ip.aspx',
+  },
+  {
+    name: 'ASHRAE Handbook — Thermal Properties of Foods, Chapter 19 (2026)',
+    description: 'Food-specific thermal properties; values vary with composition and temperature.',
+    url: 'https://handbook.ashrae.org/Handbooks/R26/IP/R26_Ch19/R26_ch19_ip.aspx',
+  },
+  {
+    name: 'ASHRAE Handbook — Cooling and Freezing Times of Foods, Chapter 20 (2026)',
+    description: 'Cooling/freezing-time methods and their dependence on product geometry, properties and heat transfer.',
+    url: 'https://handbook.ashrae.org/Handbooks/R26/IP/R26_Ch20/r26_ch20_ip.aspx',
+  },
+  {
+    name: 'NIST REFPROP',
+    description: 'Reference thermodynamic and transport-property data for refrigerants and mixtures; software may require a license.',
+    url: 'https://www.nist.gov/programs-projects/reference-fluid-thermodynamic-and-transport-properties-database-refprop',
+  },
+  {
+    name: 'ASHRAE Refrigeration Resources — Standards 15 and 34',
+    description: 'Refrigeration-system safety and refrigerant designation/classification; check current editions and applicable local rules.',
+    url: 'https://www.ashrae.org/technical-resources/bookstore/ashrae-refrigeration-resources',
+  },
+  {
+    name: 'Danfoss Coolselector®2',
+    description: 'Manufacturer component-selection and operating-condition cross-check; not a substitute for a room-load calculation.',
+    url: 'https://www.danfoss.com/en/service-and-support/downloads/dcs/coolselector-2/',
+  },
+  {
+    name: 'Copeland Product Selection Software',
+    description: 'Manufacturer compressor/system performance and application-envelope cross-check.',
+    url: 'https://www.copeland.com/en-us/tools-resources/product-selection-software',
+  },
+  {
+    name: 'Zimbabwe S.I. 49 of 2023',
+    description: 'Local regulatory context for controlled substances and related equipment; not a refrigeration sizing standard.',
+    url: 'https://ozone.unep.org/sites/default/files/additional-reported-information/Licensing/Zimbabwe-S.I.%2049%20of%202023.pdf',
+  },
 ];
 
-// Job type specific multipliers — single source of truth, also used by the on-screen
-// formula walkthrough so it can't drift out of sync with the actual calculation.
-const JOB_TYPE_MULTIPLIERS: Record<JobType, { infiltration: number; product: number; safety: number }> = {
-  C40_FREEZER: { infiltration: 1.2, product: 1.1, safety: 1.15 },
-  C60_FREEZER: { infiltration: 1.3, product: 1.15, safety: 1.20 },
-  C90_FREEZER: { infiltration: 1.5, product: 1.2, safety: 1.25 },
-  COLD_ROOM: { infiltration: 1.0, product: 1.0, safety: 1.15 },
-  FREEZER_ROOM: { infiltration: 1.1, product: 1.05, safety: 1.15 }
-};
+const SIZING_REFERENCE_NOTE = 'These references inform methods and cross-checks; they do not certify this preliminary estimate. Confirm product-specific properties, site conditions, equipment ratings and applicable Zimbabwean requirements before design or procurement.';
 
 type CalculatorTab = 'wizard' | 'superheat' | 'pt-chart' | 'leak-rate' | 'converter';
 type RefrigerantCode = 'R-290' | 'R-32' | 'R-744' | 'R-22';
@@ -159,14 +187,26 @@ const SizingTool: React.FC = () => {
     roomWidth: 6,
     roomLength: 8,
     roomHeight: 3.5,
-    insulationType: 'Polyurethane',
-    insulationThickness: 100,
+    wallUValue: 0.22,
+    ceilingUValue: 0.22,
+    floorUValue: 0.22,
+    ceilingBoundaryTempC: 35,
+    floorBoundaryTempC: 20,
     ambientTemp: 35,
-    targetTemp: 2,
+    ambientRH: 50,
+    sitePressureKpa: 86,
     productTemp: 20,
+    productTargetTempC: -18,
     productMass: 5000,
     productCp: 3.2,
+    productCpFrozen: 1.8,
+    productFreezingPointC: -2,
+    productWaterFraction: 0.7,
     loadingTimeHours: 24,
+    infiltrationAirflowM3h: 0,
+    internalLoadKw: 0,
+    defrostHeaterPowerKw: 0,
+    designMarginPct: 0,
     blastAirTemp: -35,
     blastAirVelocity: 4.5,
     blastCycleDurationMinutes: 240,
@@ -212,6 +252,11 @@ const SizingTool: React.FC = () => {
     setConverterFrom(defaultFrom);
     setConverterTo(defaultTo ?? defaultFrom);
   }, [converterType]);
+
+  useEffect(() => {
+    setAiAdvice('');
+    setSavedAt(null);
+  }, [inputs]);
 
   const handleDownload = async () => {
     // Generate PDF using jsPDF
@@ -312,14 +357,9 @@ const SizingTool: React.FC = () => {
       line(`Relative Humidity: ${inputs.holdRH}%`);
       line(`Defrost: ${inputs.holdDefrostCyclesPerDay}x/day, ${inputs.holdDefrostDurationMin} min`);
       line(`Air Velocity: ${inputs.holdAirVelocity.toFixed(2)} m/s`);
-      line(`Recovery Time: ${inputs.holdRecoveryTimeSec}s`);
       line(`Floor Clearance: ${inputs.holdFloorClearanceCm}cm · Wall Clearance: ${inputs.holdAirflowClearanceCm}cm`);
     } else if (inputs.processingMode === 'FREEZING') {
       line(`Storage Temp: ${inputs.freezeStorageTemp}°C`);
-      line(`Freezing Rate: ${inputs.freezeRateCHour}°C/hr`);
-      line(`Air Velocity: ${inputs.freezeAirVelocity.toFixed(1)} m/s`);
-      line(`Product Thickness: ${inputs.freezeProductThicknessMm} mm`);
-      line('Target Core Temp: -18°C');
       if (inputs.freezeBioStorage) line('Biological Storage: Active (down to -80°C)');
     }
     y += 5;
@@ -331,19 +371,23 @@ const SizingTool: React.FC = () => {
     line(`Height: ${inputs.roomHeight}m`);
     y += 5;
 
-    // Insulation
-    heading('Insulation');
-    line(`Type: ${inputs.insulationType}`);
-    line(`Thickness: ${inputs.insulationThickness}mm`);
+    // Envelope assumptions
+    heading('Envelope & Boundary Conditions');
+    line(`Wall overall U-value: ${inputs.wallUValue} W/m²·K`);
+    line(`Ceiling overall U-value: ${inputs.ceilingUValue} W/m²·K`);
+    line(`Floor overall U-value: ${inputs.floorUValue} W/m²·K`);
+    line(`Ceiling/floor adjacent temperatures: ${inputs.ceilingBoundaryTempC}°C / ${inputs.floorBoundaryTempC}°C`);
     y += 5;
 
     // Operating Conditions
     heading('Operating Conditions');
     line(`Ambient Temperature: ${inputs.ambientTemp}°C`);
-    line(`Target Temperature: ${inputs.targetTemp}°C`);
-    line(`Product Temperature: ${inputs.productTemp}°C`);
-    line(`Product Mass: ${inputs.productMass}kg`);
-    line(`Pull-down Time: ${inputs.loadingTimeHours} hours`);
+    line(`Room Target Temperature: ${roomTempC}°C`);
+    line(`Ambient / room RH: ${inputs.ambientRH}% / ${inputs.holdRH}%`);
+    line(`Product: ${inputs.productMass}kg from ${inputs.productTemp}°C to ${inputs.productTargetTempC}°C`);
+    line(`Product water fraction: ${(inputs.productWaterFraction * 100).toFixed(0)}%`);
+    line(`Infiltration airflow: ${inputs.infiltrationAirflowM3h} m³/h at ${inputs.sitePressureKpa} kPa`);
+    line(`Product load period: ${results.productLoadHours.toFixed(2)} hours`);
     y += 5;
 
     // Calculated Results
@@ -356,55 +400,49 @@ const SizingTool: React.FC = () => {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(120);
-    doc.text('TOTAL SYSTEM LOAD', INDENT, y + 13);
+    doc.text('PRELIMINARY AVERAGE LOAD', INDENT, y + 13);
     doc.setTextColor(20);
     doc.setFontSize(11);
     y += 22;
-    if (results.isHolding) {
-      line(`Transmission: ${results.transmission.toFixed(2)} kW`);
-      line(`Product: ${results.product.toFixed(2)} kW`);
-      line(`Infiltration: ${results.infiltration.toFixed(2)} kW (RH×Recovery adj.)`);
-      line(`Defrost (${inputs.holdDefrostCyclesPerDay}x${inputs.holdDefrostDurationMin}min): ${results.defrost.toFixed(2)} kW`);
-      line(`Internal Load: ${results.internal.toFixed(2)} kW`);
-    } else if (results.isFreezing) {
-      line(`Transmission Load: ${results.transmission.toFixed(2)} kW`);
-      line(`Product Load: ${results.product.toFixed(2)} kW`);
-      line(`Infiltration Load: ${results.infiltration.toFixed(2)} kW`);
-      line(`Core Freezing Time: ${results.freezingTimeHours.toFixed(1)} hrs`);
-      line(`Critical Zone Transit: ${results.criticalZoneHours.toFixed(2)} hrs`);
-    } else {
-      line(`Transmission Load: ${results.transmission.toFixed(2)} kW`);
-      line(`Product Load: ${results.product.toFixed(2)} kW`);
-      line(`Infiltration Load: ${results.infiltration.toFixed(2)} kW`);
-    }
-    line(`Safety Margin (${results.safetyPct.toFixed(0)}%): ${results.safetyMargin.toFixed(2)} kW`);
+    line(`Transmission: ${results.transmission.toFixed(2)} kW`);
+    line(`Product sensible above freezing: ${results.productSensibleAboveFreeze.toFixed(2)} kW`);
+    line(`Product latent freezing: ${results.productLatent.toFixed(2)} kW`);
+    line(`Product sensible below freezing: ${results.productSensibleBelowFreeze.toFixed(2)} kW`);
+    line(`Infiltration (moist-air enthalpy): ${results.infiltration.toFixed(2)} kW`);
+    line(`Internal load: ${results.internal.toFixed(2)} kW`);
+    line(`Defrost daily average: ${results.defrost.toFixed(2)} kW`);
+    line(`Subtotal: ${results.subtotal.toFixed(2)} kW`);
+    line(`Explicit design margin (${results.safetyPct.toFixed(0)}%): ${results.safetyMargin.toFixed(2)} kW`);
     y += 5;
 
-    // Refrigerants
-    heading('Recommended Refrigerants');
-    line('• R-744 (CO2) - Low GWP');
-    line('• R-290 (Propane) - Low GWP');
-    y += 5;
-
-    // Equipment Sizing
-    heading('Equipment Sizing');
-    line(`Compressor: ${equipmentSpecs.compressorSize}`);
-    line(`Evaporator: ${equipmentSpecs.evaporatorSize}`);
-    line(`Expansion: ${equipmentSpecs.valveType}`);
-    line(`Size: ${equipmentSpecs.txvSize}`);
-    line(`Liquid Line: ${equipmentSpecs.liquidLine}`);
-    line(`Suction Line: ${equipmentSpecs.suctionLine}`);
-    line(`Est. Pipe Length: ${equipmentSpecs.estimatedPipeLength}m`);
+    heading('Design Limitations');
+    line('No compressor, evaporator, expansion-device or line size has been selected by this report.');
+    line('Packaging heat, produce respiration, freezing time and peak door/defrost coincidence are not modelled.');
+    line('Use verified manufacturer assembly U-values, door/infiltration data, product properties and coincident load schedules.');
+    line('The reported load is preliminary; validate the design with a qualified refrigeration engineer.');
     y += 5;
 
     // Sources
     heading('References & Sources');
-    doc.setFontSize(9);
+    doc.setFontSize(8);
+    doc.setTextColor(70);
+    SIZING_SOURCES.forEach((source, index) => {
+      const referenceLines = doc.splitTextToSize(`${index + 1}. ${source.name} — ${source.description}\n${source.url}`, PAGE_WIDTH - MARGIN_LEFT - 20);
+      referenceLines.forEach((referenceLine: string) => {
+        ensureSpace(6);
+        doc.text(referenceLine, MARGIN_LEFT, y);
+        y += 5;
+      });
+      y += 1;
+    });
+    doc.setFontSize(8);
     doc.setTextColor(100);
-    line('1. SANS 5001-1 - South African National Standard for Refrigeration');
-    line('2. ASHRAE Fundamentals - American Society of Heating, Refrigerating and Air-Conditioning Engineers');
-    line('3. Manufacturer Equipment Data - Specific unit specifications');
-    line('4. SANS 10142-1 - Wiring of Premises (Electrical Requirements)');
+    const noteLines = doc.splitTextToSize(SIZING_REFERENCE_NOTE, PAGE_WIDTH - MARGIN_LEFT - 20);
+    noteLines.forEach((noteLine: string) => {
+      ensureSpace(6);
+      doc.text(noteLine, MARGIN_LEFT, y);
+      y += 5;
+    });
     doc.setTextColor(0);
 
     // Footer
@@ -444,178 +482,119 @@ const SizingTool: React.FC = () => {
     setSavedAt(entry.savedAt);
   };
 
+  const isHolding = inputs.processingMode === 'HOLDING';
+  const isBlasting = inputs.processingMode === 'BLASTING';
+  const roomTempC = isHolding ? inputs.holdTargetTemp : isBlasting ? inputs.blastAirTemp : inputs.freezeStorageTemp;
+
   const sizingInputIssues = [
     ...(Object.values(inputs).some((value) => typeof value === 'number' && !Number.isFinite(value))
       ? ['Every numeric input must be finite.'] : []),
-    ...(['roomWidth', 'roomLength', 'roomHeight', 'insulationThickness', 'loadingTimeHours'] as const)
-      .filter((key) => !Number.isFinite(inputs[key]) || inputs[key] <= 0)
-      .map((key) => `${key} must be a finite value greater than zero.`),
-    ...(['productMass', 'productCp'] as const)
+    ...(['roomWidth', 'roomLength', 'roomHeight', 'wallUValue', 'ceilingUValue', 'floorUValue', 'sitePressureKpa', 'productCp', 'productCpFrozen'] as const)
+      .filter((key) => inputs[key] <= 0)
+      .map((key) => `${key} must be greater than zero.`),
+    ...(['productMass', 'infiltrationAirflowM3h', 'internalLoadKw', 'defrostHeaterPowerKw'] as const)
       .filter((key) => !Number.isFinite(inputs[key]) || inputs[key] < 0)
-      .map((key) => `${key} must be a finite non-negative value.`),
-    ...(inputs.targetTemp >= inputs.ambientTemp ? ['Target temperature must be below ambient temperature for this cooling estimate.'] : []),
-    ...(inputs.processingMode === 'HOLDING' && (inputs.holdRH < 0 || inputs.holdRH > 100)
-      ? ['Relative humidity must be between 0% and 100%.'] : []),
-    ...(inputs.processingMode === 'FREEZING' && (!Number.isFinite(inputs.freezeRateCHour) || inputs.freezeRateCHour <= 0)
-      ? ['Freezing rate must be greater than zero.'] : []),
+      .map((key) => `${key} must be zero or greater.`),
+    ...(inputs.productTargetTempC > inputs.productTemp ? ['Final product temperature cannot be warmer than its entering temperature for a cooling load.'] : []),
+    ...(inputs.productWaterFraction < 0 || inputs.productWaterFraction > 1 ? ['Product water fraction must be between 0 and 1.'] : []),
+    ...([['Ambient relative humidity', inputs.ambientRH], ['Room relative humidity', inputs.holdRH]] as const)
+      .filter(([, value]) => value < 0 || value > 100)
+      .map(([label]) => `${label} must be between 0% and 100%.`),
+    ...(inputs.sitePressureKpa < 60 || inputs.sitePressureKpa > 110 ? ['Site pressure must be between 60 and 110 kPa.'] : []),
+    ...(inputs.productFreezingPointC < -30 || inputs.productFreezingPointC > 5 ? ['Product freezing point must be between -30°C and 5°C.'] : []),
+    ...(inputs.designMarginPct < 0 || inputs.designMarginPct > 100 ? ['Design margin must be between 0% and 100%; use 0% unless an engineer specifies otherwise.'] : []),
+    ...(inputs.holdDefrostCyclesPerDay < 0 || inputs.holdDefrostDurationMin < 0 ? ['Defrost cycles and duration cannot be negative.'] : []),
+    ...(!isBlasting && inputs.loadingTimeHours <= 0 ? ['Product load period must be greater than zero.'] : []),
+    ...(isBlasting && inputs.blastCycleDurationMinutes <= 0 ? ['Blast-cycle duration must be greater than zero.'] : []),
   ];
+  const sizingInputsValid = sizingInputIssues.length === 0;
 
   const results = useMemo(() => {
-    const isHolding = inputs.processingMode === 'HOLDING';
-    if (
-      Object.values(inputs).some((value) => typeof value === 'number' && !Number.isFinite(value)) ||
-      !Number.isFinite(inputs.roomWidth) || inputs.roomWidth <= 0 ||
-      !Number.isFinite(inputs.roomLength) || inputs.roomLength <= 0 ||
-      !Number.isFinite(inputs.roomHeight) || inputs.roomHeight <= 0 ||
-      !Number.isFinite(inputs.insulationThickness) || inputs.insulationThickness <= 0 ||
-      !Number.isFinite(inputs.loadingTimeHours) || inputs.loadingTimeHours <= 0 ||
-      !Number.isFinite(inputs.productMass) || inputs.productMass < 0 ||
-      !Number.isFinite(inputs.productCp) || inputs.productCp < 0 ||
-      inputs.targetTemp >= inputs.ambientTemp ||
-      (inputs.processingMode === 'HOLDING' && (inputs.holdRH < 0 || inputs.holdRH > 100)) ||
-      (inputs.processingMode === 'FREEZING' && (!Number.isFinite(inputs.freezeRateCHour) || inputs.freezeRateCHour <= 0))
-    ) {
+    if (!sizingInputsValid) {
       return {
-        transmission: 0, product: 0, infiltration: 0, defrost: 0, internal: 0, total: 0, safetyMargin: 0,
-        safetyPct: 0, rhInfiltrationMultiplier: 1, recoveryInfiltrationMultiplier: 1,
-        isHolding, isFreezing: inputs.processingMode === 'FREEZING', freezingTimeHours: 0, criticalZoneHours: 0,
-        freezeTargetCore: inputs.freezeStorageTemp, freezeThicknessFactor: 1, jobType: inputs.jobType,
+        wallAreaM2: 0, floorAreaM2: 0,
+        transmission: 0, wallTransmission: 0, ceilingTransmission: 0, floorTransmission: 0,
+        product: 0, productSensibleAboveFreeze: 0, productLatent: 0, productSensibleBelowFreeze: 0,
+        infiltration: 0, outdoorAirEnthalpy: 0, roomAirEnthalpy: 0, dryAirMassFlow: 0,
+        defrost: 0, internal: 0, subtotal: 0, total: 0, safetyMargin: 0, safetyPct: 0,
+        productEnergyKjKg: 0, productLoadHours: 0, isHolding, isFreezing: inputs.processingMode === 'FREEZING',
+        isBlasting, roomTempC,
       };
     }
-    const area = 2 * (inputs.roomWidth * inputs.roomLength + inputs.roomWidth * inputs.roomHeight + inputs.roomLength * inputs.roomHeight);
-    const floorArea = inputs.roomWidth * inputs.roomLength;
-    const uValue = (INSULATION_U_VALUES[inputs.insulationType as keyof typeof INSULATION_U_VALUES] || 0.022) / (inputs.insulationThickness / 1000);
-    const tempDiff = inputs.ambientTemp - inputs.targetTemp;
-    const productTempDiff = inputs.productTemp - inputs.targetTemp;
-
-    const multipliers = JOB_TYPE_MULTIPLIERS[inputs.jobType as JobType] || JOB_TYPE_MULTIPLIERS.COLD_ROOM;
-
-    const transmissionLoad = area * uValue * tempDiff;
-    const loadingTimeSeconds = Math.max(inputs.loadingTimeHours, 0.1) * 3600;
-    const rawProductLoad = (inputs.productMass * inputs.productCp * productTempDiff) / loadingTimeSeconds;
-    const productLoad = rawProductLoad * multipliers.product;
-    const volume = inputs.roomWidth * inputs.roomLength * inputs.roomHeight;
-    
-    // Base infiltration (W)
-    const baseInfiltration = (volume * 10 * multipliers.infiltration * tempDiff) / 3600;
-    
-    // Holding-mode adjustments
-    let infiltrationLoad = baseInfiltration;
-    let defrostLoad = 0;
-    let internalLoad = 0;
-    let rhInfiltrationMultiplier = 1;
-    let recoveryInfiltrationMultiplier = 1;
-    
-    if (isHolding) {
-      // RH latent load adjustment: higher RH = more moisture infiltration = more latent heat
-      // Baseline at 65% RH = no adjustment
-      rhInfiltrationMultiplier = 1 + (Math.min(inputs.holdRH, 95) - 65) * 0.005;
-      
-      // Recovery time: faster recovery = better door seal = less infiltration
-      // Baseline at 75s = 1.0, 30s = 0.85, 180s = 1.3
-      recoveryInfiltrationMultiplier = 0.85 + (Math.max(inputs.holdRecoveryTimeSec, 30) - 30) * (1.3 - 0.85) / (180 - 30);
-      
-      // Apply infiltration modifiers
-      infiltrationLoad = baseInfiltration * rhInfiltrationMultiplier * recoveryInfiltrationMultiplier;
-      
-      // Defrost heat load: electric defrost heaters at ~40 W/m² floor area
-      // Q = (P_defrost × duration_min × 60 × cycles_per_day) / (24h × 3600s/h)
-      const defrostPowerW = floorArea * 40; // 40 W/m² electric heater density
-      defrostLoad = (defrostPowerW * inputs.holdDefrostDurationMin * 60 * inputs.holdDefrostCyclesPerDay) / (24 * 3600);
-      
-      // Internal load: lights (~10 W/m² LED), fans (~5 W/m²), occupancy (~100 W for 1hr/day)
-      const lightingW = floorArea * 10;
-      const fanW = floorArea * 5;
-      const occupancyW = 100 / 24; // 1 person 100W averaged over 24h
-      internalLoad = lightingW + fanW + occupancyW;
-    }
-    
-    // Freezing time estimate (FREEZING mode)
-    // Core freezing time = (Product Temp - Target Core) / Freezing Rate × Thickness Factor
-    // Thickness factor: baseline at 50mm = 1.0, each additional 100mm adds 20% more time
-    const isFreezing = inputs.processingMode === 'FREEZING';
-    const freezeTargetCore = inputs.freezeStorageTemp;
-    const freezeThicknessFactor = 1 + 0.2 * Math.max(0, (inputs.freezeProductThicknessMm - 50) / 100);
-    const freezingTimeHours = isFreezing
-      ? Math.max(0, (inputs.productTemp - freezeTargetCore) / inputs.freezeRateCHour) * freezeThicknessFactor
-      : 0;
-    const criticalZoneHours = isFreezing
-      ? (4 / inputs.freezeRateCHour) * freezeThicknessFactor
-      : 0;
-
-    const rawLoad = transmissionLoad + (productLoad * 1000) + infiltrationLoad + defrostLoad + internalLoad;
-    const totalLoad = rawLoad * multipliers.safety;
-    const safetyMarginLoad = totalLoad - rawLoad;
-
+    const productLoadHours = isBlasting ? inputs.blastCycleDurationMinutes / 60 : inputs.loadingTimeHours;
+    const load = calculateCoolingLoads({
+      roomWidth: inputs.roomWidth,
+      roomLength: inputs.roomLength,
+      roomHeight: inputs.roomHeight,
+      wallUValue: inputs.wallUValue,
+      ceilingUValue: inputs.ceilingUValue,
+      floorUValue: inputs.floorUValue,
+      ambientTemp: inputs.ambientTemp,
+      ceilingBoundaryTempC: inputs.ceilingBoundaryTempC,
+      floorBoundaryTempC: inputs.floorBoundaryTempC,
+      roomTempC,
+      ambientRH: inputs.ambientRH,
+      roomRH: inputs.holdRH,
+      sitePressureKpa: inputs.sitePressureKpa,
+      infiltrationAirflowM3h: inputs.infiltrationAirflowM3h,
+      productMass: inputs.productMass,
+      productTemp: inputs.productTemp,
+      productTargetTempC: inputs.productTargetTempC,
+      productCp: inputs.productCp,
+      productCpFrozen: inputs.productCpFrozen,
+      productFreezingPointC: inputs.productFreezingPointC,
+      productWaterFraction: inputs.productWaterFraction,
+      productLoadHours,
+      internalLoadKw: inputs.internalLoadKw,
+      defrostHeaterPowerKw: inputs.defrostHeaterPowerKw,
+      defrostDurationMin: inputs.holdDefrostDurationMin,
+      defrostCyclesPerDay: inputs.holdDefrostCyclesPerDay,
+      designMarginPct: inputs.designMarginPct,
+    });
     return {
-      transmission: transmissionLoad / 1000,
-      product: productLoad,
-      infiltration: infiltrationLoad / 1000,
-      defrost: defrostLoad / 1000,
-      internal: internalLoad / 1000,
-      total: totalLoad / 1000,
-      safetyMargin: safetyMarginLoad / 1000,
-      safetyPct: (multipliers.safety - 1) * 100,
-      rhInfiltrationMultiplier,
-      recoveryInfiltrationMultiplier,
+      wallAreaM2: load.wallAreaM2,
+      floorAreaM2: load.floorAreaM2,
+      transmission: load.transmissionKw,
+      wallTransmission: load.wallTransmissionKw,
+      ceilingTransmission: load.ceilingTransmissionKw,
+      floorTransmission: load.floorTransmissionKw,
+      product: load.productKw,
+      productSensibleAboveFreeze: load.productSensibleAboveFreezeKw,
+      productLatent: load.productLatentKw,
+      productSensibleBelowFreeze: load.productSensibleBelowFreezeKw,
+      infiltration: load.infiltrationKw,
+      outdoorAirEnthalpy: load.outdoorAirEnthalpyKjKg,
+      roomAirEnthalpy: load.roomAirEnthalpyKjKg,
+      dryAirMassFlow: load.dryAirMassFlowKgS,
+      defrost: load.defrostKw,
+      internal: load.internalKw,
+      subtotal: load.subtotalKw,
+      total: load.totalKw,
+      safetyMargin: load.designMarginKw,
+      safetyPct: load.designMarginPct,
+      productEnergyKjKg: load.productEnergyKjKg,
+      productLoadHours: load.productLoadHours,
       isHolding,
-      isFreezing,
-      freezingTimeHours,
-      criticalZoneHours,
-      freezeTargetCore,
-      freezeThicknessFactor,
-      jobType: inputs.jobType
+      isFreezing: inputs.processingMode === 'FREEZING',
+      isBlasting,
+      roomTempC,
     };
-  }, [inputs]);
-
-  const equipmentSpecs = useMemo(() => {
-    const capacityKw = results.total;
-    const capacityHp = capacityKw / 0.746;
-    const capacityTons = capacityKw / 3.517;
-
-    const compressorSize = `${Math.ceil(capacityHp * 1.2)} HP (${(capacityKw * 1.2).toFixed(1)} kW Cooling Capacity)`;
-    const evaporatorSize = `${(capacityKw * 1.2).toFixed(1)} kW`;
-    
-    const isCapTube = capacityTons < 0.5;
-    const valveType = isCapTube ? 'Capillary Tube' : 'Thermostatic Expansion Valve (TXV)';
-    const txvSize = isCapTube 
-      ? '0.042" to 0.054" ID, Length: 1.5m - 3m' 
-      : capacityTons < 1.0 ? 'Orifice #0 or #1' 
-      : capacityTons < 2.0 ? 'Orifice #2' 
-      : capacityTons < 3.0 ? 'Orifice #3' 
-      : capacityTons < 5.0 ? 'Orifice #4' 
-      : 'Orifice #5 or #6';
-                   
-    let liquidLine = '1/4"';
-    let suctionLine = '3/8"';
-    if (capacityTons >= 0.5 && capacityTons < 1.5) { liquidLine = '3/8"'; suctionLine = '1/2"'; } 
-    else if (capacityTons >= 1.5 && capacityTons < 3.0) { liquidLine = '3/8"'; suctionLine = '5/8"'; } 
-    else if (capacityTons >= 3.0 && capacityTons < 5.0) { liquidLine = '1/2"'; suctionLine = '7/8"'; } 
-    else if (capacityTons >= 5.0 && capacityTons < 7.5) { liquidLine = '1/2"'; suctionLine = '1-1/8"'; } 
-    else if (capacityTons >= 7.5) { liquidLine = '5/8"'; suctionLine = '1-3/8"'; }
-
-    const estimatedPipeLength = Math.ceil((inputs.roomWidth + inputs.roomLength + inputs.roomHeight) * 1.5);
-
-    return { compressorSize, evaporatorSize, valveType, txvSize, liquidLine, suctionLine, estimatedPipeLength };
-  }, [results.total, inputs.roomWidth, inputs.roomLength, inputs.roomHeight]);
+  }, [inputs, isBlasting, isHolding, roomTempC, sizingInputsValid]);
 
   const handleAiConsult = async () => {
+    if (!sizingInputsValid) return;
     setIsLoadingAi(true);
     const prompt = `Review this commercial refrigeration sizing design for a ${JobTypeLabels[inputs.jobType as JobType] || 'Cold Room'}:
     Room: ${inputs.roomWidth}x${inputs.roomLength}x${inputs.roomHeight}m
-    Insulation: ${inputs.insulationThickness}mm ${inputs.insulationType}
-    Product: ${inputs.productMass}kg meat/produce
-    Ambient: ${inputs.ambientTemp}C, Target: ${inputs.targetTemp}C
-    Total Calc Load: ${results.total.toFixed(2)}kW.
-    Preliminary Component Sizing:
-    - Compressor: ${equipmentSpecs.compressorSize}
-    - Evaporator: ${equipmentSpecs.evaporatorSize}
-    - Expansion Device: ${equipmentSpecs.valveType} (${equipmentSpecs.txvSize})
-    - Pipe Sizes: Liquid ${equipmentSpecs.liquidLine}, Suction ${equipmentSpecs.suctionLine}
+    Overall assembly U-values: walls ${inputs.wallUValue} W/m²·K, ceiling ${inputs.ceilingUValue} W/m²·K, floor ${inputs.floorUValue} W/m²·K.
+    Product: ${inputs.productMass}kg, ${inputs.productTemp}C entering to ${inputs.productTargetTempC}C, estimated product energy ${results.productEnergyKjKg.toFixed(1)} kJ/kg.
+    Ambient: ${inputs.ambientTemp}C / ${inputs.ambientRH}% RH; room: ${roomTempC}C / ${inputs.holdRH}% RH; infiltration airflow ${inputs.infiltrationAirflowM3h} m3/h.
+    Calculated preliminary average load: ${results.total.toFixed(2)}kW (subtotal ${results.subtotal.toFixed(2)} kW plus explicit ${inputs.designMarginPct}% design margin).
+    Do not select or verify compressor, evaporator, expansion device, or line sizes from this information. Identify missing design inputs and explain that manufacturer selection at specified evaporating/condensing conditions is required.
     Please provide:
-    1. Verification of the preliminary component sizing.
-    2. Specific low-GWP natural refrigerant alternatives suitable for this load.
-    3. Any additional field recommendations for this specific setup.`;
+    1. Check the arithmetic and assumptions in this preliminary load breakdown.
+    2. List missing data and uncertainty that could materially change the result.
+    3. Provide a short engineer's verification checklist. Do not invent equipment selections or certify code compliance.`;
     
     try {
       const res = await fetch('/api/sizing-advice', {
@@ -704,8 +683,9 @@ const SizingTool: React.FC = () => {
         </div>
       </div>
 
-      <div role="note" className="border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-        Advisory tool only. The cooling-load estimate is not validated for equipment selection and does not model product phase-change latent heat or site-specific ventilation/infiltration. Have a competent refrigeration designer verify the load, refrigerant, components, and operating limits before installation.
+      <div role="note" className="flex gap-3 border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+        <Info className="mt-0.5 h-5 w-5 shrink-0" />
+        <p><strong>Preliminary load estimate only.</strong> Results depend on entered U-values, airflow, humidity and product data. This tool does not select refrigeration equipment or replace a site survey and qualified design review.</p>
       </div>
 
       {activeCalculator === 'wizard' ? (
@@ -742,7 +722,7 @@ const SizingTool: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Form */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 sm:p-8 border border-gray-200 shadow-sm">
+          <div key={step} className="sizing-step-enter bg-white p-6 sm:p-8 border border-gray-200 shadow-sm">
             {step === 1 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-6">
@@ -755,6 +735,7 @@ const SizingTool: React.FC = () => {
                 {/* Job Type Selection */}
                 <div className="space-y-4">
                   <label className="text-sm font-semibold text-gray-700">Select Job Type</label>
+                  <HelpNote>Job type is a report label and preset only; the load is calculated from explicit dimensions, boundary conditions, product, airflow and internal-load inputs. No hidden job-type multipliers are applied.</HelpNote>
                   <div className="grid grid-cols-2 gap-3">
                     {(Object.keys(JobTypeLabels) as JobType[]).map((type) => (
                       <button 
@@ -764,7 +745,10 @@ const SizingTool: React.FC = () => {
                           setInputs({
                             ...inputs, 
                             jobType: type,
-                            targetTemp: defaults.targetTemp,
+                            productTargetTempC: inputs.processingMode === 'HOLDING' ? defaults.targetTemp : inputs.productTargetTempC,
+                            ...(inputs.processingMode === 'HOLDING' ? { holdTargetTemp: defaults.targetTemp } : {}),
+                            ...(inputs.processingMode === 'BLASTING' ? { blastAirTemp: defaults.targetTemp } : {}),
+                            ...(inputs.processingMode === 'FREEZING' && defaults.targetTemp <= 0 ? { freezeStorageTemp: defaults.targetTemp } : {}),
                             loadingTimeHours: defaults.defaultLoadingTime
                           });
                         }}
@@ -806,8 +790,11 @@ const SizingTool: React.FC = () => {
                           setInputs({
                             ...inputs,
                             processingMode: mode,
-                            // Auto-set target temp and loading time per mode
-                            targetTemp: mode === 'BLASTING' ? -18 : mode === 'FREEZING' ? -18 : mode === 'HOLDING' ? 2 : inputs.targetTemp,
+                            // Keep room setpoint and product end temperature aligned to the selected process.
+                            holdTargetTemp: mode === 'HOLDING' ? 2 : inputs.holdTargetTemp,
+                            blastAirTemp: mode === 'BLASTING' ? -35 : inputs.blastAirTemp,
+                            freezeStorageTemp: mode === 'FREEZING' ? -18 : inputs.freezeStorageTemp,
+                            productTargetTempC: mode === 'HOLDING' ? 2 : -18,
                             loadingTimeHours: mode === 'BLASTING' ? 4 : mode === 'FREEZING' ? 12 : mode === 'HOLDING' ? 24 : inputs.loadingTimeHours,
                           });
                         }}
@@ -840,6 +827,7 @@ const SizingTool: React.FC = () => {
                       <span className="text-lg">❄️</span>
                       <h4 className="text-sm font-bold text-blue-900">Blast Freezing Parameters</h4>
                     </div>
+                    <HelpNote>Blast-air temperature and cycle duration feed this load estimate. Air velocity is recorded for process context only; this tool does not calculate product core freezing time.</HelpNote>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-xs font-semibold text-blue-800 uppercase tracking-wide">
@@ -908,8 +896,8 @@ const SizingTool: React.FC = () => {
                           Target Core Temperature
                         </label>
                         <div className="h-[42px] flex items-center px-3 border border-blue-200 bg-white">
-                          <span className="text-sm font-bold text-blue-900">-18°C</span>
-                          <span className="ml-2 text-xs text-blue-500">(mandatory food safety standard)</span>
+                          <span className="text-sm font-bold text-blue-900">{inputs.productTargetTempC}°C</span>
+                          <span className="ml-2 text-xs text-blue-500">(set the required product endpoint below)</span>
                         </div>
                       </div>
                     </div>
@@ -934,7 +922,7 @@ const SizingTool: React.FC = () => {
                       </label>
                       <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 px-2 py-1">
                         <span>⚠️</span>
-                        <span>From +70°C → -18°C in under 4 hrs mandatory</span>
+                        <span>Use the product specification and verified process limit; no core-time estimate is made here.</span>
                       </div>
                     </div>
                   </div>
@@ -947,6 +935,7 @@ const SizingTool: React.FC = () => {
                       <span className="text-lg">📦</span>
                       <h4 className="text-sm font-bold text-emerald-900">Holding / Storage Parameters</h4>
                     </div>
+                    <HelpNote>Room humidity feeds the infiltration enthalpy calculation. Enter airflow directly in the Conditions step; door recovery time and air velocity are not used as airflow proxies.</HelpNote>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
@@ -1110,6 +1099,7 @@ const SizingTool: React.FC = () => {
                       <span className="text-lg">🧊</span>
                       <h4 className="text-sm font-bold text-cyan-900">Freezing Parameters</h4>
                     </div>
+                    <HelpNote>Storage setpoint affects envelope load. The rate, air velocity and thickness controls are not used to predict freezing time; no time estimate is presented.</HelpNote>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-xs font-semibold text-cyan-800 uppercase tracking-wide">
@@ -1230,41 +1220,27 @@ const SizingTool: React.FC = () => {
                   </div>
                 )}
 
+                <HelpNote>Air velocity, recovery-time and clearance controls above are operational guidance only; they do not alter the calculated kW. Freezing-time prediction is intentionally omitted until product geometry and heat-transfer data are available.</HelpNote>
+
                 <div className="grid grid-cols-3 gap-4">
                   <InputGroup label="Width (m)" value={inputs.roomWidth} min={0.1} onChange={(v: number) => setInputs({...inputs, roomWidth: v})} />
                   <InputGroup label="Length (m)" value={inputs.roomLength} min={0.1} onChange={(v: number) => setInputs({...inputs, roomLength: v})} />
                   <InputGroup label="Height (m)" value={inputs.roomHeight} min={0.1} onChange={(v: number) => setInputs({...inputs, roomHeight: v})} />
                 </div>
                 
-                <div className="space-y-4 pt-4 border-t border-gray-100">
-                  <label className="text-sm font-semibold text-gray-700">Insulation System</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {['Polyurethane', 'Polystyrene'].map(type => (
-                      <button 
-                        key={type}
-                        onClick={() => setInputs({...inputs, insulationType: type as SizingInputs['insulationType']})}
-                        className={`p-3 border-2 text-sm font-semibold transition-all ${
-                          inputs.insulationType === type 
-                            ? 'border-blue-600 bg-blue-50 text-blue-700' 
-                            : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                        }`}
-                      >
-                        {type}
-                      </button>
-                    ))}
+                <div className="space-y-4 border-t border-gray-100 pt-5">
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-800">Envelope heat transfer</h4>
+                    <HelpNote>Enter overall assembly U-values from panel/manufacturer data (including skins, joints and thermal bridges), not insulation conductivity. The starting values are examples; replace them for a real project.</HelpNote>
                   </div>
-                  <div className="pt-4">
-                    <input 
-                      type="range" min="50" max="300" step="10" 
-                      value={inputs.insulationThickness} 
-                      onChange={e => setInputs({...inputs, insulationThickness: Number(e.target.value)})}
-                      className="w-full accent-blue-600"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-2">
-                      <span>50mm</span>
-                      <span className="font-semibold text-blue-600">{inputs.insulationThickness}mm Thickness</span>
-                      <span>300mm</span>
-                    </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <InputGroup label="Wall U-value (W/m²·K)" value={inputs.wallUValue} min={0.001} onChange={(v) => setInputs({ ...inputs, wallUValue: v })} />
+                    <InputGroup label="Ceiling U-value (W/m²·K)" value={inputs.ceilingUValue} min={0.001} onChange={(v) => setInputs({ ...inputs, ceilingUValue: v })} />
+                    <InputGroup label="Floor U-value (W/m²·K)" value={inputs.floorUValue} min={0.001} onChange={(v) => setInputs({ ...inputs, floorUValue: v })} />
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <InputGroup label="Ceiling adjacent temp (°C)" value={inputs.ceilingBoundaryTempC} onChange={(v) => setInputs({ ...inputs, ceilingBoundaryTempC: v })} />
+                    <InputGroup label="Floor/ground temp (°C)" value={inputs.floorBoundaryTempC} onChange={(v) => setInputs({ ...inputs, floorBoundaryTempC: v })} />
                   </div>
                 </div>
               </div>
@@ -1278,13 +1254,46 @@ const SizingTool: React.FC = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900">Operating Conditions</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <InputGroup label="Ambient Temp (°C)" value={inputs.ambientTemp} onChange={(v: number) => setInputs({...inputs, ambientTemp: v})} />
-                  <InputGroup label="Target Temp (°C)" value={inputs.targetTemp} onChange={(v: number) => setInputs({...inputs, targetTemp: v})} />
-                  <InputGroup label="Product Temp (°C)" value={inputs.productTemp} onChange={(v: number) => setInputs({...inputs, productTemp: v})} />
-                  <InputGroup label="Pull-down Time (hrs)" value={inputs.loadingTimeHours} min={0.1} onChange={(v: number) => setInputs({...inputs, loadingTimeHours: v})} />
-                  <InputGroup label="Product Mass (kg)" value={inputs.productMass} min={0} onChange={(v: number) => setInputs({...inputs, productMass: v})} />
-                  <InputGroup label="Product Cp (kJ/kg·K)" value={inputs.productCp} min={0} onChange={(v: number) => setInputs({...inputs, productCp: v})} />
+                <div className="space-y-5">
+                  <section className="space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-800">Room air & infiltration</h4>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <InputGroup label="Outdoor air temp (°C)" value={inputs.ambientTemp} onChange={(v) => setInputs({ ...inputs, ambientTemp: v })} />
+                      <InputGroup label="Room air target (°C)" value={roomTempC} onChange={(v) => setInputs({ ...inputs, ...(isHolding ? { holdTargetTemp: v } : isBlasting ? { blastAirTemp: v } : { freezeStorageTemp: v }) })} />
+                      <InputGroup label="Outdoor relative humidity (%)" value={inputs.ambientRH} min={0} onChange={(v) => setInputs({ ...inputs, ambientRH: v })} />
+                      <InputGroup label="Room relative humidity (%)" value={inputs.holdRH} min={0} onChange={(v) => setInputs({ ...inputs, holdRH: v })} />
+                      <InputGroup label="Infiltration airflow (m³/h)" value={inputs.infiltrationAirflowM3h} min={0} onChange={(v) => setInputs({ ...inputs, infiltrationAirflowM3h: v })} />
+                      <InputGroup label="Site pressure (kPa)" value={inputs.sitePressureKpa} min={60} onChange={(v) => setInputs({ ...inputs, sitePressureKpa: v })} />
+                    </div>
+                    <HelpNote>Use a measured/design airflow or calculate it from door dimensions and traffic. Zero means the estimate assumes no incoming air. Pressure defaults to an approximate Harare value; adjust for the actual site elevation.</HelpNote>
+                  </section>
+
+                  <section className="space-y-3 border-t border-gray-100 pt-4">
+                    <h4 className="text-sm font-semibold text-gray-800">Product batch</h4>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <InputGroup label="Entering product temp (°C)" value={inputs.productTemp} onChange={(v) => setInputs({ ...inputs, productTemp: v })} />
+                      <InputGroup label="Final product temp (°C)" value={inputs.productTargetTempC} onChange={(v) => setInputs({ ...inputs, productTargetTempC: v })} />
+                      <InputGroup label="Batch mass (kg)" value={inputs.productMass} min={0} onChange={(v) => setInputs({ ...inputs, productMass: v })} />
+                      <InputGroup label="Batch pull-down time (h)" value={isBlasting ? inputs.blastCycleDurationMinutes / 60 : inputs.loadingTimeHours} min={0.1} onChange={(v) => setInputs({ ...inputs, loadingTimeHours: v, ...(isBlasting ? { blastCycleDurationMinutes: v * 60 } : {}) })} />
+                      <InputGroup label="Cp above freezing (kJ/kg·K)" value={inputs.productCp} min={0.01} onChange={(v) => setInputs({ ...inputs, productCp: v })} />
+                      <InputGroup label="Product freezing point (°C)" value={inputs.productFreezingPointC} onChange={(v) => setInputs({ ...inputs, productFreezingPointC: v })} />
+                      <InputGroup label="Water fraction (0–1)" value={inputs.productWaterFraction} min={0} onChange={(v) => setInputs({ ...inputs, productWaterFraction: v })} />
+                      <InputGroup label="Cp below freezing (kJ/kg·K)" value={inputs.productCpFrozen} min={0.01} onChange={(v) => setInputs({ ...inputs, productCpFrozen: v })} />
+                    </div>
+                    <HelpNote>Replace the example food properties with product-specific data. Latent heat is estimated as water fraction × 333.55 kJ/kg and is included only when the product temperature crosses its freezing point. Packaging heat and produce respiration are not included.</HelpNote>
+                  </section>
+
+                  <section className="space-y-3 border-t border-gray-100 pt-4">
+                    <h4 className="text-sm font-semibold text-gray-800">Other average loads</h4>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <InputGroup label="Internal equipment / lights / people (kW)" value={inputs.internalLoadKw} min={0} onChange={(v) => setInputs({ ...inputs, internalLoadKw: v })} />
+                      <InputGroup label="Defrost heater input power (kW)" value={inputs.defrostHeaterPowerKw} min={0} onChange={(v) => setInputs({ ...inputs, defrostHeaterPowerKw: v })} />
+                      <InputGroup label="Defrost cycles per day" value={inputs.holdDefrostCyclesPerDay} min={0} onChange={(v) => setInputs({ ...inputs, holdDefrostCyclesPerDay: v })} />
+                      <InputGroup label="Defrost duration per cycle (min)" value={inputs.holdDefrostDurationMin} min={0} onChange={(v) => setInputs({ ...inputs, holdDefrostDurationMin: v })} />
+                      <InputGroup label="Explicit design margin (%)" value={inputs.designMarginPct} min={0} onChange={(v) => setInputs({ ...inputs, designMarginPct: v })} />
+                    </div>
+                    <HelpNote>These are explicit inputs rather than room-area guesses. Defrost is shown as a daily-average load and assumes all heater electricity ultimately becomes refrigeration load. Margin defaults to zero; only enter a margin specified by the responsible designer.</HelpNote>
+                  </section>
                 </div>
               </div>
             )}
@@ -1292,175 +1301,88 @@ const SizingTool: React.FC = () => {
             {step === 3 && (
               <div className="space-y-6">
                 {/* Results Card */}
-                <div className="flex items-center gap-6 p-6 bg-gray-900 text-white">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-400 mb-1">{JobTypeLabels[inputs.jobType as JobType] || 'Cold Room'} - Total System Load</p>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl sm:text-5xl font-bold text-blue-400">{results.total.toFixed(2)}</span>
+                <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-900 p-4 text-white sm:flex-nowrap sm:gap-6 sm:p-6">
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 break-words text-sm font-medium text-gray-400">{JobTypeLabels[inputs.jobType as JobType] || 'Cold Room'} - Preliminary Average Cooling Load</p>
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="text-4xl font-bold text-blue-400 sm:text-5xl">{results.total.toFixed(2)}</span>
                       <span className="text-lg font-medium text-gray-400">kW</span>
                     </div>
                   </div>
-                  <div className="w-14 h-14 bg-gray-800 flex items-center justify-center border border-gray-700">
-                    <Thermometer className="h-7 w-7 text-blue-400" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-gray-700 bg-gray-800 sm:h-14 sm:w-14">
+                    <Thermometer className="h-5 w-5 text-blue-400 sm:h-7 sm:w-7" />
                   </div>
                 </div>
                 
                 {/* Breakdown */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 bg-gray-50 border border-gray-100">
-                    <p className="text-sm font-semibold text-gray-700 mb-3">Heat Gain Breakdown</p>
-                    <div className="space-y-2">
-                      <BreakdownLine label="Transmission" value={results.transmission} />
-                      <BreakdownLine label="Product Load" value={results.product} />
-                      <BreakdownLine label="Infiltration" value={results.infiltration} />
-                      {results.isHolding && (
-                        <>
-                          <BreakdownLine label={`Defrost (${inputs.holdDefrostCyclesPerDay}x${inputs.holdDefrostDurationMin}min)`} value={results.defrost} />
-                          <BreakdownLine label="Internal (lights/fans/occ.)" value={results.internal} />
-                        </>
-                      )}
-                      <BreakdownLine label={`Safety Margin (${results.safetyPct.toFixed(0)}%)`} value={results.safetyMargin} />
-                    </div>
+                <section className="space-y-3" aria-labelledby="load-breakdown-heading">
+                  <div>
+                    <h3 id="load-breakdown-heading" className="text-sm font-semibold text-gray-800">Heat gain breakdown</h3>
+                    <p className="mt-1 text-xs text-gray-500">Expand a load to inspect its inputs and calculation. Shares are of the pre-margin subtotal.</p>
                   </div>
-                  {results.isFreezing ? (
-                    <div className="p-4 bg-cyan-50 border border-cyan-100 flex flex-col justify-center">
-                      <p className="text-sm font-semibold text-cyan-900 mb-3">Core Freezing Time Estimate</p>
-                      <div className="space-y-3">
-                        <div>
-                          <span className="text-xs text-cyan-700 font-medium block">Time to reach -18°C at core</span>
-                          <span className="text-2xl font-bold text-cyan-800">{results.freezingTimeHours.toFixed(1)} hrs</span>
-                          <span className="ml-1 text-sm text-cyan-600">({Math.floor(results.freezingTimeHours)}h {Math.round((results.freezingTimeHours % 1) * 60)}min)</span>
-                        </div>
-                        <div className="border-t border-cyan-200 pt-2">
-                          <span className="text-xs text-cyan-700 font-medium block">Critical Zone (-1°C to -5°C) transit</span>
-                          <span className="text-base font-bold text-amber-600">{results.criticalZoneHours.toFixed(2)} hrs</span>
-                          <span className="ml-1 text-xs text-cyan-600">({Math.round(results.criticalZoneHours * 60)} min)</span>
-                          <p className="text-[10px] text-cyan-600 mt-1">Pass through this zone as fast as possible to prevent large ice crystals</p>
-                        </div>
-                        <div className="border-t border-cyan-200 pt-2 text-xs text-cyan-700">
-                          <span>Freezing rate: {inputs.freezeRateCHour}°C/hr · </span>
-                          <span>Thickness factor: {results.freezeThicknessFactor.toFixed(2)}×</span>
-                        </div>
-                        <div className="border-t border-cyan-200 pt-2">
-                          <span className="text-xs text-cyan-700 font-medium block mb-1">Recommended Refrigerants</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            <span className="text-[10px] text-cyan-700">Select only a refrigerant approved for the equipment, charge, site conditions, and applicable requirements.</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-gray-50 border border-gray-100 flex flex-col justify-center">
-                      <p className="text-sm font-semibold text-gray-700 mb-3">Recommended Refrigerants</p>
-                      <p className="text-xs text-gray-600">Select a refrigerant only after verifying equipment approval, charge limits, site conditions, and applicable requirements.</p>
-                    </div>
-                  )}
-                </div>
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    <LoadDrilldown label="Transmission" value={results.transmission} sharePct={results.subtotal ? results.transmission / results.subtotal * 100 : 0}>
+                      <p>Areas: walls {results.wallAreaM2.toFixed(2)} m²; ceiling and floor {results.floorAreaM2.toFixed(2)} m² each.</p>
+                      <p>Walls: max(0, {results.wallAreaM2.toFixed(2)} × {inputs.wallUValue} × [{inputs.ambientTemp} − {roomTempC}] ÷ 1000) = {results.wallTransmission.toFixed(2)} kW.</p>
+                      <p>Ceiling: max(0, {results.floorAreaM2.toFixed(2)} × {inputs.ceilingUValue} × [{inputs.ceilingBoundaryTempC} − {roomTempC}] ÷ 1000) = {results.ceilingTransmission.toFixed(2)} kW.</p>
+                      <p>Floor: max(0, {results.floorAreaM2.toFixed(2)} × {inputs.floorUValue} × [{inputs.floorBoundaryTempC} − {roomTempC}] ÷ 1000) = {results.floorTransmission.toFixed(2)} kW.</p>
+                      <p className="font-medium">Assembly U-values are user supplied; thermal bridges and door-panel effects are not separately modelled.</p>
+                    </LoadDrilldown>
+                    <LoadDrilldown label="Product load" value={results.product} sharePct={results.subtotal ? results.product / results.subtotal * 100 : 0}>
+                      <BreakdownLine label="Sensible above freezing" value={results.productSensibleAboveFreeze} />
+                      <BreakdownLine label="Latent heat of freezing" value={results.productLatent} />
+                      <BreakdownLine label="Sensible below freezing" value={results.productSensibleBelowFreeze} />
+                      <p>Batch: {inputs.productMass} kg, {inputs.productTemp}°C → {inputs.productTargetTempC}°C over {results.productLoadHours.toFixed(2)} h.</p>
+                      <p>Properties: Cp {inputs.productCp} kJ/kg·K above freezing; Cp {inputs.productCpFrozen} kJ/kg·K below; freeze point {inputs.productFreezingPointC}°C; water fraction {(inputs.productWaterFraction * 100).toFixed(0)}%.</p>
+                      <p>Estimated energy change: {results.productEnergyKjKg.toFixed(2)} kJ/kg. Latent term is water fraction × 333.55 kJ/kg and applies only when the product crosses its freezing point.</p>
+                    </LoadDrilldown>
+                    <LoadDrilldown label="Infiltration" value={results.infiltration} sharePct={results.subtotal ? results.infiltration / results.subtotal * 100 : 0}>
+                      <p>Airflow {inputs.infiltrationAirflowM3h} m³/h; outdoor {inputs.ambientTemp}°C / {inputs.ambientRH}% RH; room {roomTempC}°C / {inputs.holdRH}% RH; pressure {inputs.sitePressureKpa} kPa.</p>
+                      <p>Dry-air mass flow: {results.dryAirMassFlow.toFixed(4)} kg/s. Outdoor/room enthalpy: {results.outdoorAirEnthalpy.toFixed(2)} / {results.roomAirEnthalpy.toFixed(2)} kJ/kg dry air.</p>
+                      <p>Load = max(0, dry-air mass flow × [outdoor enthalpy − room enthalpy]) = {results.infiltration.toFixed(2)} kW, including sensible and moisture-related enthalpy.</p>
+                      <p className="font-medium">Airflow must represent the design door-opening/infiltration condition; this tool does not infer it from room volume.</p>
+                    </LoadDrilldown>
+                    <LoadDrilldown label="Internal loads" value={results.internal} sharePct={results.subtotal ? results.internal / results.subtotal * 100 : 0}>
+                      <p>Entered combined internal load: {inputs.internalLoadKw} kW.</p>
+                      <p>Represents the user&apos;s combined allowance for people, lighting and equipment. No occupancy or duty-cycle breakdown is inferred.</p>
+                    </LoadDrilldown>
+                    <LoadDrilldown label="Defrost average" value={results.defrost} sharePct={results.subtotal ? results.defrost / results.subtotal * 100 : 0}>
+                      <p>Heater {inputs.defrostHeaterPowerKw} kW × {inputs.holdDefrostDurationMin} min/cycle × {inputs.holdDefrostCyclesPerDay} cycles/day ÷ 1440 min/day = {results.defrost.toFixed(2)} kW daily average.</p>
+                      <p>Assumes the full heater input becomes a refrigeration load. Peak coincidence and heat rejected outside the room are not modelled.</p>
+                    </LoadDrilldown>
+                    <LoadDrilldown label={`Design margin (${results.safetyPct.toFixed(0)}%)`} value={results.safetyMargin} sharePct={results.subtotal ? results.safetyMargin / results.subtotal * 100 : 0}>
+                      <p>Pre-margin subtotal {results.subtotal.toFixed(2)} kW × {results.safetyPct.toFixed(1)}% = {results.safetyMargin.toFixed(2)} kW.</p>
+                      <p>This is an explicit user-entered margin, not an automatically selected safety factor.</p>
+                    </LoadDrilldown>
+                  </div>
+                </section>
+                {(inputs.infiltrationAirflowM3h === 0 || inputs.internalLoadKw === 0 || (inputs.defrostHeaterPowerKw === 0 && inputs.holdDefrostCyclesPerDay > 0)) && (
+                  <div role="note" className="border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
+                    Zero airflow or internal-load inputs are treated as zero load, not as missing data. Confirm these are intentional; otherwise enter design airflow and equipment/occupancy loads before relying on the estimate.
+                  </div>
+                )}
                 
                 <div className="p-4 bg-emerald-50 border border-emerald-100">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-emerald-900">Preliminary equipment guidance</p>
+                    <p className="text-sm font-semibold text-emerald-900">Engineering handoff</p>
                     <button type="button" onClick={saveSizingCase} disabled={sizingInputIssues.length > 0} className="inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"><Save className="h-3.5 w-3.5" /> {savedAt ? 'Case saved locally' : 'Save sizing case'}</button>
                   </div>
-                  <p className="mb-4 text-xs leading-5 text-emerald-800">Confirm refrigerant, evaporating and condensing temperatures, line length/elevation, pressure drop, and manufacturer performance data before ordering equipment.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-xs text-emerald-700 font-medium block">Compressor Size</span>
-                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.compressorSize}</span>
-                      </div>
-                      <div>
-                        <span className="text-xs text-emerald-700 font-medium block">Evaporator Size</span>
-                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.evaporatorSize}</span>
-                      </div>
-                      <div>
-                        <span className="text-xs text-emerald-700 font-medium block">Expansion Device</span>
-                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.valveType} - {equipmentSpecs.txvSize}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-xs text-emerald-700 font-medium block">Liquid Line Size</span>
-                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.liquidLine}</span>
-                      </div>
-                      <div>
-                        <span className="text-xs text-emerald-700 font-medium block">Suction Line Size</span>
-                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.suctionLine}</span>
-                      </div>
-                      <div>
-                        <span className="text-xs text-emerald-700 font-medium block">Estimated Total Pipe Length</span>
-                        <span className="text-sm font-semibold text-emerald-950">{equipmentSpecs.estimatedPipeLength} meters</span>
-                      </div>
-                    </div>
-                  </div>
+                  <p className="text-xs leading-5 text-emerald-900">No compressor, evaporator, expansion device or pipe size is inferred from cooling kW alone. A designer still needs the selected refrigerant, evaporating/condensing conditions, duty schedule, line route/elevation and manufacturer performance data.</p>
                 </div>
                 
                 {/* Calculation Formula */}
-                <div className="p-4 bg-blue-50 border border-blue-100">
-                  <p className="text-sm font-semibold text-blue-900 mb-3">Calculation Formula</p>
-                  <div className="space-y-2 text-xs font-mono text-blue-800">
-                    <p><strong>1. Transmission Load:</strong> Q = A × U × ΔT</p>
-                    <p className="pl-4">Where: A = Surface Area (m²), U = U-value (W/m²·K), ΔT = Temperature difference (°C)</p>
-                    <p className="pl-4">A = 2(W×H + L×H) + (W×L) = {inputs.roomWidth}m × {inputs.roomHeight}m, etc.</p>
-                    <p className="pl-4">U = {INSULATION_U_VALUES[inputs.insulationType as keyof typeof INSULATION_U_VALUES] || 0.022} / {inputs.insulationThickness/1000}m = {(INSULATION_U_VALUES[inputs.insulationType as keyof typeof INSULATION_U_VALUES] || 0.022) / (inputs.insulationThickness/1000)} W/m²·K</p>
-                    <p className="pl-4">ΔT = {inputs.ambientTemp}°C - ({inputs.targetTemp}°C) = {inputs.ambientTemp - inputs.targetTemp}°C</p>
-                    <p className="pl-4"><strong>Result:</strong> {results.transmission.toFixed(2)} kW</p>
-                    
-                    <p className="mt-3"><strong>2. Product Load:</strong> Q = (m × Cp × ΔT) / t × Job Multiplier</p>
-                    <p className="pl-4">Where: m = Mass (kg), Cp = Specific heat (kJ/kg·K), ΔT = Temp difference, t = Time (s)</p>
-                    <p className="pl-4">Q = ({inputs.productMass}kg × {inputs.productCp}kJ × {inputs.productTemp - inputs.targetTemp}°C) / ({inputs.loadingTimeHours}h × 3600s) × {(JOB_TYPE_MULTIPLIERS[inputs.jobType as JobType] || JOB_TYPE_MULTIPLIERS.COLD_ROOM).product.toFixed(2)}</p>
-                    <p className="pl-4"><strong>Result:</strong> {results.product.toFixed(2)} kW</p>
-                    
-                    <p className="mt-3"><strong>3. Infiltration Load:</strong> Q = V × ACH × ΔT / 3600</p>
-                    <p className="pl-4">Where: V = Volume (m³), ACH = Air changes/hr, ΔT = Temp difference</p>
-                    <p className="pl-4">V = {inputs.roomWidth}m × {inputs.roomLength}m × {inputs.roomHeight}m = {(inputs.roomWidth * inputs.roomLength * inputs.roomHeight).toFixed(1)} m³</p>
-                    {results.isHolding ? (
-                      <>
-                        <p className="pl-4">Base: {((inputs.roomWidth * inputs.roomLength * inputs.roomHeight) * 10 * (JOB_TYPE_MULTIPLIERS[inputs.jobType as JobType] || JOB_TYPE_MULTIPLIERS.COLD_ROOM).infiltration * (inputs.ambientTemp - inputs.targetTemp) / 3600).toFixed(2)} kW</p>
-                        <p className="pl-4">RH multiplier: {results.rhInfiltrationMultiplier.toFixed(2)} × Recovery multiplier: {results.recoveryInfiltrationMultiplier.toFixed(2)}</p>
-                        <p className="pl-4"><strong>Adjusted Result:</strong> {results.infiltration.toFixed(2)} kW</p>
-                      </>
-                    ) : (
-                      <p className="pl-4"><strong>Result:</strong> {results.infiltration.toFixed(2)} kW</p>
-                    )}
-
-                    {results.isHolding && (
-                      <>
-                        <p className="mt-3"><strong>3b. Defrost Load:</strong> Q = (P_d × t × N) / (24 × 3600)</p>
-                        <p className="pl-4">P_d = Floor Area × 40 W/m² = {((inputs.roomWidth * inputs.roomLength).toFixed(1))}m² × 40 = {((inputs.roomWidth * inputs.roomLength) * 40).toFixed(0)} W</p>
-                        <p className="pl-4">Q = ({((inputs.roomWidth * inputs.roomLength) * 40).toFixed(0)}W × {inputs.holdDefrostDurationMin}min × 60 × {inputs.holdDefrostCyclesPerDay}) / (24 × 3600)</p>
-                        <p className="pl-4"><strong>Result:</strong> {results.defrost.toFixed(2)} kW</p>
-                        
-                        <p className="mt-3"><strong>3c. Internal Load:</strong> Q = Q_light + Q_fan + Q_occ</p>
-                        <p className="pl-4">Lighting: {((inputs.roomWidth * inputs.roomLength) * 10 / 1000).toFixed(3)} kW + Fans: {((inputs.roomWidth * inputs.roomLength) * 5 / 1000).toFixed(3)} kW + Occupancy: {(100 / 24 / 1000).toFixed(3)} kW</p>
-                        <p className="pl-4"><strong>Result:</strong> {results.internal.toFixed(2)} kW</p>
-                      </>
-                    )}
-                    
-                    {results.isFreezing && (
-                      <>
-                        <p className="mt-3"><strong>3c. Core Freezing Time:</strong> t = (T_start − T_core) / R × F_thickness</p>
-                        <p className="pl-4">Where: T_start = Product temp ({inputs.productTemp}°C), T_core = Target ({results.freezeTargetCore}°C), R = Freezing rate, F = Thickness factor</p>
-                        <p className="pl-4">Thickness factor = 1 + 0.2 × ((T − 50) / 100)</p>
-                        <p className="pl-4">T = {inputs.freezeProductThicknessMm}mm → Factor = 1 + 0.2 × ({Math.max(0, inputs.freezeProductThicknessMm - 50)} / 100) = {results.freezeThicknessFactor.toFixed(2)}×</p>
-                        <p className="pl-4">t = ({inputs.productTemp}°C − ({results.freezeTargetCore}°C)) / {inputs.freezeRateCHour}°C/hr × {results.freezeThicknessFactor.toFixed(2)}</p>
-                        <p className="pl-4"><strong>Core Freezing Time:</strong> {results.freezingTimeHours.toFixed(1)} hours ({Math.floor(results.freezingTimeHours)}h {Math.round((results.freezingTimeHours % 1) * 60)}min)</p>
-                        
-                        <p className="mt-2"><strong>Critical Zone Transit:</strong> t_cz = 4°C / R × F_thickness</p>
-                        <p className="pl-4">Critical zone = -1°C to -5°C (4°C wide) — must pass through as fast as possible</p>
-                        <p className="pl-4">t_cz = 4°C / {inputs.freezeRateCHour}°C/hr × {results.freezeThicknessFactor.toFixed(2)}</p>
-                        <p className="pl-4"><strong>Result:</strong> {results.criticalZoneHours.toFixed(2)} hours ({Math.round(results.criticalZoneHours * 60)} min) in the critical zone</p>
-                        {results.criticalZoneHours > 0.5 && (
-                          <p className="pl-4 text-amber-700">⚠️ Warning: &gt;30 min in critical zone risks large ice crystal formation</p>
-                        )}
-                      </>
-                    )}
-
-                    <p className="mt-3"><strong>{results.isHolding ? '4' : results.isFreezing ? '4' : '3b'}. Total with Safety:</strong> Q_total = ΣQ × Safety Factor</p>
-                    <p className="pl-4">Safety Factor: {results.safetyPct.toFixed(0)}% (adds {results.safetyMargin.toFixed(2)} kW)</p>
-                    <p className="pl-4 font-bold">Final Total: {results.total.toFixed(2)} kW</p>
+                <details className="group border border-blue-100 bg-blue-50">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-sm font-semibold text-blue-950 [&::-webkit-details-marker]:hidden">
+                    <span>Calculation method, total and limitations</span>
+                    <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" aria-hidden="true" />
+                  </summary>
+                  <div className="space-y-3 border-t border-blue-100 px-4 pb-4 pt-3 text-xs leading-5 text-blue-950">
+                    <p><strong>Subtotal:</strong> transmission + product + infiltration + internal loads + daily-average defrost = {results.subtotal.toFixed(2)} kW.</p>
+                    <p><strong>Final estimate:</strong> subtotal + explicit {results.safetyPct.toFixed(1)}% margin ({results.safetyMargin.toFixed(2)} kW) = <strong>{results.total.toFixed(2)} kW.</strong></p>
+                    {results.isFreezing && <p><strong>Freeze time is not estimated.</strong> A defensible prediction requires product geometry, product-specific properties and a heat-transfer coefficient for the actual airflow/process.</p>}
+                    <HelpNote>This is an average load estimate, not peak capacity selection. Check input quality, load coincidence and design period with a refrigeration designer.</HelpNote>
                   </div>
-                </div>
+                </details>
               </div>
             )}
 
@@ -1474,7 +1396,7 @@ const SizingTool: React.FC = () => {
                 Back
               </button>
               {step < 3 ? (
-                <button 
+                <button
                   onClick={() => setStep(s => Math.min(3, s+1))}
                   className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 font-semibold hover:bg-gray-800 transition-colors"
                 >
@@ -1482,9 +1404,9 @@ const SizingTool: React.FC = () => {
                   <ChevronRight className="h-4 w-4" />
                 </button>
               ) : (
-                <button 
+                <button
                   onClick={handleAiConsult}
-                  disabled={isLoadingAi}
+                  disabled={isLoadingAi || !sizingInputsValid}
                   className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
                   {isLoadingAi ? (
@@ -1514,8 +1436,9 @@ const SizingTool: React.FC = () => {
                   line.trim() && <p key={i}>{line}</p>
                 ))}
               </div>
-              <button 
+              <button
                 onClick={handleDownload}
+                disabled={!sizingInputsValid}
                 className="flex items-center justify-center gap-2 w-full mt-6 py-2.5 bg-white/10 hover:bg-white/20 text-sm font-medium transition-colors"
               >
                 <Download className="h-4 w-4" />
@@ -1540,8 +1463,9 @@ const SizingTool: React.FC = () => {
       <div className="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 p-6 border border-amber-100">
         <div className="flex items-center gap-2 mb-4">
           <Shield className="h-5 w-5 text-amber-600" />
-          <h3 className="text-lg font-bold text-gray-900">Technical References</h3>
+          <h3 className="text-lg font-bold text-gray-900">Calculation References</h3>
         </div>
+        <p className="mb-4 text-xs leading-5 text-gray-600">{SIZING_REFERENCE_NOTE}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {SIZING_SOURCES.map((source, index) => (
             <div key={index} className="flex items-start gap-3 bg-white/60 p-3 ">
@@ -1558,7 +1482,7 @@ const SizingTool: React.FC = () => {
                     rel="noopener noreferrer"
                     className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1"
                   >
-                    View Standard <ExternalLink className="h-3 w-3" />
+                    View source <ExternalLink className="h-3 w-3" />
                   </a>
                 )}
               </div>
@@ -1862,11 +1786,40 @@ const InputGroup = ({ label, value, onChange, min }: { label: string; value: num
   </div>
 );
 
+const HelpNote = ({ children }: { children: React.ReactNode }) => (
+  <p className="flex items-start gap-2 rounded-md border border-sky-100 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-900">
+    <Info className="mt-0.5 h-4 w-4 shrink-0" />
+    <span>{children}</span>
+  </p>
+);
+
 const BreakdownLine = ({ label, value }: { label: string; value: number }) => (
   <div className="flex justify-between items-center py-1">
     <span className="text-xs text-gray-500 font-medium">{label}</span>
     <span className="text-xs font-semibold text-gray-900">{value.toFixed(2)} kW</span>
   </div>
+);
+
+const LoadDrilldown = ({ label, value, sharePct, children }: {
+  label: string;
+  value: number;
+  sharePct: number;
+  children: React.ReactNode;
+}) => (
+  <details className="group min-w-0 border border-gray-200 bg-white open:border-slate-300 open:shadow-sm">
+    <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 sm:px-4 [&::-webkit-details-marker]:hidden">
+      <span className="min-w-0 break-words text-sm font-semibold text-gray-800">{label}</span>
+      <span className="flex shrink-0 items-center gap-2">
+        <span className="text-right text-sm font-bold tabular-nums text-gray-950">{value.toFixed(2)} kW</span>
+        <span className="hidden text-xs tabular-nums text-gray-500 sm:inline">{sharePct.toFixed(1)}%</span>
+        <ChevronRight className="h-4 w-4 text-gray-500 transition-transform group-open:rotate-90" aria-hidden="true" />
+      </span>
+    </summary>
+    <div className="space-y-2 border-t border-gray-100 px-3 py-3 text-xs leading-5 text-gray-600 [overflow-wrap:anywhere] sm:px-4">
+      <p className="sm:hidden">{sharePct.toFixed(1)}% of pre-margin subtotal</p>
+      {children}
+    </div>
+  </details>
 );
 
 export default SizingTool;

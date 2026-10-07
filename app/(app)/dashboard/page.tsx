@@ -43,6 +43,7 @@ import Link from 'next/link';
 import { CertificateRecord, JobTypeLabels, RefrigerantLog } from '@/types/index';
 import { BRAND as colors } from '@/constants/colors';
 import { rangeMsFor, type SimpleDateRange } from '@/lib/dateRange';
+import { Drilldown } from '@/components/ui/Drilldown';
 
 export default function DashboardPage() {
     const { user: session, isLoading } = useAuth();
@@ -519,6 +520,26 @@ export default function DashboardPage() {
     });
 
     const displayCerts = certificateRecords.slice(0, 5);
+    const statDefinitions: Record<string, string> = {
+        'Jobs Completed': 'Counts planner jobs marked completed whose scheduled date falls within the selected date range.',
+        'Pending COCs': 'Counts submitted Certificates of Compliance requests. Approved requests are shown separately in the status context.',
+        'Refrigerant Recovered': 'Adds recovery entries from the latest 50 gas-log records loaded for this dashboard; use the gas-log module for a full filtered audit.',
+        'Certifications': 'Combines certificates valid beyond the next 30 days with certificates expiring within 30 days.',
+        'Pending Reorders': 'Counts vendor reorder requests awaiting either HEVACRAZ or NOU review.',
+        'Approved Volume': 'Adds quantities on approved vendor reorders; the approved reorder count is shown in the status context.',
+        'Compliance Certificates': 'Counts approved compliance applications. Pending applications are reported separately.',
+        'Ledger Value': 'Adds the values of ledger transactions currently returned for this vendor.',
+        'Approved Courses': 'Counts courses with approved status in the lecturer or trainer course list.',
+        'Pending Grading': 'Counts exam submissions currently marked pending; total loaded submissions is shown in the status context.',
+        'Upcoming Sessions': 'Counts training sessions marked scheduled or open; it is a status count, not a date-filtered calendar forecast.',
+        'Certificate Requests': 'Counts certificate requests awaiting administrator approval.',
+        'Available Courses': 'Counts approved courses available in the course catalogue.',
+        'Active Techs': 'Counts technicians marked active after applying the selected province filter.',
+        'Total Technicians': 'Counts technicians in the registry after applying the selected province filter, regardless of status.',
+        'Pending Reorder Reviews': 'Counts reorders awaiting HEVACRAZ or NOU review across the loaded reorder records.',
+        'Regions': 'Counts provinces represented in the technician registry; when a province is selected the dashboard reports that selected region.',
+        'Refrigerant Volume': 'Adds reorder quantities created within the selected time window. This is reorder volume, not confirmed consumption.',
+    };
 
     return (
         <div className="space-y-6">
@@ -591,6 +612,9 @@ export default function DashboardPage() {
                                 <p className="text-3xl font-bold text-[#1C1917]">{stat.value}</p>
                                 <p className="text-sm text-[#78716C] mt-1">{stat.label}</p>
                                 <p className="text-xs text-[#A8A29E] mt-2">{stat.trend}</p>
+                                <Drilldown label="How this is counted" className="mt-2 border-t border-[#F1F0EE] pt-1">
+                                    <p>{statDefinitions[stat.label] ?? stat.trend}</p>
+                                </Drilldown>
                             </div>
                         </div>
                     );
