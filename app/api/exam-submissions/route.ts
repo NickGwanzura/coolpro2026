@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { examSubmissions, courses } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { validateExamAnswers } from '@/lib/server/lms-validation';
 import type { ExamSubmission } from '@/lib/platformStore';
 import { isFieldWorkerRole } from '@/lib/field-worker';
 
@@ -65,11 +66,31 @@ export async function POST(req: Request) {
     return e as Response;
   }
 
-  const body = await req.json() as Omit<ExamSubmission, 'id' | 'status' | 'submittedAt'>;
+  const body = await req.json().catch(() => ({})) as Partial<Omit<ExamSubmission, 'id' | 'status' | 'submittedAt'>>;
+  const answers = validateExamAnswers(body.answers);
+  if (!answers.ok) return NextResponse.json({ error: answers.error }, { status: 400 });
+  if (typeof body.courseId !== 'string') {
+    return NextResponse.json({ error: 'Choose an approved course before submitting an exam.' }, { status: 400 });
+  }
   const [course] = await db.select({ id: courses.id, title: courses.title, status: courses.status }).from(courses).where(eq(courses.id, body.courseId)).limit(1);
   if (!course || course.status !== 'approved') {
     return NextResponse.json({ error: 'Choose an approved course before submitting an exam.' }, { status: 400 });
   }
+
+  // One submission waits for grading at a time, so a learner cannot flood a trainer's queue.
+  const [waiting] = await db
+    .select({ id: examSubmissions.id })
+    .from(examSubmissions)
+    .where(and(
+      eq(examSubmissions.courseId, course.id),
+      eq(examSubmissions.studentId, session.id),
+      eq(examSubmissions.status, 'pending'),
+    ))
+    .limit(1);
+  if (waiting) {
+    return NextResponse.json({ error: 'You already have a submission for this course waiting to be graded.' }, { status: 409 });
+  }
+
   const now = new Date();
 
   const [inserted] = await db
@@ -79,7 +100,7 @@ export async function POST(req: Request) {
       courseTitle: course.title,
       studentId: session.id,
       studentName: session.name,
-      answers: body.answers,
+      answers: answers.value,
       status: 'pending',
       submittedAt: now,
     })

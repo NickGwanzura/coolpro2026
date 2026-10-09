@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { trainerCertificateRequests } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { recordAuditEvent } from '@/lib/server/audit';
 import { toTrainerCertificateRequest } from '@/lib/server/request-serializers';
 
 function generateCertificateNumber() {
@@ -15,8 +16,9 @@ function generateVerificationToken() {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  let session;
   try {
-    await requireRole(req, ['org_admin']);
+    session = await requireRole(req, ['org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -43,6 +45,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     })
     .where(eq(trainerCertificateRequests.id, id))
     .returning();
+
+  await recordAuditEvent({
+    entityType: 'certificate_request',
+    entityId: id,
+    action: 'certificate_issued',
+    previousStatus: 'admin-approved',
+    newStatus: 'issued',
+    performedBy: session.name,
+    performedByRole: session.role,
+    notes: updated.certificateNumber ?? undefined,
+  });
 
   return NextResponse.json(toTrainerCertificateRequest(updated));
 }

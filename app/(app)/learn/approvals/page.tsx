@@ -7,6 +7,7 @@ import {
     useCourses,
     approveCourse,
     rejectCourse,
+    unpublishCourse,
     type ManagedCourse,
 } from '@/lib/platformStore';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -168,6 +169,51 @@ function ReviewPanel({
 }
 
 // ---------------------------------------------------------------------------
+// Return an approved course for correction
+// ---------------------------------------------------------------------------
+
+function ReturnPanel({ course, onClose }: { course: ManagedCourse; onClose: () => void }) {
+    const [reason, setReason] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [notice, setNotice] = useState('');
+
+    async function handleReturn() {
+        if (!reason.trim()) { setNotice('A reason is required.'); return; }
+        setBusy(true);
+        try {
+            await unpublishCourse(course.id, reason.trim());
+            onClose();
+        } catch (err) {
+            setNotice(err instanceof Error ? err.message : 'Could not return this course.');
+            setBusy(false);
+        }
+    }
+
+    return (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 space-y-3">
+            <p className="text-sm font-semibold text-gray-900">Return &quot;{course.title}&quot; for correction</p>
+            <p className="text-xs text-gray-600">
+                The course leaves the catalogue and goes back to {course.lecturerName} to edit and resubmit. Existing exam submissions are kept.
+            </p>
+            <textarea
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+                rows={3}
+                className="w-full rounded-md border border-gray-300 p-2 text-sm"
+                placeholder="What needs to be corrected?"
+            />
+            {notice && <p className="text-xs text-red-600">{notice}</p>}
+            <div className="flex gap-2">
+                <button onClick={handleReturn} disabled={busy} className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
+                    {busy ? 'Returning...' : 'Return for correction'}
+                </button>
+                <button onClick={onClose} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700">Cancel</button>
+            </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -177,6 +223,7 @@ export default function LearnApprovalsPage() {
     const { data: allCourses, error } = useCourses();
 
     const [selected, setSelected] = useState<ManagedCourse | null>(null);
+    const [returning, setReturning] = useState<ManagedCourse | null>(null);
 
     if (authLoading) {
         return (
@@ -200,6 +247,7 @@ export default function LearnApprovalsPage() {
     }
 
     const courses = allCourses.filter(c => c.status === 'pending_nou');
+    const approvedCourses = allCourses.filter(c => c.status === 'approved');
     const canAct = true;
 
     function handleApproved(updated: ManagedCourse) {
@@ -272,6 +320,40 @@ export default function LearnApprovalsPage() {
                                         className="text-sm font-semibold text-blue-600 hover:underline"
                                     >
                                         Review
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {returning && <ReturnPanel course={returning} onClose={() => setReturning(null)} />}
+
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-x-auto">
+                <div className="border-b border-gray-200 bg-gray-50 px-5 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                        Approved {approvedCourses.length} course{approvedCourses.length !== 1 ? 's' : ''}
+                    </p>
+                </div>
+                <table className="w-full text-sm">
+                    <tbody className="divide-y divide-gray-100">
+                        {approvedCourses.length === 0 && (
+                            <tr>
+                                <td className="px-4 py-8 text-center text-sm text-gray-400">No approved courses yet.</td>
+                            </tr>
+                        )}
+                        {approvedCourses.map(course => (
+                            <tr key={course.id} className="hover:bg-gray-50 transition">
+                                <td className="px-4 py-3 font-medium text-gray-900">{course.title}</td>
+                                <td className="px-4 py-3 text-gray-600">{course.lecturerName}</td>
+                                <td className="px-4 py-3 text-gray-500">{formatDate(course.updatedAt)}</td>
+                                <td className="px-4 py-3 text-right">
+                                    <button
+                                        onClick={() => setReturning(course)}
+                                        className="text-sm font-semibold text-amber-700 hover:underline"
+                                    >
+                                        Return for correction
                                     </button>
                                 </td>
                             </tr>

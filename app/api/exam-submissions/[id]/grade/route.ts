@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { examSubmissions, courses } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { recordAuditEvent } from '@/lib/server/audit';
+import { validateGrade } from '@/lib/server/lms-validation';
 import type { ExamSubmission } from '@/lib/platformStore';
 
 function toExamSubmission(row: typeof examSubmissions.$inferSelect): ExamSubmission {
@@ -34,28 +36,35 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const [sub] = await db.select().from(examSubmissions).where(eq(examSubmissions.id, id)).limit(1);
   if (!sub) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const ownCourses = await db
-    .select({ id: courses.id })
+  const [course] = await db
+    .select({ lecturerId: courses.lecturerId })
     .from(courses)
-    .where(eq(courses.lecturerId, session.id));
-  const courseIds = ownCourses.map(c => c.id);
-  if (!courseIds.includes(sub.courseId)) {
+    .where(eq(courses.id, sub.courseId))
+    .limit(1);
+  if (!course || course.lecturerId !== session.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = await req.json() as { score: number; passed: boolean; feedback: string };
+  const grade = validateGrade(await req.json().catch(() => null));
+  if (!grade.ok) return NextResponse.json({ error: grade.error }, { status: 400 });
+  const { score, passed, feedback } = grade.value;
 
   const [updated] = await db
     .update(examSubmissions)
-    .set({
-      score: String(body.score),
-      passed: body.passed,
-      feedback: body.feedback,
-      status: 'graded',
-      gradedAt: new Date(),
-    })
+    .set({ score: String(score), passed, feedback, status: 'graded', gradedAt: new Date() })
     .where(eq(examSubmissions.id, id))
     .returning();
+
+  // Re-grading is allowed, but every change keeps the previous result in the audit trail.
+  await recordAuditEvent({
+    entityType: 'exam_submission',
+    entityId: id,
+    action: sub.status === 'graded' ? 'exam_regraded' : 'exam_graded',
+    previousStatus: sub.status === 'graded' ? `${sub.passed ? 'passed' : 'failed'} (${sub.score})` : sub.status,
+    newStatus: `${passed ? 'passed' : 'failed'} (${score})`,
+    performedBy: session.name,
+    performedByRole: session.role,
+  });
 
   return NextResponse.json(toExamSubmission(updated));
 }

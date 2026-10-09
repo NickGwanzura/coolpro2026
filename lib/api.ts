@@ -149,6 +149,13 @@ export async function rejectCourse(id: string, reason: string): Promise<ManagedC
   return result;
 }
 
+export async function unpublishCourse(id: string, reason: string): Promise<ManagedCourse> {
+  const result = await post<ManagedCourse>(`/api/courses/${id}/unpublish`, { reason });
+  await mutate('/api/courses');
+  await mutate(`/api/courses/${id}`);
+  return result;
+}
+
 export async function uploadCourseMaterial(
   courseId: string,
   file: File,

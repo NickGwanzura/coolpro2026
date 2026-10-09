@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { trainerCertificateRequests } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { recordAuditEvent } from '@/lib/server/audit';
 import { toTrainerCertificateRequest } from '@/lib/server/request-serializers';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -24,5 +25,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .returning();
 
   if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  await recordAuditEvent({
+    entityType: 'certificate_request',
+    entityId: id,
+    action: 'certificate_approved',
+    previousStatus: 'submitted-for-admin-approval',
+    newStatus: 'admin-approved',
+    performedBy: session.name,
+    performedByRole: session.role,
+  });
   return NextResponse.json(toTrainerCertificateRequest(updated));
 }

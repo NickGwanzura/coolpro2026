@@ -3,14 +3,15 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { courses, examSubmissions } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 import { deleteMaterial } from '@/lib/server/r2';
 import type { ManagedCourse } from '@/lib/platformStore';
-import { toManagedCourse, validateCourseBasics, validateCourseModules } from '../course-validation';
+import { collectAttachments, toManagedCourse, validateCourseBasics, validateCourseModules } from '../course-validation';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = await requireRole(req, ['lecturer', 'trainer', 'org_admin', 'student']);
+    session = await requireRole(req, ['lecturer', 'trainer', 'org_admin', 'student', 'technician', 'contractor']);
   } catch (e) {
     return e as Response;
   }
@@ -22,7 +23,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if ((session.role === 'lecturer' || session.role === 'trainer') && row.lecturerId !== session.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  if (session.role === 'student' && row.status !== 'approved') {
+  if ((session.role === 'student' || isFieldWorkerRole(session.role)) && row.status !== 'approved') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -57,7 +58,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     patch.description = basics.description;
   }
   if (body.modules !== undefined) {
-    const modulesResult = validateCourseModules(body.modules);
+    const modulesResult = validateCourseModules(body.modules, id);
     if (modulesResult.error) return NextResponse.json({ error: modulesResult.error }, { status: 400 });
     patch.modules = modulesResult.modules;
   }
@@ -93,18 +94,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ error: 'This course cannot be deleted because it has exam submissions.' }, { status: 409 });
   }
 
-  const attachmentKeys = Array.isArray(row.modules)
-    ? row.modules.flatMap(module => {
-        if (!module || typeof module !== 'object') return [];
-        const attachments = (module as { attachments?: unknown }).attachments;
-        if (!Array.isArray(attachments)) return [];
-        return attachments.flatMap(attachment => {
-          if (!attachment || typeof attachment !== 'object') return [];
-          const r2Key = (attachment as { r2Key?: unknown }).r2Key;
-          return typeof r2Key === 'string' && r2Key.startsWith(`courses/${id}/`) ? [r2Key] : [];
-        });
-      })
-    : [];
+  const attachmentKeys = collectAttachments(row.modules)
+    .map((attachment) => attachment.r2Key)
+    .filter((r2Key) => typeof r2Key === 'string' && r2Key.startsWith(`courses/${id}/`));
 
   await db.delete(courses).where(eq(courses.id, id));
   await Promise.allSettled(attachmentKeys.map(key => deleteMaterial(key)));

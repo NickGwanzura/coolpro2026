@@ -177,6 +177,7 @@ export {
     submitCourse as submitCourseForApproval,
     approveCourse,
     rejectCourse,
+    unpublishCourse,
     uploadCourseMaterial,
     getCourseMaterialDownloadUrl,
 } from '@/lib/api';

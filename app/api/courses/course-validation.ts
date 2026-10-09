@@ -18,6 +18,8 @@ const ALLOWED_MATERIAL_TYPES = [
   'video/webm',
 ];
 
+export const MAX_MATERIAL_SIZE_BYTES = 500 * 1024 * 1024; // 500MB, covers course video uploads
+
 export function toManagedCourse(row: typeof courses.$inferSelect): ManagedCourse {
   return {
     id: row.id,
@@ -41,7 +43,32 @@ function cleanText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-export function validateCourseModules(value: unknown): { modules?: CourseModule[]; error?: string } {
+type Attachment = NonNullable<CourseModule['attachments']>[number];
+
+function validateAttachment(raw: unknown, courseId: string | undefined): Attachment | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const candidate = raw as Record<string, unknown>;
+  const id = cleanText(candidate.id);
+  const fileName = cleanText(candidate.fileName);
+  const fileType = cleanText(candidate.fileType);
+  const r2Key = cleanText(candidate.r2Key);
+  const uploadedAt = cleanText(candidate.uploadedAt);
+  const sizeBytes = Number(candidate.sizeBytes);
+
+  if (!id || !fileName || !fileType || !r2Key || !uploadedAt) return null;
+  if (!Number.isInteger(sizeBytes) || sizeBytes <= 0 || sizeBytes > MAX_MATERIAL_SIZE_BYTES) return null;
+  if (!isAllowedCourseMaterialType(fileType)) return null;
+  // A course may only reference files that were uploaded under its own storage prefix.
+  if (!courseId || !r2Key.startsWith(`courses/${courseId}/`)) return null;
+
+  return { id, fileName, fileType, sizeBytes, r2Key, uploadedAt };
+}
+
+/**
+ * courseId is required to keep attachments: they must live under `courses/<courseId>/`. When it
+ * is omitted (a brand-new course that has no id yet) any attachment is rejected.
+ */
+export function validateCourseModules(value: unknown, courseId?: string): { modules?: CourseModule[]; error?: string } {
   if (!Array.isArray(value) || value.length === 0) {
     return { error: 'Add at least one course module before saving.' };
   }
@@ -64,21 +91,17 @@ export function validateCourseModules(value: unknown): { modules?: CourseModule[
       return { error: `Module ${index + 1} minutes must be between 1 and 480.` };
     }
 
-    const attachments = Array.isArray(item.attachments)
-      ? item.attachments.filter((attachment): attachment is NonNullable<CourseModule['attachments']>[number] => {
-          if (!attachment || typeof attachment !== 'object') return false;
-          const candidate = attachment as Record<string, unknown>;
-          return Boolean(
-            cleanText(candidate.id) &&
-            cleanText(candidate.fileName) &&
-            cleanText(candidate.fileType) &&
-            cleanText(candidate.r2Key) &&
-            cleanText(candidate.uploadedAt) &&
-            Number.isFinite(Number(candidate.sizeBytes)) &&
-            Number(candidate.sizeBytes) > 0,
-          );
-        })
-      : undefined;
+    let attachments: Attachment[] | undefined;
+    if (Array.isArray(item.attachments)) {
+      attachments = [];
+      for (const rawAttachment of item.attachments) {
+        const attachment = validateAttachment(rawAttachment, courseId);
+        if (!attachment) {
+          return { error: `Module ${index + 1} has an invalid or unsupported attachment. Remove it and upload the file again.` };
+        }
+        attachments.push(attachment);
+      }
+    }
 
     modules.push({
       title,
@@ -91,18 +114,21 @@ export function validateCourseModules(value: unknown): { modules?: CourseModule[
   return { modules };
 }
 
-export function courseReferencesMaterial(modules: unknown, r2Key: string) {
-  if (!Array.isArray(modules)) return false;
-  return modules.some((module) => {
-    if (!module || typeof module !== 'object') return false;
-    const attachments = (module as { attachments?: unknown }).attachments;
-    if (!Array.isArray(attachments)) return false;
-    return attachments.some((attachment) => (
-      Boolean(attachment) &&
-      typeof attachment === 'object' &&
-      (attachment as { r2Key?: unknown }).r2Key === r2Key
-    ));
+/** Every attachment saved on a course's modules, in module order. */
+export function collectAttachments(modules: unknown): Attachment[] {
+  if (!Array.isArray(modules)) return [];
+  return modules.flatMap((module) => {
+    const attachments = module && typeof module === 'object' ? (module as { attachments?: unknown }).attachments : undefined;
+    return Array.isArray(attachments) ? (attachments as Attachment[]) : [];
   });
+}
+
+export function findAttachment(modules: unknown, r2Key: string): Attachment | undefined {
+  return collectAttachments(modules).find((attachment) => attachment?.r2Key === r2Key);
+}
+
+export function courseReferencesMaterial(modules: unknown, r2Key: string) {
+  return findAttachment(modules, r2Key) !== undefined;
 }
 
 export function validateCourseBasics(body: { title?: unknown; description?: unknown }) {

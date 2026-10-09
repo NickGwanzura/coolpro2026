@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { trainerCertificateRequests, technicians } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
+import { recordAuditEvent } from '@/lib/server/audit';
+import { validateCertificateRequest } from '@/lib/server/lms-validation';
 import { toTrainerCertificateRequest } from '@/lib/server/request-serializers';
-import type { TrainerCertificateRequest } from '@/types/index';
 import { isFieldWorkerRole } from '@/lib/field-worker';
 
 export async function GET(req: Request) {
@@ -45,42 +46,73 @@ export async function POST(req: Request) {
     return e as Response;
   }
 
-  const body = await req.json().catch(() => ({})) as Partial<TrainerCertificateRequest>;
+  const input = validateCertificateRequest(await req.json().catch(() => null));
+  if (!input.ok) return NextResponse.json({ error: input.error }, { status: 400 });
+  const request = input.value;
 
-  const required: Array<keyof TrainerCertificateRequest> = [
-    'technicianId', 'technicianName', 'technicianRegistrationNumber',
-    'courseTitle', 'examDate', 'theoryScore', 'practicalScore',
-  ];
-  for (const key of required) {
-    if (body[key] === undefined || body[key] === null || body[key] === '') {
-      return NextResponse.json({ error: `${key} is required` }, { status: 400 });
-    }
+  // Identity comes from the registry record, never from what the form says.
+  const [technician] = await db
+    .select({
+      id: technicians.id,
+      name: technicians.name,
+      registrationNumber: technicians.registrationNumber,
+      employer: technicians.employer,
+      status: technicians.status,
+    })
+    .from(technicians)
+    .where(eq(technicians.id, request.technicianId))
+    .limit(1);
+  if (!technician) {
+    return NextResponse.json({ error: 'That technician is not in the registry.' }, { status: 404 });
+  }
+  if (technician.registrationNumber.toUpperCase() !== request.technicianRegistrationNumber) {
+    return NextResponse.json({ error: 'The registration number does not match that technician.' }, { status: 400 });
+  }
+  if (technician.status === 'suspended') {
+    return NextResponse.json({ error: 'A suspended technician cannot be put forward for a certificate.' }, { status: 409 });
   }
 
-  const theoryScore = Number(body.theoryScore);
-  const practicalScore = Number(body.practicalScore);
-  if (!Number.isFinite(theoryScore) || !Number.isFinite(practicalScore)) {
-    return NextResponse.json({ error: 'theoryScore and practicalScore must be valid numbers' }, { status: 400 });
+  const [duplicate] = await db
+    .select({ id: trainerCertificateRequests.id })
+    .from(trainerCertificateRequests)
+    .where(and(
+      eq(trainerCertificateRequests.technicianId, technician.id),
+      eq(trainerCertificateRequests.courseTitle, request.courseTitle),
+      eq(trainerCertificateRequests.examDate, request.examDate),
+      inArray(trainerCertificateRequests.status, ['submitted-for-admin-approval', 'admin-approved', 'issued']),
+    ))
+    .limit(1);
+  if (duplicate) {
+    return NextResponse.json({ error: 'A certificate request for this technician, course and exam date already exists.' }, { status: 409 });
   }
 
   const [inserted] = await db
     .insert(trainerCertificateRequests)
     .values({
-      technicianId: body.technicianId!,
-      technicianName: body.technicianName!,
-      technicianRegistrationNumber: body.technicianRegistrationNumber!,
-      technicianCompany: body.technicianCompany ?? 'Independent technician',
+      technicianId: technician.id,
+      technicianName: technician.name,
+      technicianRegistrationNumber: technician.registrationNumber,
+      technicianCompany: technician.employer ?? 'Independent technician',
       trainerName: session.name,
       trainerEmail: session.email,
-      courseTitle: body.courseTitle!,
-      examDate: body.examDate!,
-      theoryScore,
-      practicalScore,
-      overallScore: Math.round((theoryScore + practicalScore) / 2),
-      notes: body.notes ?? null,
+      courseTitle: request.courseTitle,
+      examDate: request.examDate,
+      theoryScore: request.theoryScore,
+      practicalScore: request.practicalScore,
+      overallScore: Math.round((request.theoryScore + request.practicalScore) / 2),
+      notes: request.notes,
       status: 'submitted-for-admin-approval',
     })
     .returning();
+
+  await recordAuditEvent({
+    entityType: 'certificate_request',
+    entityId: inserted.id,
+    action: 'certificate_requested',
+    newStatus: inserted.status,
+    performedBy: session.name,
+    performedByRole: session.role,
+  });
 
   return NextResponse.json(toTrainerCertificateRequest(inserted), { status: 201 });
 }

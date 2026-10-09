@@ -4,7 +4,6 @@ import { db } from '@/db/client';
 import { courses } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { deleteMaterial } from '@/lib/server/r2';
-import { courseReferencesMaterial } from '../../../course-validation';
 
 export async function POST(
   req: Request,
@@ -35,9 +34,8 @@ export async function POST(
   if (!r2Key || !r2Key.startsWith(`courses/${id}/`)) {
     return NextResponse.json({ error: 'Invalid r2Key' }, { status: 400 });
   }
-  if (!courseReferencesMaterial(row.modules, r2Key)) {
-    return NextResponse.json({ error: 'Course material is not attached to this course' }, { status: 404 });
-  }
+  // The key only has to sit under this course's prefix, so an owner can also remove an uploaded
+  // file that was never saved onto the course (an orphan from an abandoned upload).
 
   try {
     await deleteMaterial(r2Key);

@@ -3,8 +3,9 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { courses } from '@/db/schema/index';
 import { readSessionFromRequest } from '@/lib/server/auth';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 import { createMaterialDownloadUrl } from '@/lib/server/r2';
-import { courseReferencesMaterial } from '../../../course-validation';
+import { findAttachment } from '../../../course-validation';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await readSessionFromRequest(req);
@@ -16,19 +17,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const isOwner = (session.role === 'lecturer' || session.role === 'trainer') && row.lecturerId === session.id;
   const isAdmin = session.role === 'org_admin';
-  const isEnrolledStudent = session.role === 'student' && row.status === 'approved';
-  if (!isOwner && !isAdmin && !isEnrolledStudent) {
+  const isLearner = (session.role === 'student' || isFieldWorkerRole(session.role)) && row.status === 'approved';
+  if (!isOwner && !isAdmin && !isLearner) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = await req.json() as { r2Key?: string };
+  const body = await req.json().catch(() => ({})) as { r2Key?: string };
   if (!body.r2Key || !body.r2Key.startsWith(`courses/${id}/`)) {
     return NextResponse.json({ error: 'Invalid r2Key' }, { status: 400 });
   }
-  if (!courseReferencesMaterial(row.modules, body.r2Key)) {
+  const attachment = findAttachment(row.modules, body.r2Key);
+  if (!attachment) {
     return NextResponse.json({ error: 'Course material is not attached to this course' }, { status: 404 });
   }
 
-  const downloadUrl = await createMaterialDownloadUrl(body.r2Key);
+  const downloadUrl = await createMaterialDownloadUrl(body.r2Key, attachment.fileName);
   return NextResponse.json({ downloadUrl });
 }

@@ -20,7 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   const basics = validateCourseBasics(row);
   if (basics.error) return NextResponse.json({ error: basics.error }, { status: 400 });
-  const modulesResult = validateCourseModules(row.modules);
+  const modulesResult = validateCourseModules(row.modules, id);
   if (modulesResult.error) return NextResponse.json({ error: modulesResult.error }, { status: 400 });
 
   const [updated] = await db
