@@ -199,7 +199,7 @@ export default function SupplierManagement() {
                 await approveSupplierApplication(id);
                 success('Supplier application approved and vendor account updated.');
             } else if (status === 'rejected') {
-                await rejectSupplierApplication(id, reviewNote.trim());
+                await rejectSupplierApplication(id, { applicantMessage: reviewNote.trim() || undefined });
                 success('Supplier application rejected and email notification queued.');
             }
             setReviewNote('');

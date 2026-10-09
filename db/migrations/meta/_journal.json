@@ -162,6 +162,13 @@
       "when": 1791531904431,
       "tag": "0022_lms_policy_enrollment",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791533145368,
+      "tag": "0023_self_registration",
+      "breakpoints": true
     }
   ]
 }

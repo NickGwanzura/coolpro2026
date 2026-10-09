@@ -15,6 +15,7 @@ import type {
   SupplierRegistration,
   SupplierComplianceApplication,
   SupplierLedgerEntry,
+  RegistrationApplication,
   StudentApplication,
   TechnicianApplication,
   RefrigerantLog,
@@ -421,8 +422,8 @@ export async function markSupplierApplicationUnderReview(id: string): Promise<Su
   return result;
 }
 
-export async function rejectSupplierApplication(id: string, notes?: string): Promise<SupplierApplicationRecord> {
-  const result = await post<SupplierApplicationRecord>(`/api/supplier-applications/${id}/reject`, { notes });
+export async function rejectSupplierApplication(id: string, notes?: RejectionNotes): Promise<SupplierApplicationRecord> {
+  const result = await post<SupplierApplicationRecord>(`/api/supplier-applications/${id}/reject`, notes ?? {});
   await mutate('/api/supplier-applications');
   return result;
 }
@@ -502,10 +503,63 @@ export async function approveStudentApplication(id: string): Promise<StudentAppl
   return result;
 }
 
-export async function rejectStudentApplication(id: string, notes?: string): Promise<StudentApplication> {
-  const result = await post<StudentApplication>(`/api/student-applications/${id}/reject`, { notes });
+/** What an admin sends when rejecting: `applicantMessage` is emailed to the applicant, `internalNotes` is not. */
+export interface RejectionNotes {
+  applicantMessage?: string;
+  internalNotes?: string;
+}
+
+export async function rejectStudentApplication(id: string, notes?: RejectionNotes): Promise<StudentApplication> {
+  const result = await post<StudentApplication>(`/api/student-applications/${id}/reject`, notes ?? {});
   await mutate('/api/student-applications');
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Trainer, lecturer and contractor applications (public self-registration + admin review)
+// ---------------------------------------------------------------------------
+
+export type RegistrationApplicationInput = {
+  role: 'trainer' | 'lecturer' | 'contractor';
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phone: string;
+  region: string;
+  organisation: string;
+  experienceSummary: string;
+  details?: Record<string, unknown>;
+  idDocumentName?: string;
+  /** Hidden honeypot field; always sent empty by the real form. */
+  website?: string;
+};
+
+export function useRegistrationApplications() {
+  return useSWR<RegistrationApplication[]>('/api/registration-applications', fetcher);
+}
+
+export async function createRegistrationApplication(
+  body: RegistrationApplicationInput,
+): Promise<{ id: string; status: string; role: string }> {
+  return post('/api/registration-applications', body);
+}
+
+export async function approveRegistrationApplication(id: string): Promise<RegistrationApplication> {
+  const result = await post<RegistrationApplication>(`/api/registration-applications/${id}/approve`);
+  await mutate('/api/registration-applications');
+  return result;
+}
+
+export async function rejectRegistrationApplication(id: string, notes?: RejectionNotes): Promise<RegistrationApplication> {
+  const result = await post<RegistrationApplication>(`/api/registration-applications/${id}/reject`, notes ?? {});
+  await mutate('/api/registration-applications');
+  return result;
+}
+
+/** Asks for a fresh confirmation email. The server always answers the same way. */
+export async function resendApplicationVerification(email: string): Promise<void> {
+  await post('/api/applications/resend-verification', { email });
 }
 
 // ---------------------------------------------------------------------------

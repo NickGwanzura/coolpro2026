@@ -27,7 +27,7 @@ export async function notifyAdminsOfNewApplication(input: {
         email: admin.email,
         name: admin.name,
         title: `New ${input.roleLabel} application awaiting review`,
-        message: `${input.applicantName} (${input.applicantEmail}) has submitted a ${input.roleLabel} application on the NOU / HEVACRAZ registry and is waiting for approval.`,
+        message: `${input.applicantName} (${input.applicantEmail}) has confirmed their email address and is waiting for their ${input.roleLabel} application to be reviewed on the NOU / HEVACRAZ registry.`,
         action: `Review and approve or reject this application at ${input.reviewPath}.`,
       }).catch(() => {}),
     ),

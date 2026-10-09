@@ -1,8 +1,8 @@
 'use client';
 
+import { ApplicationSubmittedNotice } from '@/components/marketing/ApplicationSubmittedNotice';
 import { useState, type FormEvent, type ReactNode } from 'react';
-import Link from 'next/link';
-import { ArrowRight, CheckCircle, Loader2, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import type { SupplierRegistration, SupplierSurveyData } from '@/types/index';
 import { completeInvitedSupplierApplication, createSupplierApplication } from '@/lib/api';
@@ -12,7 +12,6 @@ import { isSupplierSurveyComplete, SupplierSurveyFields } from '@/components/sup
 const ACCENT = '#D97706';
 const ACCENT_TINT = 'rgba(217,119,6,0.10)';
 const BORDER = '#E5E0DB';
-const BG_INPUT = '#FAFAF9';
 
 const SUPPLIER_TYPES: Array<SupplierRegistration['supplierType']> = [
   'importer',
@@ -141,46 +140,14 @@ export default function SupplierRegistrationForm({ inviteOnly = false, invitedEm
   if (submitted) {
     return (
       <div className="rounded-xl bg-white border p-6 sm:p-8" style={{ borderColor: BORDER }}>
-        <div className="text-center py-10 sm:py-14">
-          <div className="inline-flex p-3 mb-4 rounded-xl" style={{ backgroundColor: ACCENT_TINT }}>
-            <CheckCircle className="h-10 w-10" style={{ color: ACCENT }} />
-          </div>
-          <h2 className="text-2xl font-bold" style={{ color: '#1C1917' }}>
-            Application submitted
-          </h2>
-          <p className="mt-3 text-gray-600 max-w-md mx-auto leading-relaxed">
-            Thanks, {submitted.companyName}. Your application is now in the HEVACRAZ review queue.
-            The National Compliance Oversight Unit will be notified once HEVACRAZ approves your
-            credentials.
-          </p>
-          <div
-            className="mt-5 rounded-lg inline-flex flex-col items-center gap-1 border px-4 py-3 text-xs"
-            style={{ borderColor: BORDER, backgroundColor: BG_INPUT }}
-          >
-            <span className="text-gray-500 uppercase tracking-[0.18em] font-semibold">
-              Reference
-            </span>
-            <span className="font-mono text-sm font-semibold" style={{ color: '#1C1917' }}>
-              {submitted.id.slice(0, 8).toUpperCase()}
-            </span>
-          </div>
-          <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/dashboard"
-              className="rounded-lg inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-white text-sm transition-colors"
-              style={{ backgroundColor: ACCENT }}
-            >
-              Go to Dashboard
-            </Link>
-            <Link
-              href="/"
-              className="rounded-lg inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-sm border transition-colors hover:bg-[#FAFAF9]"
-              style={{ borderColor: BORDER, color: '#1C1917' }}
-            >
-              Return home
-            </Link>
-          </div>
-        </div>
+        <ApplicationSubmittedNotice
+          name={submitted.contactName}
+          email={submitted.email}
+          reference={submitted.id}
+          role="supplier"
+          accent={ACCENT}
+          accentTint={ACCENT_TINT}
+        />
       </div>
     );
   }

@@ -4,7 +4,8 @@ import { eq, or } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { technicianApplications, technicians, memberships, users } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
-import { sendApprovalEmail, sendMembershipConfirmationEmail } from '@/lib/server/email';
+import { sendMembershipConfirmationEmail } from '@/lib/server/email';
+import { afterApplicationApproved, reviewBlockedReason } from '@/lib/server/application-flow';
 import { logEmail } from '@/lib/server/email-log';
 import { recordAuditEvent } from '@/lib/server/audit';
 import { generateMembershipNumber } from '@/lib/server/membership-number';
@@ -35,6 +36,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (app.status !== 'submitted' && app.status !== 'under-review') {
     return NextResponse.json({ error: `A ${app.status} application cannot be approved. Create a new application if this technician needs to reapply.` }, { status: 409 });
   }
+
+  const blocked = await reviewBlockedReason('technician_application', app.id, app.status, 'approve');
+  if (blocked) return NextResponse.json({ error: blocked }, { status: 409 });
 
   const [existingTechnician] = await db.select({ id: technicians.id, registrationNumber: technicians.registrationNumber })
     .from(technicians)
@@ -108,16 +112,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
 
   recordAuditEvent({
-    entityType: 'technician_application',
-    entityId: app.id,
-    action: 'approved',
-    previousStatus: app.status,
-    newStatus: 'approved',
-    performedBy: session.name,
-    performedByRole: session.role,
-  }).catch(() => {});
-
-  recordAuditEvent({
     entityType: 'membership',
     entityId: membershipId,
     action: 'membership_created',
@@ -127,20 +121,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     notes: `Created on approval of application ${app.id}`,
   }).catch(() => {});
 
-  // Notify the technician — best-effort, never blocks approval
-  sendApprovalEmail({
-    email: app.email,
-    name: app.name,
-    role: 'technician',
-  })
-    .then((result) => logEmail({
-      emailType: 'application_approved',
-      recipientEmail: app.email,
-      relatedEntityType: 'technician_application',
-      relatedEntityId: app.id,
-      sent: result.sent,
-    }))
-    .catch(() => {});
+  // Email the technician and record the decision — best-effort, never blocks approval
+  await afterApplicationApproved(
+    { entityType: 'technician_application', entityId: app.id, role: 'technician', name: app.name, email: app.email },
+    { name: session.name, role: session.role },
+    app.status,
+  );
 
   sendMembershipConfirmationEmail({
     email: app.email,

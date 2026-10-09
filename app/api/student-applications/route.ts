@@ -5,8 +5,8 @@ import { studentApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
-import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
-import { SITE_URL } from '@/lib/site-url';
+import { startApplicantVerification } from '@/lib/server/application-flow';
+import { pendingVerificationIds } from '@/lib/server/email-verification';
 import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
 import type { StudentApplication } from '@/types/index';
 
@@ -48,7 +48,8 @@ export async function GET(req: Request) {
     .select()
     .from(studentApplications)
     .orderBy(desc(studentApplications.submittedAt));
-  return NextResponse.json(rows.map(toStudentApplication));
+  const unconfirmed = await pendingVerificationIds('student_application', rows.map((row) => row.id));
+  return NextResponse.json(rows.map((row) => ({ ...toStudentApplication(row), emailUnconfirmed: unconfirmed.has(row.id) })));
 }
 
 export async function POST(req: Request) {
@@ -123,13 +124,14 @@ export async function POST(req: Request) {
     })
     .returning();
 
-  // Notify admins that a new applicant is awaiting review — best-effort, never blocks signup
-  notifyAdminsOfNewApplication({
-    applicantName: `${inserted.firstName} ${inserted.lastName}`.trim(),
-    applicantEmail: inserted.email,
-    roleLabel: 'student',
-    reviewPath: `${SITE_URL}/admin/applications`,
-  }).catch(() => {});
+  // Ask the applicant to confirm their email. Admins are told once it is confirmed.
+  await startApplicantVerification({
+    entityType: 'student_application',
+    entityId: inserted.id,
+    role: 'student',
+    name: `${inserted.firstName} ${inserted.lastName}`.trim(),
+    email: inserted.email,
+  });
 
   return NextResponse.json(toStudentApplication(inserted), { status: 201 });
 }

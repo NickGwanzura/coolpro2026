@@ -6,18 +6,21 @@ import {
   ArrowRight,
   BadgeCheck,
   CheckCircle2,
-  ClipboardCheck,
   Factory,
   GraduationCap,
+  HardHat,
   Lock,
+  MailCheck,
+  Presentation,
   Sparkles,
   UserRoundCheck,
   Wrench,
 } from 'lucide-react';
 import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
+import { APPLICANT_ROLES } from '@/lib/application-roles';
 
 type JoinPath = {
-  slug: 'student' | 'technician' | 'supplier';
+  slug: 'student' | 'technician' | 'trainer' | 'lecturer' | 'contractor' | 'supplier';
   label: string;
   eyebrow: string;
   icon: React.ReactNode;
@@ -43,7 +46,7 @@ const PATHS: JoinPath[] = [
     title: 'Start as a Polytechnic student',
     audience: 'For enrolled HVAC-R, refrigeration, electrical, mechanical, and building services students.',
     outcome: 'Unlock learning tools, field references, discounted sessions, and an entry-level certification path.',
-    timeline: 'Usually reviewed within 2 working days',
+    timeline: `Reviewed in ${APPLICANT_ROLES.student.reviewTime}`,
     proof: 'Student ID or enrolment proof',
     features: ['Learning Hub access', 'Field toolkit basics', 'Student registry status'],
     cta: 'Join as Student',
@@ -60,7 +63,7 @@ const PATHS: JoinPath[] = [
     title: 'Get verified as a working technician',
     audience: 'For HVAC-R and refrigeration technicians who need a public, QR-verifiable credential.',
     outcome: 'Appear in the national registry and use digital tools for jobs, COCs, permits, and refrigerant handling.',
-    timeline: 'Credential review after submission',
+    timeline: `Reviewed in ${APPLICANT_ROLES.technician.reviewTime}`,
     proof: 'National ID, experience, certificates',
     features: ['Public verification listing', 'COC request workflow', 'CPD and renewal tracking'],
     cta: 'Register as Technician',
@@ -70,18 +73,69 @@ const PATHS: JoinPath[] = [
     border: 'rgba(30,64,175,0.24)',
   },
   {
+    slug: 'trainer',
+    label: 'Trainer / Assessor',
+    eyebrow: 'Training track',
+    icon: <Presentation className="h-5 w-5" />,
+    title: 'Train and assess technicians',
+    audience: 'For accredited trainers and assessors who deliver and examine HVAC-R training.',
+    outcome: 'Create courses, grade learner exams, and put technicians forward for certificates.',
+    timeline: `Reviewed in ${APPLICANT_ROLES.trainer.reviewTime}`,
+    proof: 'Qualifications and assessment experience',
+    features: ['Course builder', 'Exam grading', 'Certificate requests'],
+    cta: 'Apply as Trainer',
+    href: '/join/trainer',
+    accent: '#7C3AED',
+    accentSoft: 'rgba(124,58,237,0.10)',
+    border: 'rgba(124,58,237,0.24)',
+  },
+  {
+    slug: 'lecturer',
+    label: 'Lecturer',
+    eyebrow: 'Training track',
+    icon: <GraduationCap className="h-5 w-5" />,
+    title: 'Teach at a college or polytechnic',
+    audience: 'For lecturers at colleges and polytechnics teaching refrigeration and air conditioning.',
+    outcome: 'Publish approved courses for your students and manage their assessments.',
+    timeline: `Reviewed in ${APPLICANT_ROLES.lecturer.reviewTime}`,
+    proof: 'Institution and teaching background',
+    features: ['Course builder', 'Exam grading', 'Training sessions'],
+    cta: 'Apply as Lecturer',
+    href: '/join/lecturer',
+    accent: '#0E7490',
+    accentSoft: 'rgba(14,116,144,0.10)',
+    border: 'rgba(14,116,144,0.24)',
+  },
+  {
+    slug: 'contractor',
+    label: 'Contractor',
+    eyebrow: 'Business track',
+    icon: <HardHat className="h-5 w-5" />,
+    title: 'Register your contracting business',
+    audience: 'For installation, ductwork, electrical and general contractors working with HVAC-R equipment.',
+    outcome: 'Plan jobs, log refrigerant use, request certificates for completed work, and verify the technicians you hire.',
+    timeline: `Reviewed in ${APPLICANT_ROLES.contractor.reviewTime}`,
+    proof: 'Company, trade and safety details',
+    features: ['Job planner and logs', 'Certificate requests', 'Technician verification'],
+    cta: 'Register as Contractor',
+    href: '/join/contractor',
+    accent: '#B45309',
+    accentSoft: 'rgba(180,83,9,0.10)',
+    border: 'rgba(180,83,9,0.24)',
+  },
+  {
     slug: 'supplier',
     label: 'Supplier',
     eyebrow: 'Compliance track',
     icon: <Factory className="h-5 w-5" />,
-    title: 'Supplier access by invitation',
-    audience: 'For approved businesses selling regulated refrigerants into the Zimbabwe market.',
+    title: 'Register as an approved supplier',
+    audience: 'For businesses selling regulated refrigerants into the Zimbabwe market.',
     outcome: 'Verify buyers before sale, submit reorders for review, and maintain auditable compliance records.',
-    timeline: 'HEVACRAZ + NOU approval required',
+    timeline: `HEVACRAZ and NOU review, ${APPLICANT_ROLES.supplier.reviewTime}`,
     proof: 'Company, tax, and licence details',
     features: ['Buyer verification', 'Two-stage reorder approval', 'Supplier ledger reporting'],
-    cta: 'Request supplier onboarding',
-    href: '/contact',
+    cta: 'Register as Supplier',
+    href: '/supplier-register',
     accent: '#D97706',
     accentSoft: 'rgba(217,119,6,0.12)',
     border: 'rgba(217,119,6,0.28)',
@@ -95,14 +149,14 @@ const STEPS = [
     body: 'Each path asks only for the evidence needed to verify that role.',
   },
   {
-    icon: <ClipboardCheck className="h-5 w-5" />,
-    title: 'Submit proof',
-    body: 'Your application joins the HEVACRAZ review queue with a reference number.',
+    icon: <MailCheck className="h-5 w-5" />,
+    title: 'Confirm your email',
+    body: 'We email you a link. Your application is reviewed once you click it.',
   },
   {
     icon: <BadgeCheck className="h-5 w-5" />,
-    title: 'Get activated',
-    body: 'Approved accounts unlock the right dashboard, tools, and registry status.',
+    title: 'Get approved',
+    body: 'An administrator reviews your application. We email you the decision, and approved accounts can log in straight away.',
   },
 ];
 
@@ -133,7 +187,7 @@ export default function JoinPage() {
               Choose the right entry point into Zimbabwe&apos;s refrigerant compliance system.
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-white/72">
-              Students, technicians, and suppliers each need a different verification path. Pick the role that matches you and the platform will route your application to the right review queue.
+              Every role has its own verification path. Pick the one that matches you, confirm your email, and an administrator will review your application and email you the decision.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <a
@@ -236,7 +290,7 @@ export default function JoinPage() {
           <div className="grid gap-8 border-y border-[#E5E0DB] py-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#D97706]">What happens next</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1C1917]">A short review process, then the right dashboard opens.</h2>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1C1917]">Confirm your email, get reviewed, then the right dashboard opens.</h2>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               {STEPS.map((step) => (

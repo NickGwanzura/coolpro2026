@@ -5,9 +5,9 @@ import { supplierApplications } from '@/db/schema/index';
 import { readSessionFromRequest } from '@/lib/server/auth';
 import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
-import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
+import { startApplicantVerification } from '@/lib/server/application-flow';
+import { pendingVerificationIds } from '@/lib/server/email-verification';
 import { generateSupplierRegistrationNumber } from '@/lib/server/registration-number';
-import { SITE_URL } from '@/lib/site-url';
 import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
 import type { SupplierRegistration, SupplierSurveyData } from '@/types/index';
 
@@ -75,7 +75,8 @@ export async function GET(req: Request) {
 
   if (session.role === 'org_admin') {
     const rows = await db.select().from(supplierApplications);
-    return NextResponse.json(rows.map(toSupplierRegistration));
+    const unconfirmed = await pendingVerificationIds('supplier_application', rows.map((row) => row.id));
+    return NextResponse.json(rows.map((row) => ({ ...toSupplierRegistration(row), emailUnconfirmed: unconfirmed.has(row.id) })));
   }
 
   return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -161,13 +162,14 @@ export async function POST(req: Request) {
     })
     .returning();
 
-  // Notify admins that a new applicant is awaiting review — best-effort, never blocks signup
-  notifyAdminsOfNewApplication({
-    applicantName: inserted.contactName,
-    applicantEmail: inserted.email,
-    roleLabel: 'supplier',
-    reviewPath: `${SITE_URL}/admin/applications`,
-  }).catch(() => {});
+  // Ask the applicant to confirm their email. Admins are told once it is confirmed.
+  await startApplicantVerification({
+    entityType: 'supplier_application',
+    entityId: inserted.id,
+    role: 'supplier',
+    name: inserted.contactName,
+    email: inserted.email,
+  });
 
   return NextResponse.json(toSupplierRegistration(inserted), { status: 201 });
 }

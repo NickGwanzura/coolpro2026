@@ -5,7 +5,6 @@ import { useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
-  CheckCircle,
   Loader2,
   Plus,
   ShieldCheck,
@@ -15,6 +14,7 @@ import {
 import { ZIMBABWE_PROVINCES, TECHNICIAN_SPECIALIZATIONS } from '@/constants/registry';
 import { createTechnicianApplication } from '@/lib/api';
 import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
+import { ApplicationSubmittedNotice } from '@/components/marketing/ApplicationSubmittedNotice';
 import { SignupClosedNotice } from '@/components/marketing/SignupClosedNotice';
 import { SectorSurveyFields } from '@/components/technician/SectorSurveyFields';
 import type { TechnicianApplication, TechnicianApplicationCertification, TechnicianSurveyData } from '@/types/index';
@@ -203,49 +203,14 @@ function JoinTechnicianForm() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white border p-6 sm:p-8 rounded-xl" style={{ borderColor: BORDER }}>
             {application ? (
-              <div className="text-center py-10 sm:py-14">
-                <div
-                  className="inline-flex p-3 mb-4 rounded-xl"
-                  style={{ backgroundColor: ACCENT_TINT }}
-                >
-                  <CheckCircle className="h-10 w-10" style={{ color: ACCENT }} />
-                </div>
-                <h2 className="text-2xl font-bold" style={{ color: '#1C1917' }}>
-                  Application submitted
-                </h2>
-                <p className="mt-3 text-gray-600 max-w-md mx-auto leading-relaxed">
-                  Thanks, {application.name}. Your registration is now in the HEVACRAZ review queue.
-                  We will email <strong>{application.email}</strong> once your credentials have been
-                  verified.
-                </p>
-                <div
-                  className="mt-5 inline-flex flex-col items-center gap-1 rounded-lg border px-4 py-3 text-xs"
-                  style={{ borderColor: BORDER, backgroundColor: BG_INPUT }}
-                >
-                  <span className="text-gray-500 uppercase tracking-[0.18em] font-semibold">
-                    Reference
-                  </span>
-                  <span className="font-mono text-sm font-semibold" style={{ color: '#1C1917' }}>
-                    {application.id.slice(0, 8).toUpperCase()}
-                  </span>
-                </div>
-                <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
-                  <Link
-                    href="/verify-technician"
-                    className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-white text-sm rounded-lg"
-                    style={{ backgroundColor: ACCENT }}
-                  >
-                    See the public registry
-                  </Link>
-                  <Link
-                    href="/"
-                    className="inline-flex items-center justify-center gap-2 px-5 py-3 font-semibold text-sm border transition-colors hover:bg-[#FAFAF9] rounded-lg"
-                    style={{ borderColor: BORDER, color: '#1C1917' }}
-                  >
-                    Return home
-                  </Link>
-                </div>
-              </div>
+              <ApplicationSubmittedNotice
+                name={application.name}
+                email={application.email}
+                reference={application.id}
+                role="technician"
+                accent={ACCENT}
+                accentTint={ACCENT_TINT}
+              />
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <fieldset className="space-y-5">

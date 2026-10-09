@@ -25,3 +25,4 @@ export * from './memberships';
 export * from './audit';
 export * from './email-log';
 export * from './contractors';
+export * from './registration-applications';

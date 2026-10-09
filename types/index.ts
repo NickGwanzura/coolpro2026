@@ -207,7 +207,7 @@ export interface ApprovedSupplier {
 
 export type SupplierRegistrationStatus = 'submitted' | 'under-review' | 'approved' | 'rejected';
 
-export interface SupplierRegistration {
+export interface SupplierRegistration extends EmailConfirmationFlag {
   id: string;
   companyName: string;
   tradingName?: string;
@@ -296,7 +296,31 @@ export interface SupplierLedgerEntry {
 
 export type ApplicationStatus = 'submitted' | 'under-review' | 'approved' | 'rejected';
 
-export interface StudentApplication {
+/** True while a self-registered applicant has not yet confirmed their email address. */
+export interface EmailConfirmationFlag {
+  emailUnconfirmed?: boolean;
+}
+
+export interface RegistrationApplication extends EmailConfirmationFlag {
+  id: string;
+  role: 'trainer' | 'lecturer' | 'contractor';
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  region: string;
+  organisation?: string;
+  experienceSummary: string;
+  details?: Record<string, unknown>;
+  idDocumentName?: string;
+  status: ApplicationStatus;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+  submittedAt: string;
+}
+
+export interface StudentApplication extends EmailConfirmationFlag {
   id: string;
   firstName: string;
   lastName: string;
@@ -357,7 +381,7 @@ export interface TechnicianSurveyData {
   preferredLanguage?: 'english' | 'shona' | 'ndebele';
 }
 
-export interface TechnicianApplication {
+export interface TechnicianApplication extends EmailConfirmationFlag {
   id: string;
   name: string;
   nationalId: string;

@@ -4,7 +4,7 @@ import { db } from '@/db/client';
 import { supplierApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { provisionUserFromApplication, ProvisionConflictError } from '@/lib/server/provision-user';
-import { sendApprovalEmail } from '@/lib/server/email';
+import { afterApplicationApproved, reviewBlockedReason } from '@/lib/server/application-flow';
 import type { SupplierRegistration } from '@/types/index';
 
 function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): SupplierRegistration & {
@@ -50,6 +50,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const [row] = await db.select().from(supplierApplications).where(eq(supplierApplications.id, id)).limit(1);
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  const blocked = await reviewBlockedReason('supplier_application', id, row.status, 'approve');
+  if (blocked) return NextResponse.json({ error: blocked }, { status: 409 });
+
   try {
     await provisionUserFromApplication({
       name: row.contactName,
@@ -71,12 +74,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .where(eq(supplierApplications.id, id))
     .returning();
 
-  // Notify the supplier — best-effort, never blocks approval
-  sendApprovalEmail({
-    email: row.email,
-    name: row.contactName,
-    role: 'supplier',
-  }).catch(() => {});
+  // Email the supplier and record the decision — best-effort, never blocks approval
+  await afterApplicationApproved(
+    { entityType: 'supplier_application', entityId: id, role: 'supplier', name: row.contactName, email: row.email },
+    { name: session.name, role: session.role },
+    row.status,
+  );
 
   return NextResponse.json(toSupplierRegistration(updated));
 }

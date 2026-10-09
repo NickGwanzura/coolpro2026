@@ -5,12 +5,9 @@ import { technicianApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { hashPassword, isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from '@/lib/server/password';
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
-import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
+import { startApplicantVerification } from '@/lib/server/application-flow';
+import { pendingVerificationIds } from '@/lib/server/email-verification';
 import { generateTechnicianRegistrationNumber } from '@/lib/server/registration-number';
-import { sendApplicationReceivedEmail } from '@/lib/server/email';
-import { logEmail } from '@/lib/server/email-log';
-import { recordAuditEvent } from '@/lib/server/audit';
-import { SITE_URL } from '@/lib/site-url';
 import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
 import type { TechnicianApplication } from '@/types/index';
 
@@ -59,7 +56,8 @@ export async function GET(req: Request) {
     .select()
     .from(technicianApplications)
     .orderBy(desc(technicianApplications.submittedAt));
-  return NextResponse.json(rows.map(toTechnicianApplication));
+  const unconfirmed = await pendingVerificationIds('technician_application', rows.map((row) => row.id));
+  return NextResponse.json(rows.map((row) => ({ ...toTechnicianApplication(row), emailUnconfirmed: unconfirmed.has(row.id) })));
 }
 
 export async function POST(req: Request) {
@@ -141,34 +139,14 @@ export async function POST(req: Request) {
     })
     .returning();
 
-  // Notify admins that a new applicant is awaiting review — best-effort, never blocks signup
-  notifyAdminsOfNewApplication({
-    applicantName: inserted.name,
-    applicantEmail: inserted.email,
-    roleLabel: 'technician',
-    reviewPath: `${SITE_URL}/admin/applications`,
-  }).catch(() => {});
-
-  // Confirm receipt to the applicant and record the submission — both best-effort, never
-  // block the response the applicant is waiting on.
-  sendApplicationReceivedEmail({ email: inserted.email, name: inserted.name })
-    .then((result) => logEmail({
-      emailType: 'application_received',
-      recipientEmail: inserted.email,
-      relatedEntityType: 'technician_application',
-      relatedEntityId: inserted.id,
-      sent: result.sent,
-    }))
-    .catch(() => {});
-
-  recordAuditEvent({
+  // Ask the applicant to confirm their email. Admins are told once it is confirmed.
+  await startApplicantVerification({
     entityType: 'technician_application',
     entityId: inserted.id,
-    action: 'submitted',
-    newStatus: 'submitted',
-    performedBy: inserted.name,
-    performedByRole: 'applicant',
-  }).catch(() => {});
+    role: 'technician',
+    name: inserted.name,
+    email: inserted.email,
+  });
 
   return NextResponse.json(toTechnicianApplication(inserted), { status: 201 });
 }

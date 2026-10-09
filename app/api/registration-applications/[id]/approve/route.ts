@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { studentApplications } from '@/db/schema/index';
+import { registrationApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { provisionUserFromApplication, ProvisionConflictError } from '@/lib/server/provision-user';
 import { afterApplicationApproved, reviewBlockedReason } from '@/lib/server/application-flow';
+import { toRegistrationApplication } from '@/lib/server/registration-serializers';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -15,23 +16,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const { id } = await params;
-  const [row] = await db
-    .select()
-    .from(studentApplications)
-    .where(eq(studentApplications.id, id))
-    .limit(1);
+  const [row] = await db.select().from(registrationApplications).where(eq(registrationApplications.id, id)).limit(1);
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const blocked = await reviewBlockedReason('student_application', id, row.status, 'approve');
+  const blocked = await reviewBlockedReason('registration_application', id, row.status, 'approve');
   if (blocked) return NextResponse.json({ error: blocked }, { status: 409 });
 
+  const name = `${row.firstName} ${row.lastName}`.trim();
   try {
     await provisionUserFromApplication({
-      name: `${row.firstName} ${row.lastName}`.trim(),
+      name,
       email: row.email,
       passwordHash: row.passwordHash,
-      role: 'student',
-      region: row.polytech,
+      role: row.role,
+      region: row.region,
     });
   } catch (err) {
     if (err instanceof ProvisionConflictError) {
@@ -41,22 +39,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const [updated] = await db
-    .update(studentApplications)
+    .update(registrationApplications)
     .set({ status: 'approved', reviewedBy: session.name, reviewedAt: new Date() })
-    .where(eq(studentApplications.id, id))
+    .where(eq(registrationApplications.id, id))
     .returning();
 
-  // Email the applicant and record the decision — best-effort, never blocks approval
   await afterApplicationApproved(
-    { entityType: 'student_application', entityId: id, role: 'student', name: `${row.firstName} ${row.lastName}`.trim(), email: row.email },
+    { entityType: 'registration_application', entityId: id, role: row.role, name, email: row.email },
     { name: session.name, role: session.role },
     row.status,
   );
 
-  return NextResponse.json({
-    id: updated.id,
-    status: updated.status,
-    reviewedAt: updated.reviewedAt?.toISOString(),
-    reviewedBy: updated.reviewedBy,
-  });
+  return NextResponse.json(toRegistrationApplication(updated));
 }

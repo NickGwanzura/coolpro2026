@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowLeft, Lock, Mail } from 'lucide-react';
 
-export function SignupClosedNotice({ title, accent = '#1C1917' }: { title: string; accent?: string }) {
+export function SignupClosedNotice({ title, accent = '#1C1917', message }: { title: string; accent?: string; message?: string }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#FAFAF9] px-4 py-24">
       <div className="w-full max-w-md border border-[#E5E0DB] bg-white p-8 text-center shadow-sm">
@@ -10,8 +10,7 @@ export function SignupClosedNotice({ title, accent = '#1C1917' }: { title: strin
         </div>
         <h1 className="text-xl font-bold text-[#1C1917]">{title}</h1>
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Self-service registration is unavailable. Supplier access is issued by secure invitation,
-          then the invited contact completes their company and compliance questionnaire.
+          {message ?? 'Self-service registration for this role is not open right now. Contact HEVACRAZ and we will help you get set up.'}
         </p>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link

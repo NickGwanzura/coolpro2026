@@ -3,9 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { technicianApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
-import { sendApplicationRejectedEmail } from '@/lib/server/email';
-import { logEmail } from '@/lib/server/email-log';
-import { recordAuditEvent } from '@/lib/server/audit';
+import { afterApplicationRejected, reviewBlockedReason } from '@/lib/server/application-flow';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -15,10 +13,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return e as Response;
   }
 
-  // `notes` is kept for backward compatibility with the existing simple reject modal
-  // (admin/applications). `reason`/`internalNotes` are internal-only and stored together in
-  // reviewNote; `applicantMessage` is the ONLY thing that can ever appear in the rejection
-  // email — internal notes must never be interpolated into applicant-facing content.
+  // `applicantMessage` (or `notes`, which the reject box sends) is the ONLY text that can appear
+  // in the rejection email. `reason` and `internalNotes` are admin-only and never emailed.
   const body = (await req.json().catch(() => ({}))) as {
     notes?: string;
     reason?: string;
@@ -33,11 +29,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .where(eq(technicianApplications.id, id))
     .limit(1);
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (row.status !== 'submitted' && row.status !== 'under-review') {
-    return NextResponse.json({ error: `A ${row.status} application cannot be rejected.` }, { status: 409 });
-  }
+  const blocked = await reviewBlockedReason('technician_application', row.id, row.status, 'reject');
+  if (blocked) return NextResponse.json({ error: blocked }, { status: 409 });
 
-  const internalReviewNote = [body.reason ?? body.notes, body.internalNotes]
+  const internalReviewNote = [body.reason ?? body.notes ?? body.applicantMessage, body.internalNotes]
     .filter((part): part is string => Boolean(part && part.trim()))
     .join(' — ') || null;
 
@@ -52,30 +47,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .where(eq(technicianApplications.id, id))
     .returning();
 
-  recordAuditEvent({
-    entityType: 'technician_application',
-    entityId: row.id,
-    action: 'rejected',
-    previousStatus: row.status,
-    newStatus: 'rejected',
-    performedBy: session.name,
-    performedByRole: session.role,
-    notes: internalReviewNote ?? undefined,
-  }).catch(() => {});
-
-  sendApplicationRejectedEmail({
-    email: row.email,
-    name: row.name,
-    applicantMessage: body.applicantMessage,
-  })
-    .then((result) => logEmail({
-      emailType: 'application_rejected',
-      recipientEmail: row.email,
-      relatedEntityType: 'technician_application',
-      relatedEntityId: row.id,
-      sent: result.sent,
-    }))
-    .catch(() => {});
+  await afterApplicationRejected(
+    { entityType: 'technician_application', entityId: row.id, role: 'technician', name: row.name, email: row.email },
+    { name: session.name, role: session.role },
+    row.status,
+    // The note an admin types in the reject box is the message the applicant sees.
+    { applicantMessage: body.applicantMessage ?? body.notes, internalNote: internalReviewNote ?? undefined },
+  );
 
   return NextResponse.json({
     id: updated.id,

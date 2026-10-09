@@ -7,35 +7,44 @@ import {
   ClockAlert,
   GraduationCap,
   Mail,
+  MailWarning,
   Phone,
   ShieldCheck,
+  UserRoundCog,
   Wrench,
   XCircle,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import {
+  approveRegistrationApplication,
   approveStudentApplication,
   approveSupplierApplication,
   approveTechnicianApplication,
+  rejectRegistrationApplication,
   rejectStudentApplication,
   rejectSupplierApplication,
   rejectTechnicianApplication,
+  useRegistrationApplications,
   useStudentApplications,
   useSupplierApplications,
   useTechnicianApplications,
+  type RejectionNotes,
 } from '@/lib/api';
+import { APPLICANT_ROLES } from '@/lib/application-roles';
 import type {
   ApplicationStatus,
+  RegistrationApplication,
   StudentApplication,
   TechnicianApplication,
 } from '@/types/index';
 import type { SupplierApplicationRecord } from '@/lib/api';
 
-type Lane = 'students' | 'technicians' | 'suppliers';
+type Lane = 'students' | 'technicians' | 'professionals' | 'suppliers';
 
 const LANE_META: Record<Lane, { label: string; icon: React.ComponentType<{ className?: string }>; accent: string }> = {
   students: { label: 'Students', icon: GraduationCap, accent: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
   technicians: { label: 'Technicians', icon: Wrench, accent: 'text-blue-700 bg-blue-50 border-blue-200' },
+  professionals: { label: 'Trainers, lecturers & contractors', icon: UserRoundCog, accent: 'text-violet-700 bg-violet-50 border-violet-200' },
   suppliers: { label: 'Suppliers', icon: Building2, accent: 'text-amber-700 bg-amber-50 border-amber-200' },
 };
 
@@ -60,28 +69,57 @@ function StatusBadge({ status }: { status: ApplicationStatus }) {
   );
 }
 
+function EmailUnconfirmedBadge() {
+  return (
+    <span
+      title="This applicant has not clicked the link in their confirmation email yet. They cannot be approved until they do."
+      className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800"
+    >
+      <MailWarning className="h-3 w-3" />
+      Email not confirmed
+    </span>
+  );
+}
+
 function RejectModal({
   title,
   onConfirm,
   onCancel,
 }: {
   title: string;
-  onConfirm: (reason: string) => void;
+  onConfirm: (notes: RejectionNotes) => void;
   onCancel: () => void;
 }) {
-  const [reason, setReason] = useState('');
+  const [applicantMessage, setApplicantMessage] = useState('');
+  const [internalNotes, setInternalNotes] = useState('');
+  const textareaClass =
+    'rounded-lg mt-2 w-full border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
         <h3 className="text-base font-semibold text-gray-900">Reject: {title}</h3>
-        <p className="mt-2 text-sm text-gray-500">Provide a reason. The applicant will see this note.</p>
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={4}
-          placeholder="Rejection reason..."
-          className="rounded-lg mt-4 w-full border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
+        <label className="mt-4 block text-sm font-semibold text-gray-800">
+          Message to the applicant
+          <span className="ml-1 font-normal text-gray-500">(emailed to them)</span>
+          <textarea
+            value={applicantMessage}
+            onChange={(e) => setApplicantMessage(e.target.value)}
+            rows={3}
+            placeholder="Explain what was missing or why this was not approved..."
+            className={textareaClass}
+          />
+        </label>
+        <label className="mt-4 block text-sm font-semibold text-gray-800">
+          Internal note
+          <span className="ml-1 font-normal text-gray-500">(admins only, never emailed)</span>
+          <textarea
+            value={internalNotes}
+            onChange={(e) => setInternalNotes(e.target.value)}
+            rows={2}
+            placeholder="Optional"
+            className={textareaClass}
+          />
+        </label>
         <div className="mt-4 flex justify-end gap-3">
           <button
             type="button"
@@ -92,8 +130,11 @@ function RejectModal({
           </button>
           <button
             type="button"
-            onClick={() => reason.trim() && onConfirm(reason.trim())}
-            disabled={!reason.trim()}
+            onClick={() =>
+              applicantMessage.trim() &&
+              onConfirm({ applicantMessage: applicantMessage.trim(), internalNotes: internalNotes.trim() || undefined })
+            }
+            disabled={!applicantMessage.trim()}
             className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Confirm rejection
@@ -108,6 +149,7 @@ export default function ApplicationsAdminPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [active, setActive] = useState<Lane>('students');
   const [acting, setActing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<{
     lane: Lane;
     id: string;
@@ -117,15 +159,19 @@ export default function ApplicationsAdminPage() {
   const studentsResp = useStudentApplications();
   const techsResp = useTechnicianApplications();
   const suppliersResp = useSupplierApplications();
+  const professionalsResp = useRegistrationApplications();
 
-  const counts = useMemo(
-    () => ({
-      students: (studentsResp.data ?? []).filter((a) => a.status === 'submitted').length,
-      technicians: (techsResp.data ?? []).filter((a) => a.status === 'submitted').length,
-      suppliers: (suppliersResp.data ?? []).filter((a) => a.status === 'submitted').length,
-    }),
-    [studentsResp.data, techsResp.data, suppliersResp.data],
-  );
+  // Only applications whose email is confirmed count as waiting for review.
+  const counts = useMemo(() => {
+    const ready = (apps: Array<{ status: ApplicationStatus; emailUnconfirmed?: boolean }> | undefined) =>
+      (apps ?? []).filter((a) => a.status === 'submitted' && !a.emailUnconfirmed).length;
+    return {
+      students: ready(studentsResp.data),
+      technicians: ready(techsResp.data),
+      professionals: ready(professionalsResp.data),
+      suppliers: ready(suppliersResp.data),
+    };
+  }, [studentsResp.data, techsResp.data, professionalsResp.data, suppliersResp.data]);
 
   if (authLoading) {
     return (
@@ -145,23 +191,31 @@ export default function ApplicationsAdminPage() {
 
   const handleApprove = async (lane: Lane, id: string) => {
     setActing(true);
+    setActionError(null);
     try {
       if (lane === 'students') await approveStudentApplication(id);
       else if (lane === 'technicians') await approveTechnicianApplication(id);
+      else if (lane === 'professionals') await approveRegistrationApplication(id);
       else await approveSupplierApplication(id);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not approve this application.');
     } finally {
       setActing(false);
     }
   };
 
-  const handleRejectConfirm = async (notes: string) => {
+  const handleRejectConfirm = async (notes: RejectionNotes) => {
     if (!rejectTarget) return;
     setActing(true);
+    setActionError(null);
     try {
       if (rejectTarget.lane === 'students') await rejectStudentApplication(rejectTarget.id, notes);
       else if (rejectTarget.lane === 'technicians')
         await rejectTechnicianApplication(rejectTarget.id, notes);
+      else if (rejectTarget.lane === 'professionals') await rejectRegistrationApplication(rejectTarget.id, notes);
       else await rejectSupplierApplication(rejectTarget.id, notes);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not reject this application.');
     } finally {
       setRejectTarget(null);
       setActing(false);
@@ -175,13 +229,21 @@ export default function ApplicationsAdminPage() {
           </p>
         <h1 className="mt-2 text-2xl font-bold text-gray-900">Registration Applications</h1>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-600">
-          Review and approve incoming registration applications across students, technicians, and
-          suppliers. Approved technicians are inserted directly into the public registry.
+          Review and approve incoming registration applications for every role. Applicants confirm
+          their email address first, then wait here. Approved technicians are added to the public
+          registry. Applicants are emailed when you approve or reject, so write the rejection
+          message for them to read.
         </p>
       </div>
 
+      {actionError && (
+        <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          {actionError}
+        </div>
+      )}
+
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex flex-wrap gap-2 border-b border-gray-200">
         {(Object.keys(LANE_META) as Lane[]).map((lane) => {
           const meta = LANE_META[lane];
           const Icon = meta.icon;
@@ -255,6 +317,30 @@ export default function ApplicationsAdminPage() {
         </LaneSection>
       )}
 
+      {active === 'professionals' && (
+        <LaneSection
+          loading={professionalsResp.data === undefined}
+          error={professionalsResp.error}
+          empty="No trainer, lecturer or contractor applications yet."
+        >
+          {(professionalsResp.data ?? []).map((app) => (
+            <ProfessionalRow
+              key={app.id}
+              app={app}
+              acting={acting}
+              onApprove={() => handleApprove('professionals', app.id)}
+              onReject={() =>
+                setRejectTarget({
+                  lane: 'professionals',
+                  id: app.id,
+                  title: `${app.firstName} ${app.lastName}`,
+                })
+              }
+            />
+          ))}
+        </LaneSection>
+      )}
+
       {active === 'suppliers' && (
         <LaneSection
           loading={suppliersResp.data === undefined}
@@ -322,11 +408,13 @@ function LaneSection({
 function ActionRow({
   status,
   acting,
+  emailUnconfirmed,
   onApprove,
   onReject,
 }: {
   status: ApplicationStatus;
   acting: boolean;
+  emailUnconfirmed?: boolean;
   onApprove: () => void;
   onReject: () => void;
 }) {
@@ -336,7 +424,8 @@ function ActionRow({
       <button
         type="button"
         onClick={onApprove}
-        disabled={acting}
+        disabled={acting || emailUnconfirmed}
+        title={emailUnconfirmed ? 'Waiting for the applicant to confirm their email address' : undefined}
         className="inline-flex items-center gap-1.5 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
       >
         <CheckCircle2 className="h-4 w-4" />
@@ -384,6 +473,7 @@ function StudentRow({
               {app.firstName} {app.lastName}
             </span>
             <StatusBadge status={app.status} />
+            {app.emailUnconfirmed && <EmailUnconfirmedBadge />}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <MetaLine icon={Mail}>{app.email}</MetaLine>
@@ -403,7 +493,7 @@ function StudentRow({
             </div>
           )}
         </div>
-        <ActionRow status={app.status} acting={acting} onApprove={onApprove} onReject={onReject} />
+        <ActionRow status={app.status} acting={acting} emailUnconfirmed={app.emailUnconfirmed} onApprove={onApprove} onReject={onReject} />
       </div>
     </div>
   );
@@ -428,6 +518,7 @@ function TechnicianRow({
             <span className="text-sm font-bold text-gray-900">{app.name}</span>
             <span className="text-xs font-semibold text-blue-700">{app.specialization}</span>
             <StatusBadge status={app.status} />
+            {app.emailUnconfirmed && <EmailUnconfirmedBadge />}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <MetaLine icon={Mail}>{app.email}</MetaLine>
@@ -463,7 +554,7 @@ function TechnicianRow({
             </div>
           )}
         </div>
-        <ActionRow status={app.status} acting={acting} onApprove={onApprove} onReject={onReject} />
+        <ActionRow status={app.status} acting={acting} emailUnconfirmed={app.emailUnconfirmed} onApprove={onApprove} onReject={onReject} />
       </div>
     </div>
   );
@@ -488,6 +579,7 @@ function SupplierRow({
             <span className="text-sm font-bold text-gray-900">{app.companyName}</span>
             <span className="text-xs font-semibold text-amber-700">{app.supplierType}</span>
             <StatusBadge status={app.status} />
+            {app.emailUnconfirmed && <EmailUnconfirmedBadge />}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <MetaLine icon={Mail}>{app.email}</MetaLine>
@@ -516,7 +608,58 @@ function SupplierRow({
             </div>
           )}
         </div>
-        <ActionRow status={app.status} acting={acting} onApprove={onApprove} onReject={onReject} />
+        <ActionRow status={app.status} acting={acting} emailUnconfirmed={app.emailUnconfirmed} onApprove={onApprove} onReject={onReject} />
+      </div>
+    </div>
+  );
+}
+
+function ProfessionalRow({
+  app,
+  acting,
+  onApprove,
+  onReject,
+}: {
+  app: RegistrationApplication;
+  acting: boolean;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
+  const details = app.details ?? {};
+  const services = Array.isArray(details.servicesOffered) ? (details.servicesOffered as string[]) : [];
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2 min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-bold text-gray-900">
+              {app.firstName} {app.lastName}
+            </span>
+            <span className="text-xs font-semibold text-violet-700">{APPLICANT_ROLES[app.role].label}</span>
+            <StatusBadge status={app.status} />
+            {app.emailUnconfirmed && <EmailUnconfirmedBadge />}
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <MetaLine icon={Mail}>{app.email}</MetaLine>
+            <MetaLine icon={Phone}>{app.phone}</MetaLine>
+            {app.organisation && <MetaLine icon={Building2}>{app.organisation}</MetaLine>}
+          </div>
+          <p className="text-xs text-gray-500">{app.region}</p>
+          <p className="whitespace-pre-line text-sm leading-6 text-gray-700">{app.experienceSummary}</p>
+          {app.role === 'contractor' && (
+            <p className="text-xs text-gray-500">
+              {String(details.tradeSpecialization ?? '')} • {String(details.yearsInOperation ?? '')} • Team {String(details.teamSize ?? '')} • Safety certification: {String(details.hasSafetyCertification ?? '')}
+              {services.length > 0 ? ` • Services: ${services.join(', ')}` : ''}
+            </p>
+          )}
+          <p className="text-[11px] text-gray-400">Submitted {formatDate(app.submittedAt)}</p>
+          {app.reviewNote && app.status === 'rejected' && (
+            <div className="mt-1 border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+              <span className="font-semibold">Reason:</span> {app.reviewNote}
+            </div>
+          )}
+        </div>
+        <ActionRow status={app.status} acting={acting} emailUnconfirmed={app.emailUnconfirmed} onApprove={onApprove} onReject={onReject} />
       </div>
     </div>
   );

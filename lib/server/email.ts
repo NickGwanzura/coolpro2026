@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { SITE_URL } from '@/lib/site-url';
+import { APPLICANT_ROLES, isApplicantRole } from '@/lib/application-roles';
 
 const FROM_ADDRESS = process.env.EMAIL_FROM ?? 'NOU / HEVACRAZ <noreply@zimhvacregistry.org>';
 const CONTACT_TO_ADDRESS = process.env.CONTACT_TO_EMAIL ?? 'info@hevacraz.co.zw';
@@ -61,6 +62,47 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+interface OutgoingEmail {
+  to: string;
+  subject: string;
+  html: string;
+  /** Short name used in server logs, for example "verification". */
+  label: string;
+}
+
+/**
+ * Single place that sends an email through Resend. Never throws: a missing API key or a failed
+ * send is reported as { sent: false } so the caller (an approval, a signup) is never blocked by
+ * email trouble. Recipient addresses are not written to logs.
+ */
+async function deliver(email: OutgoingEmail): Promise<{ sent: boolean }> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn(`[email] RESEND_API_KEY not set — ${email.label} email not sent.`);
+    return { sent: false };
+  }
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: email.to,
+      subject: email.subject,
+      html: email.html,
+    });
+    if (error) {
+      console.error(`[email] Resend rejected ${email.label} email:`, error.message);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error(`[email] Failed to send ${email.label} email:`, err instanceof Error ? err.message : err);
+    return { sent: false };
+  }
+}
+
+function roleInfo(role: string | undefined) {
+  return role && isApplicantRole(role) ? APPLICANT_ROLES[role] : null;
 }
 
 function inviteEmailHtml(input: { inviteUrl: string; role: string; invitedBy: string }): string {
@@ -133,25 +175,33 @@ function approvalEmailHtml(input: {
   loginUrl: string;
 }): string {
   const name = escapeHtml(input.name);
-  const role = escapeHtml(input.role.replace('_', ' '));
+  const info = roleInfo(input.role);
+  const roleLabel = escapeHtml(info ? info.label.toLowerCase() : input.role.replace('_', ' '));
   const loginUrl = escapeHtml(input.loginUrl);
+  const steps = info
+    ? `<p style="color: ${BRAND.ink}; font-size: 14px; font-weight: 700; margin: 18px 0 6px;">What you can do now</p>
+       <ul style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0; padding-left: 20px;">
+         ${info.afterApproval.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}
+       </ul>`
+    : '';
 
   return emailShell(`
     <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Application update</p>
-    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Application approved</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">You're approved</p>
     <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
       Hi ${name}, your application to join HEVACRAZ / National Ozone Unit Zimbabwe
-      as a <strong>${role}</strong> has been approved.
+      as ${info ? escapeHtml(info.withArticle) : `a <strong>${roleLabel}</strong>`} has been approved.
     </p>
     <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 12px 0 0;">
-      You can now log in using the email and password you submitted with your application.
+      Log in with the email address and password you chose when you applied.
     </p>
     <a href="${loginUrl}"
        style="display: inline-block; margin-top: 18px; background: ${BRAND.amber}; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 22px; border-radius: 4px;">
       Log in now
     </a>
+    ${steps}
     <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
-      If you didn't apply for this account, you can ignore this email.
+      Forgotten your password? Use "Forgot password" on the login page. If you didn't apply for this account, you can ignore this email.
     </p>
   `, 'Your NOU / HEVACRAZ application has been approved.');
 }
@@ -165,32 +215,13 @@ export async function sendApprovalEmail(input: {
   name: string;
   role: string;
 }): Promise<{ sent: boolean }> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.log('[email] RESEND_API_KEY not set — approval email not sent:', input.email);
-    return { sent: false };
-  }
-
   const loginUrl = `${SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/login`;
-
-  try {
-    const { error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: input.email,
-      subject: 'Your NOU / HEVACRAZ ' + input.role.replace('_', ' ') + ' application has been approved',
-      html: approvalEmailHtml({ ...input, loginUrl }),
-    });
-
-    if (error) {
-      console.error('[email] Resend rejected approval email:', error.message);
-      return { sent: false };
-    }
-
-    return { sent: true };
-  } catch (err) {
-    console.error('[email] Failed to send approval email:', err instanceof Error ? err.message : err);
-    return { sent: false };
-  }
+  return deliver({
+    to: input.email,
+    subject: 'Your NOU / HEVACRAZ ' + (roleInfo(input.role)?.label ?? input.role.replace('_', ' ')).toLowerCase() + ' application has been approved',
+    html: approvalEmailHtml({ ...input, loginUrl }),
+    label: 'approval',
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -220,30 +251,12 @@ export async function sendAdminNoticeEmail(input: {
   message: string;
   action?: string;
 }): Promise<{ sent: boolean }> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.log('[email] RESEND_API_KEY not set — admin notice not sent:', input.email);
-    return { sent: false };
-  }
-
-  try {
-    const { error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: input.email,
-      subject: `NOU / HEVACRAZ update: ${input.title}`,
-      html: adminNoticeEmailHtml(input),
-    });
-
-    if (error) {
-      console.error('[email] Resend rejected admin notice:', error.message);
-      return { sent: false };
-    }
-
-    return { sent: true };
-  } catch (err) {
-    console.error('[email] Failed to send admin notice:', err instanceof Error ? err.message : err);
-    return { sent: false };
-  }
+  return deliver({
+    to: input.email,
+    subject: `NOU / HEVACRAZ update: ${input.title}`,
+    html: adminNoticeEmailHtml(input),
+    label: 'admin-notice',
+  });
 }
 
 function platformUpdateEmailHtml(input: {
@@ -354,47 +367,81 @@ function contactConfirmationHtml(input: {
 // Technician application lifecycle emails
 // ---------------------------------------------------------------------------
 
-function applicationReceivedEmailHtml(input: { name: string }): string {
+function applicationReceivedEmailHtml(input: { name: string; role?: string }): string {
   const name = escapeHtml(input.name);
+  const info = roleInfo(input.role ?? 'technician');
+  const who = info ? escapeHtml(info.withArticle) : 'a member';
+  const focus = info ? escapeHtml(info.reviewFocus) : 'your details';
+  const time = info ? escapeHtml(info.reviewTime) : 'a few working days';
   return emailShell(`
     <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Application received</p>
     <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Thanks, ${name}</p>
     <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
-      Your technician registration application has been received and is now in the HEVACRAZ
-      review queue. We'll email you as soon as a decision has been made.
+      Your application to join as ${who} is now in the HEVACRAZ review queue. We are checking ${focus}.
     </p>
-  `, 'Your HEVACRAZ technician application has been received.');
+    <div style="margin-top: 18px; background: ${BRAND.soft}; border: 1px solid ${BRAND.line}; padding: 14px 16px; font-size: 14px; color: ${BRAND.ink}; line-height: 1.6;">
+      <strong>What happens next</strong><br />
+      A reviewer will look at your application, usually within ${time}. We'll email you as soon as a decision is made. You don't need to do anything else.
+    </div>
+    <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
+      Questions? Email info@hevacraz.co.zw.
+    </p>
+  `, 'Your NOU / HEVACRAZ application has been received.');
 }
 
-/** Sent to an applicant immediately after they submit a technician application. */
-export async function sendApplicationReceivedEmail(input: { email: string; name: string }): Promise<{ sent: boolean }> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.log('[email] RESEND_API_KEY not set — application-received email not sent:', input.email);
-    return { sent: false };
-  }
+/** Sent to an applicant once their email address is confirmed and their application is in review. */
+export async function sendApplicationReceivedEmail(input: { email: string; name: string; role?: string }): Promise<{ sent: boolean }> {
+  const label = roleInfo(input.role ?? 'technician')?.label.toLowerCase() ?? 'registry';
+  return deliver({
+    to: input.email,
+    subject: `NOU / HEVACRAZ received your ${label} application`,
+    html: applicationReceivedEmailHtml(input),
+    label: 'application-received',
+  });
+}
 
-  try {
-    const { error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: input.email,
-      subject: 'NOU / HEVACRAZ received your technician application',
-      html: applicationReceivedEmailHtml(input),
-    });
-    if (error) {
-      console.error('[email] Resend rejected application-received email:', error.message);
-      return { sent: false };
-    }
-    return { sent: true };
-  } catch (err) {
-    console.error('[email] Failed to send application-received email:', err instanceof Error ? err.message : err);
-    return { sent: false };
-  }
+function verificationEmailHtml(input: { name: string; role: string; verifyUrl: string; hours: number }): string {
+  const name = escapeHtml(input.name);
+  const info = roleInfo(input.role);
+  const who = info ? escapeHtml(info.withArticle) : 'a member';
+  const verifyUrl = escapeHtml(input.verifyUrl);
+  return emailShell(`
+    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">One more step</p>
+    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Confirm your email address</p>
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
+      Hi ${name}, thanks for applying to join HEVACRAZ / National Ozone Unit Zimbabwe as ${who}.
+      Please confirm this email address so we can start reviewing your application.
+    </p>
+    <a href="${verifyUrl}"
+       style="display: inline-block; margin-top: 18px; background: ${BRAND.amber}; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 22px; border-radius: 4px;">
+      Confirm my email
+    </a>
+    <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
+      This link works for ${input.hours} hours. Your application is not reviewed until you confirm.
+      If you didn't apply, you can ignore this email and nothing will happen.
+    </p>
+  `, 'Confirm your email to start your NOU / HEVACRAZ application review.');
+}
+
+/** Sent right after someone submits a self-registration, asking them to confirm their address. */
+export async function sendVerificationEmail(input: {
+  email: string;
+  name: string;
+  role: string;
+  verifyUrl: string;
+  hours: number;
+}): Promise<{ sent: boolean }> {
+  return deliver({
+    to: input.email,
+    subject: 'Confirm your email for your NOU / HEVACRAZ application',
+    html: verificationEmailHtml(input),
+    label: 'verification',
+  });
 }
 
 function applicationRejectedEmailHtml(input: { name: string; role?: string; applicantMessage?: string }): string {
   const name = escapeHtml(input.name);
-  const role = escapeHtml(input.role?.replace('_', ' ') ?? 'application');
+  const role = escapeHtml(roleInfo(input.role)?.label.toLowerCase() ?? input.role?.replace('_', ' ') ?? 'application');
   const message = input.applicantMessage ? escapeHtml(input.applicantMessage) : null;
   return emailShell(`
     <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Application update</p>
@@ -403,6 +450,9 @@ function applicationRejectedEmailHtml(input: { name: string; role?: string; appl
       Hi ${name}, your HEVACRAZ / National Ozone Unit Zimbabwe ${role} application was not approved at this time.
     </p>
     ${message ? `<div style="margin-top: 18px; border-left: 3px solid ${BRAND.amber}; background: ${BRAND.soft}; padding: 12px 14px; color: ${BRAND.ink}; font-size: 14px; line-height: 1.6;">${message}</div>` : ''}
+    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 16px 0 0;">
+      You are welcome to apply again once you have addressed the points above.
+    </p>
     <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
       If you have questions, contact HEVACRAZ at info@hevacraz.co.zw.
     </p>
@@ -420,28 +470,12 @@ export async function sendApplicationRejectedEmail(input: {
   role?: string;
   applicantMessage?: string;
 }): Promise<{ sent: boolean }> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.log('[email] RESEND_API_KEY not set — rejection email not sent:', input.email);
-    return { sent: false };
-  }
-
-  try {
-    const { error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: input.email,
-      subject: 'Update on your NOU / HEVACRAZ ' + (input.role?.replace('_', ' ') ?? '') + ' application',
-      html: applicationRejectedEmailHtml(input),
-    });
-    if (error) {
-      console.error('[email] Resend rejected rejection email:', error.message);
-      return { sent: false };
-    }
-    return { sent: true };
-  } catch (err) {
-    console.error('[email] Failed to send rejection email:', err instanceof Error ? err.message : err);
-    return { sent: false };
-  }
+  return deliver({
+    to: input.email,
+    subject: 'Update on your NOU / HEVACRAZ ' + (roleInfo(input.role)?.label.toLowerCase() ?? input.role?.replace('_', ' ') ?? '') + ' application',
+    html: applicationRejectedEmailHtml(input),
+    label: 'rejection',
+  });
 }
 
 function membershipConfirmationEmailHtml(input: { name: string; membershipNumber: string; expiryDate: string }): string {
