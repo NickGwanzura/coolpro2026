@@ -35,7 +35,7 @@ function toTechnician(row: typeof technicians.$inferSelect, includeSensitive = f
 export async function GET(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
+    session = await requireRole(req, ['technician', 'contractor', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

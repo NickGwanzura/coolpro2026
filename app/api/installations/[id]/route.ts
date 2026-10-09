@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { installations } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { Installation } from '@/types/index';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 function toInstallation(row: typeof installations.$inferSelect): Installation {
   return {
@@ -33,7 +34,7 @@ export async function PATCH(
 ) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'org_admin']);
+    session = await requireRole(req, ['technician', 'contractor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -50,16 +51,16 @@ export async function PATCH(
     return NextResponse.json({ error: 'Installation not found' }, { status: 404 });
   }
 
-  if (session.role === 'technician' && existing.technicianId !== session.id) {
+  if (isFieldWorkerRole(session.role) && existing.technicianId !== session.id) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
   }
   if (session.role !== 'org_admin' && (body.cocApproved !== undefined || body.cocApprovalDate !== undefined)) {
     return NextResponse.json({ error: 'Only administrators can approve a certificate of compliance.' }, { status: 403 });
   }
-  if (session.role === 'technician' && body.status && body.status !== existing.status) {
+  if (isFieldWorkerRole(session.role) && body.status && body.status !== existing.status) {
     return NextResponse.json({ error: 'Technicians cannot change installation review status.' }, { status: 403 });
   }
-  if (session.role === 'technician' && body.cocRequested === false && existing.cocRequested) {
+  if (isFieldWorkerRole(session.role) && body.cocRequested === false && existing.cocRequested) {
     return NextResponse.json({ error: 'Submitted COC requests cannot be withdrawn here.' }, { status: 409 });
   }
   if (session.role === 'org_admin' && body.cocApproved && !existing.cocRequested) {

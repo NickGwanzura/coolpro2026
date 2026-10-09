@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, Award, BookOpen, CheckCircle2, ClipboardCheck, Clock3 } from 'lucide-react';
 import { useCourses, useExamSubmissions, type ExamSubmission } from '@/lib/platformStore';
 import type { UserSession } from '@/lib/session-types';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 function formatDate(iso: string) {
   return new Intl.DateTimeFormat('en-ZW', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso));
@@ -93,7 +94,7 @@ export default function LearnerDashboard({ session }: { session: UserSession }) 
             <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden="true" />
           </div>
           <p className="mt-2 text-sm leading-6 text-gray-600">Complete the curriculum, submit an assessment, and follow up with your trainer when your result is ready.</p>
-          {session.role === 'technician' && (
+          {isFieldWorkerRole(session.role) && (
             <Link href="/certifications" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
               View certifications <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>

@@ -5,11 +5,12 @@ import { courses } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { ManagedCourse } from '@/lib/platformStore';
 import { toManagedCourse, validateCourseBasics, validateCourseModules } from './course-validation';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 export async function GET(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['lecturer', 'trainer', 'org_admin', 'student', 'technician']);
+    session = await requireRole(req, ['lecturer', 'trainer', 'org_admin', 'student', 'technician', 'contractor']);
   } catch (e) {
     return e as Response;
   }
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
 
   if (session.role === 'lecturer' || session.role === 'trainer') {
     rows = await db.select().from(courses).where(eq(courses.lecturerId, session.id));
-  } else if (session.role === 'student' || session.role === 'technician') {
+  } else if (session.role === 'student' || isFieldWorkerRole(session.role)) {
     rows = await db.select().from(courses).where(eq(courses.status, 'approved'));
   } else {
     rows = await db.select().from(courses);

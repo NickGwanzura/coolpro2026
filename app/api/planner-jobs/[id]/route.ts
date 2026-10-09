@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { plannerJobs } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { PlannerJob } from '@/types/index';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 function toPlannerJob(row: typeof plannerJobs.$inferSelect): PlannerJob {
   return {
@@ -36,7 +37,7 @@ export async function PATCH(
 ) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'org_admin']);
+    session = await requireRole(req, ['technician', 'contractor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -64,7 +65,7 @@ export async function PATCH(
     }
 
     // Technicians can only update their own jobs
-    if (session.role === 'technician' && existing.technicianId !== session.id) {
+    if (isFieldWorkerRole(session.role) && existing.technicianId !== session.id) {
       return NextResponse.json({ error: 'Not authorized to update this job' }, { status: 403 });
     }
 

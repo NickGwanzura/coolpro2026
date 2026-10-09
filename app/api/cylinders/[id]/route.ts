@@ -8,7 +8,7 @@ import type { Cylinder } from '@/types/index';
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'vendor', 'org_admin']);
+    session = await requireRole(req, ['technician', 'contractor', 'vendor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

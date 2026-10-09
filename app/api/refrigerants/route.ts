@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/server/auth';
 import { searchRefrigerants, type RefrigerantFilters } from '@/lib/whatgas/service';
 
-const ALL_ROLES = ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'];
+const ALL_ROLES = ['technician', 'contractor', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'];
 const MAX_PAGE_SIZE = 100;
 
 function parseBool(value: string | null): boolean | undefined {

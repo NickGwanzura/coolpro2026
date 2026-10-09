@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { reclamationRecords } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { ReclamationRecord, ReclamationStatus } from '@/types/index';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 function toReclamationRecord(row: typeof reclamationRecords.$inferSelect): ReclamationRecord {
   return {
@@ -31,7 +32,7 @@ export async function PATCH(
 ) {
   let session;
   try {
-    session = await requireRole(req, ['org_admin', 'technician']);
+    session = await requireRole(req, ['org_admin', 'technician', 'contractor']);
   } catch (e) {
     return e as Response;
   }
@@ -48,7 +49,7 @@ export async function PATCH(
   if (!existing) {
     return NextResponse.json({ error: 'Reclamation record not found' }, { status: 404 });
   }
-  if (session.role === 'technician' && existing.technicianId !== session.id) {
+  if (isFieldWorkerRole(session.role) && existing.technicianId !== session.id) {
     return NextResponse.json({ error: 'Not authorized to modify this reclamation record' }, { status: 403 });
   }
 

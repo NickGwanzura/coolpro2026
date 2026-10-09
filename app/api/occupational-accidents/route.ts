@@ -5,7 +5,7 @@ import { occupationalAccidents } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { OccupationalAccident } from '@/types/index';
 
-const REPORTER_ROLES = ['technician', 'trainer', 'lecturer', 'student', 'org_admin'];
+const REPORTER_ROLES = ['technician', 'contractor', 'trainer', 'lecturer', 'student', 'org_admin'];
 const VALID_SEVERITIES = ['Critical', 'High', 'Medium', 'Low'] as const;
 
 function cleanText(value: unknown) {

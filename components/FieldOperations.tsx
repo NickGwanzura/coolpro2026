@@ -240,7 +240,7 @@ export default function FieldOperations() {
     const { data: equipment = [] } = useEquipmentRecords();
     const { data: jobs = [] } = usePlannerJobs();
 
-    if (!session || !['technician', 'org_admin'].includes(session.role)) {
+    if (!session || !['technician', 'contractor', 'org_admin'].includes(session.role)) {
         return (
             <div className="mx-auto max-w-3xl rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
                 <div className="flex items-start gap-4">
