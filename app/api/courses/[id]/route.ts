@@ -46,16 +46,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Can only edit draft or rejected courses' }, { status: 409 });
   }
 
-  const body = await req.json().catch(() => ({})) as Partial<Pick<ManagedCourse, 'title' | 'description' | 'modules'>>;
+  const body = await req.json().catch(() => ({})) as Partial<Pick<ManagedCourse, 'title' | 'description' | 'modules' | 'passMark' | 'cpdCredits'>>;
   const patch: Partial<typeof courses.$inferInsert> = { updatedAt: new Date() };
-  if (body.title !== undefined || body.description !== undefined) {
+  if (body.title !== undefined || body.description !== undefined || body.passMark !== undefined || body.cpdCredits !== undefined) {
     const basics = validateCourseBasics({
       title: body.title ?? row.title,
       description: body.description ?? row.description,
+      passMark: body.passMark,
+      cpdCredits: body.cpdCredits,
     });
     if (basics.error) return NextResponse.json({ error: basics.error }, { status: 400 });
     patch.title = basics.title;
     patch.description = basics.description;
+    if (basics.passMark !== undefined) patch.passMark = basics.passMark;
+    if (basics.cpdCredits !== undefined) patch.cpdCredits = basics.cpdCredits;
   }
   if (body.modules !== undefined) {
     const modulesResult = validateCourseModules(body.modules, id);

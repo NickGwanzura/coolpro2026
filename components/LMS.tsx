@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { BookOpen, CheckCircle2, ChevronDown, ChevronUp, Clock, Download, FileText } from 'lucide-react';
-import { useCourses, getCourseMaterialDownloadUrl, type ManagedCourse } from '@/lib/platformStore';
+import { useCourses, getCourseMaterialDownloadUrl, enrollInCourse, type ManagedCourse } from '@/lib/platformStore';
 
 function totalMinutes(course: ManagedCourse) {
   return course.modules.reduce((sum, m) => sum + m.minutes, 0);
@@ -67,7 +67,15 @@ function CourseCard({ course }: { course: ManagedCourse }) {
     window.localStorage.setItem(progressKey(course.id), JSON.stringify(nextProgress));
   }
 
-  function handleStartCourse() {
+  async function handleStartCourse() {
+    setError('');
+    try {
+      // Enrolment unlocks the course materials and its exam.
+      await enrollInCourse(course.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not enrol in this course');
+      return;
+    }
     saveProgress(true, completedModules);
     setExpanded(true);
   }
@@ -110,6 +118,7 @@ function CourseCard({ course }: { course: ManagedCourse }) {
             <Clock className="h-4 w-4 text-gray-400" aria-hidden="true" />
             {formatDuration(totalMinutes(course))}
           </span>
+          <span>Pass mark {course.passMark}%</span>
         </div>
 
         <div className="mb-4 rounded-lg bg-gray-50 px-3 py-2.5" aria-label={`${completedModules.length} of ${course.modules.length} modules completed`}>
@@ -141,6 +150,8 @@ function CourseCard({ course }: { course: ManagedCourse }) {
             {expanded ? 'Hide curriculum' : 'View curriculum'}
           </button>
         </div>
+
+        {!expanded && error && <p role="alert" className="mt-3 text-xs text-red-600">{error}</p>}
 
         {expanded && (
           <div id={curriculumId} className="mt-4 space-y-2" aria-label={`${course.title} curriculum`}>

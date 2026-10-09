@@ -6,6 +6,7 @@ import { trainerCertificateRequests } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { recordAuditEvent } from '@/lib/server/audit';
 import { toTrainerCertificateRequest } from '@/lib/server/request-serializers';
+import { DEFAULT_CPD_CREDITS } from '@/lib/server/lms-validation';
 
 function generateCertificateNumber() {
   return `HEV-${randomBytes(12).toString('hex').toUpperCase()}`;
@@ -41,7 +42,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       issuedAt: new Date(),
       certificateNumber: existing.certificateNumber ?? generateCertificateNumber(),
       verificationToken: existing.verificationToken ?? generateVerificationToken(),
-      cpdCredits: existing.cpdCredits ?? 12,
+      cpdCredits: existing.cpdCredits ?? DEFAULT_CPD_CREDITS,
     })
     .where(eq(trainerCertificateRequests.id, id))
     .returning();

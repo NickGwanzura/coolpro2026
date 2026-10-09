@@ -37,7 +37,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!sub) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const [course] = await db
-    .select({ lecturerId: courses.lecturerId })
+    .select({ lecturerId: courses.lecturerId, passMark: courses.passMark })
     .from(courses)
     .where(eq(courses.id, sub.courseId))
     .limit(1);
@@ -45,7 +45,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const grade = validateGrade(await req.json().catch(() => null));
+  const grade = validateGrade(await req.json().catch(() => null), course.passMark);
   if (!grade.ok) return NextResponse.json({ error: grade.error }, { status: 400 });
   const { score, passed, feedback } = grade.value;
 

@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     return e as Response;
   }
 
-  const body = await req.json().catch(() => ({})) as Omit<ManagedCourse, 'id' | 'status' | 'createdAt' | 'updatedAt'>;
+  const body = await req.json().catch(() => ({})) as Omit<ManagedCourse, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'passMark' | 'cpdCredits'> & { passMark?: number; cpdCredits?: number };
   const basics = validateCourseBasics(body);
   if (basics.error) return NextResponse.json({ error: basics.error }, { status: 400 });
   const modulesResult = validateCourseModules(body.modules);
@@ -52,6 +52,8 @@ export async function POST(req: Request) {
       title: basics.title!,
       description: basics.description!,
       modules: modulesResult.modules!,
+      ...(basics.passMark !== undefined ? { passMark: basics.passMark } : {}),
+      ...(basics.cpdCredits !== undefined ? { cpdCredits: basics.cpdCredits } : {}),
       status: 'draft',
       createdAt: now,
       updatedAt: now,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { courses } from '@/db/schema/index';
+import { courses, courseEnrollments } from '@/db/schema/index';
 import { readSessionFromRequest } from '@/lib/server/auth';
 import { isFieldWorkerRole } from '@/lib/field-worker';
 import { createMaterialDownloadUrl } from '@/lib/server/r2';
@@ -20,6 +20,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const isLearner = (session.role === 'student' || isFieldWorkerRole(session.role)) && row.status === 'approved';
   if (!isOwner && !isAdmin && !isLearner) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  if (isLearner) {
+    const [enrollment] = await db
+      .select({ id: courseEnrollments.id })
+      .from(courseEnrollments)
+      .where(and(eq(courseEnrollments.courseId, id), eq(courseEnrollments.userId, session.id)))
+      .limit(1);
+    if (!enrollment) {
+      return NextResponse.json({ error: 'Enrol in this course to download its materials.' }, { status: 403 });
+    }
   }
 
   const body = await req.json().catch(() => ({})) as { r2Key?: string };

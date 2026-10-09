@@ -53,6 +53,8 @@ export interface ManagedCourse {
     modules: CourseModule[];
     status: CourseStatus;
     rejectionReason?: string;
+    passMark: number;
+    cpdCredits: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -178,6 +180,8 @@ export {
     approveCourse,
     rejectCourse,
     unpublishCourse,
+    enrollInCourse,
+    useEnrollments,
     uploadCourseMaterial,
     getCourseMaterialDownloadUrl,
 } from '@/lib/api';
@@ -193,7 +197,7 @@ import { gradeExamSubmission as _gradeExamSubmission } from '@/lib/api';
 export function gradeExamSubmission(
     id: string,
     score: number,
-    passed: boolean,
+    passed: boolean | undefined,
     feedback: string
 ): Promise<ExamSubmission> {
     return _gradeExamSubmission(id, { score, passed, feedback });

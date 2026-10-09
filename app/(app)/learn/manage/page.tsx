@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import {
     useCourses,
+    useCourse,
     useExamSubmissions,
     createCourse,
     updateCourse,
@@ -251,6 +252,8 @@ function CoursePanel({
     const [mode] = useState<EditorMode>(isLocked ? 'view' : 'edit');
     const [title, setTitle] = useState(course.title);
     const [description, setDescription] = useState(course.description);
+    const [passMark, setPassMark] = useState(String(course.passMark));
+    const [cpdCredits, setCpdCredits] = useState(String(course.cpdCredits));
     const [modules, setModules] = useState<CourseModule[]>(course.modules);
     const [notice, setNotice] = useState('');
     const [saving, setSaving] = useState(false);
@@ -288,7 +291,7 @@ function CoursePanel({
         if (moduleError) { setNotice(moduleError); return; }
         try {
             setSaving(true);
-            const updated = await updateCourse(course.id, { title: title.trim(), description: description.trim(), modules });
+            const updated = await updateCourse(course.id, { title: title.trim(), description: description.trim(), passMark: Number(passMark), cpdCredits: Number(cpdCredits), modules });
             onSaved(updated);
             setNotice('Draft saved.');
         } catch (err) {
@@ -380,6 +383,14 @@ function CoursePanel({
                     />
                 </div>
 
+                <CourseSettingsFields
+                    passMark={passMark}
+                    cpdCredits={cpdCredits}
+                    disabled={readOnly}
+                    onPassMarkChange={setPassMark}
+                    onCpdCreditsChange={setCpdCredits}
+                />
+
                 <div className="space-y-3">
                     <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Modules ({modules.length})</label>
                     {modules.map((mod, i) => (
@@ -439,6 +450,40 @@ function CoursePanel({
 }
 
 // ---------------------------------------------------------------------------
+// Pass mark and CPD credits (shared by the create and edit forms)
+// ---------------------------------------------------------------------------
+
+function CourseSettingsFields({
+    passMark,
+    cpdCredits,
+    disabled,
+    onPassMarkChange,
+    onCpdCreditsChange,
+}: {
+    passMark: string;
+    cpdCredits: string;
+    disabled?: boolean;
+    onPassMarkChange: (value: string) => void;
+    onCpdCreditsChange: (value: string) => void;
+}) {
+    const inputClass = 'w-full border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg';
+    return (
+        <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Pass mark (%)</label>
+                <input type="number" min="1" max="100" step="1" disabled={disabled} value={passMark} onChange={e => onPassMarkChange(e.target.value)} className={inputClass} />
+                <p className="text-xs text-gray-500">Learners need at least this score to pass the exam.</p>
+            </div>
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">CPD credits</label>
+                <input type="number" min="0" max="100" step="1" disabled={disabled} value={cpdCredits} onChange={e => onCpdCreditsChange(e.target.value)} className={inputClass} />
+                <p className="text-xs text-gray-500">Credits shown on certificates issued for this course.</p>
+            </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Exam grading panel
 // ---------------------------------------------------------------------------
 
@@ -452,7 +497,10 @@ function GradePanel({
     onGraded: (updated: ExamSubmission) => void;
 }) {
     const [score, setScore] = useState(submission.score ?? 0);
-    const [passed, setPassed] = useState(submission.passed ?? false);
+    const { data: course } = useCourse(submission.courseId);
+    const passMark = course?.passMark ?? 70;
+    // The result follows the course pass mark; the server applies the same rule.
+    const passed = score >= passMark;
     const [feedback, setFeedback] = useState(submission.feedback ?? '');
     const [notice, setNotice] = useState('');
     const [saving, setSaving] = useState(false);
@@ -508,29 +556,10 @@ function GradePanel({
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Result</label>
-                        <div className="flex gap-4 pt-1">
-                            <label className="inline-flex items-center gap-2 text-sm">
-                                <input
-                                    type="radio"
-                                    disabled={alreadyGraded}
-                                    checked={passed}
-                                    onChange={() => setPassed(true)}
-                                    className="h-4 w-4 cursor-pointer text-blue-600"
-                                />
-                                Pass
-                            </label>
-                            <label className="inline-flex items-center gap-2 text-sm">
-                                <input
-                                    type="radio"
-                                    disabled={alreadyGraded}
-                                    checked={!passed}
-                                    onChange={() => setPassed(false)}
-                                    className="h-4 w-4 cursor-pointer text-blue-600"
-                                />
-                                Fail
-                            </label>
-                        </div>
+                        <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Result (pass mark {passMark}%)</label>
+                        <p className={`inline-block rounded-full px-3 py-1 text-sm font-semibold ${passed ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                            {passed ? 'Pass' : 'Fail'}
+                        </p>
                     </div>
                 </div>
 
@@ -582,6 +611,8 @@ function CreateCourseForm({
 }) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const [passMark, setPassMark] = useState('70');
+    const [cpdCredits, setCpdCredits] = useState('12');
     const [modules, setModules] = useState<CourseModule[]>([{ title: '', content: '', minutes: 30 }]);
     const [selectedFilesByModule, setSelectedFilesByModule] = useState<Record<number, File[]>>({});
     const [step, setStep] = useState(1);
@@ -670,7 +701,7 @@ function CreateCourseForm({
                 content: mod.content.trim(),
                 minutes: mod.minutes || 30,
             }));
-            const course = await createCourse({ lecturerId, lecturerName, title: title.trim(), description: description.trim(), modules: draftModules });
+            const course = await createCourse({ lecturerId, lecturerName, title: title.trim(), description: description.trim(), passMark: Number(passMark), cpdCredits: Number(cpdCredits), modules: draftModules });
 
             if (selectedFileCount === 0) {
                 onCreated(course);
@@ -747,6 +778,7 @@ function CreateCourseForm({
                             <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500" htmlFor="new-course-description">Description</label>
                             <textarea id="new-course-description" value={description} onChange={e => setDescription(e.target.value)} rows={5} placeholder="Course objectives and overview" className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
+                        <CourseSettingsFields passMark={passMark} cpdCredits={cpdCredits} onPassMarkChange={setPassMark} onCpdCreditsChange={setCpdCredits} />
                     </div>
                 )}
 

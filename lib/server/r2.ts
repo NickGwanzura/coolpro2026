@@ -59,6 +59,12 @@ export async function createMaterialDownloadUrl(key: string, fileName?: string):
   return getSignedUrl(getClient(), command, { expiresIn: DOWNLOAD_URL_TTL_SECONDS });
 }
 
+/** Reads the first `length` bytes of a stored object (a ranged read, so large files are not downloaded). */
+export async function readMaterialHead(key: string, length: number): Promise<Uint8Array> {
+  const result = await getClient().send(new GetObjectCommand({ Bucket: getBucketName(), Key: key, Range: `bytes=0-${length - 1}` }));
+  return result.Body ? await result.Body.transformToByteArray() : new Uint8Array();
+}
+
 /** Returns the stored object's size in bytes, or null when the object does not exist. */
 export async function getMaterialSize(key: string): Promise<number | null> {
   try {

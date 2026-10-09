@@ -5,6 +5,7 @@ import {
   findAttachment,
   isAllowedCourseMaterialType,
   MAX_MATERIAL_SIZE_BYTES,
+  validateCourseBasics,
   validateCourseModules,
 } from './course-validation';
 
@@ -85,5 +86,26 @@ describe('isAllowedCourseMaterialType', () => {
     expect(isAllowedCourseMaterialType('video/mp4')).toBe(true);
     expect(isAllowedCourseMaterialType('text/html')).toBe(false);
     expect(isAllowedCourseMaterialType('image/svg+xml')).toBe(false);
+  });
+});
+
+describe('validateCourseBasics', () => {
+  const base = { title: 'Refrigerant safety', description: 'Overview' };
+
+  it('leaves pass mark and CPD credits unset when omitted', () => {
+    expect(validateCourseBasics(base)).toMatchObject({ title: 'Refrigerant safety', passMark: undefined, cpdCredits: undefined });
+  });
+
+  it('accepts whole numbers in range, including numeric strings', () => {
+    expect(validateCourseBasics({ ...base, passMark: 75, cpdCredits: '8' })).toMatchObject({ passMark: 75, cpdCredits: 8 });
+    expect(validateCourseBasics({ ...base, passMark: 1, cpdCredits: 0 })).toMatchObject({ passMark: 1, cpdCredits: 0 });
+  });
+
+  it('rejects out-of-range or non-integer values', () => {
+    expect(validateCourseBasics({ ...base, passMark: 0 }).error).toMatch(/Pass mark/);
+    expect(validateCourseBasics({ ...base, passMark: 101 }).error).toMatch(/Pass mark/);
+    expect(validateCourseBasics({ ...base, passMark: 70.5 }).error).toMatch(/Pass mark/);
+    expect(validateCourseBasics({ ...base, cpdCredits: -1 }).error).toMatch(/CPD/);
+    expect(validateCourseBasics({ ...base, cpdCredits: 'lots' }).error).toMatch(/CPD/);
   });
 });

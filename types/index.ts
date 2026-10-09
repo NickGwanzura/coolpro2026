@@ -544,6 +544,8 @@ export type TrainerCertificateStatus =
 
 export interface TrainerCertificateRequest {
   id: string;
+  /** The graded LMS exam this request is based on; absent for a manually entered request. */
+  examSubmissionId?: string;
   technicianId: string;
   technicianName: string;
   technicianRegistrationNumber: string;

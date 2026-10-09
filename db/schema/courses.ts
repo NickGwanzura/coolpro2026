@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, integer, boolean, numeric, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, uuid, text, integer, boolean, numeric, jsonb, timestamp, unique } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
 export const courseStatusEnum = pgEnum('course_status', [
@@ -24,9 +24,21 @@ export const courses = pgTable('courses', {
   modules: jsonb('modules').notNull().default([]),
   status: courseStatusEnum('status').notNull().default('draft'),
   rejectionReason: text('rejection_reason'),
+  // Minimum score (0-100) a learner needs for an exam on this course to count as passed.
+  passMark: integer('pass_mark').notNull().default(70),
+  // CPD credits awarded on a certificate issued for this course.
+  cpdCredits: integer('cpd_credits').notNull().default(12),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+// A learner's enrollment in an approved course. Exams and downloads require one.
+export const courseEnrollments = pgTable('course_enrollments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  courseId: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull(),
+  enrolledAt: timestamp('enrolled_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [unique('course_enrollments_course_user_unique').on(table.courseId, table.userId)]);
 
 // Matches ExamSubmission interface
 export const examSubmissions = pgTable('exam_submissions', {

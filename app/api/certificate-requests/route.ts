@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { trainerCertificateRequests, technicians } from '@/db/schema/index';
+import { trainerCertificateRequests, technicians, examSubmissions, courses, users } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { recordAuditEvent } from '@/lib/server/audit';
 import { validateCertificateRequest } from '@/lib/server/lms-validation';
@@ -57,6 +57,7 @@ export async function POST(req: Request) {
       name: technicians.name,
       registrationNumber: technicians.registrationNumber,
       employer: technicians.employer,
+      email: technicians.email,
       status: technicians.status,
     })
     .from(technicians)
@@ -72,43 +73,84 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'A suspended technician cannot be put forward for a certificate.' }, { status: 409 });
   }
 
+  // Work out what the certificate is based on. A linked request takes its course, date, theory
+  // score and CPD credits from the graded exam; a manual one uses what the trainer entered.
+  let courseTitle = request.courseTitle;
+  let examDate = request.examDate;
+  let theoryScore = request.theoryScore ?? 0;
+  let cpdCredits: number | null = null;
+
+  if (request.examSubmissionId) {
+    const [exam] = await db
+      .select()
+      .from(examSubmissions)
+      .where(eq(examSubmissions.id, request.examSubmissionId))
+      .limit(1);
+    const [course] = exam
+      ? await db.select().from(courses).where(eq(courses.id, exam.courseId)).limit(1)
+      : [];
+    if (!exam || !course || course.lecturerId !== session.id) {
+      return NextResponse.json({ error: 'That exam was not found among your courses.' }, { status: 404 });
+    }
+    if (exam.status !== 'graded' || exam.passed !== true || exam.score === null || !exam.gradedAt) {
+      return NextResponse.json({ error: 'Only a graded, passed exam can be used for a certificate.' }, { status: 409 });
+    }
+    const [learner] = await db.select({ email: users.email }).from(users).where(eq(users.id, exam.studentId)).limit(1);
+    if (!technician.email || !learner || learner.email.toLowerCase() !== technician.email.toLowerCase()) {
+      return NextResponse.json(
+        { error: 'This exam was not taken by that technician. The registry email must match the learner account.' },
+        { status: 409 },
+      );
+    }
+    courseTitle = exam.courseTitle;
+    examDate = exam.gradedAt.toISOString().slice(0, 10);
+    theoryScore = Math.round(Number(exam.score));
+    cpdCredits = course.cpdCredits;
+  }
+
   const [duplicate] = await db
     .select({ id: trainerCertificateRequests.id })
     .from(trainerCertificateRequests)
     .where(and(
       eq(trainerCertificateRequests.technicianId, technician.id),
-      eq(trainerCertificateRequests.courseTitle, request.courseTitle),
-      eq(trainerCertificateRequests.examDate, request.examDate),
+      request.examSubmissionId
+        ? eq(trainerCertificateRequests.examSubmissionId, request.examSubmissionId)
+        : and(
+            eq(trainerCertificateRequests.courseTitle, courseTitle),
+            eq(trainerCertificateRequests.examDate, examDate),
+          ),
       inArray(trainerCertificateRequests.status, ['submitted-for-admin-approval', 'admin-approved', 'issued']),
     ))
     .limit(1);
   if (duplicate) {
-    return NextResponse.json({ error: 'A certificate request for this technician, course and exam date already exists.' }, { status: 409 });
+    return NextResponse.json({ error: 'A certificate request for this technician and exam already exists.' }, { status: 409 });
   }
 
   const [inserted] = await db
     .insert(trainerCertificateRequests)
     .values({
+      examSubmissionId: request.examSubmissionId,
       technicianId: technician.id,
       technicianName: technician.name,
       technicianRegistrationNumber: technician.registrationNumber,
       technicianCompany: technician.employer ?? 'Independent technician',
       trainerName: session.name,
       trainerEmail: session.email,
-      courseTitle: request.courseTitle,
-      examDate: request.examDate,
-      theoryScore: request.theoryScore,
+      courseTitle,
+      examDate,
+      theoryScore,
       practicalScore: request.practicalScore,
-      overallScore: Math.round((request.theoryScore + request.practicalScore) / 2),
+      overallScore: Math.round((theoryScore + request.practicalScore) / 2),
       notes: request.notes,
       status: 'submitted-for-admin-approval',
+      cpdCredits,
     })
     .returning();
 
   await recordAuditEvent({
     entityType: 'certificate_request',
     entityId: inserted.id,
-    action: 'certificate_requested',
+    action: request.examSubmissionId ? 'certificate_requested_from_exam' : 'certificate_requested_manual',
     newStatus: inserted.status,
     performedBy: session.name,
     performedByRole: session.role,

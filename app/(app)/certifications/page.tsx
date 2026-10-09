@@ -17,7 +17,7 @@ import {
 import { CertificateQRCode } from '@/components/CertificateQRCode';
 import { useAuth } from '@/lib/auth';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
-import { useTechnicians, useCertificateRequests, createCertificateRequest, reviewCertificateRequest } from '@/lib/api';
+import { useTechnicians, useCertificateRequests, createCertificateRequest, reviewCertificateRequest, useExamSubmissions } from '@/lib/api';
 import type { TrainerCertificateRequest } from '@/types/index';
 
 // ---------------------------------------------------------------------------
@@ -89,6 +89,8 @@ const EXAM_BANKS: ExamBank[] = [
 const AVAILABLE_EXAMS = EXAM_BANKS;
 
 type TrainerFormState = {
+  /** Empty means a manual entry (for example an in-person practical). */
+  examSubmissionId: string;
   technicianId: string;
   courseTitle: string;
   examDate: string;
@@ -117,6 +119,11 @@ export default function CertificationsPage() {
   const isAdminOrTrainer = isAdmin || isTrainer;
   const { data: techniciansData } = useTechnicians(undefined, isAdminOrTrainer);
   const { data: requestsData, isLoading: requestsLoading } = useCertificateRequests();
+  const { data: examSubmissionsData } = useExamSubmissions(isTrainer);
+  const passedExams = useMemo(
+    () => (examSubmissionsData ?? []).filter(exam => exam.status === 'graded' && exam.passed),
+    [examSubmissionsData],
+  );
   const [nowRef] = useState(() => Date.now());
   const [examModal, setExamModal] = useState<ExamBank | null>(null);
   const [examTaking, setExamTaking] = useState<string | null>(null);
@@ -127,6 +134,7 @@ export default function CertificationsPage() {
   const [dateFilter, setDateFilter] = useState('');
   const [notice, setNotice] = useState('');
   const [trainerForm, setTrainerForm] = useState<TrainerFormState>({
+    examSubmissionId: '',
     technicianId: '',
     courseTitle: AVAILABLE_EXAMS[0].title,
     examDate: '2026-04-05',
@@ -217,6 +225,7 @@ export default function CertificationsPage() {
         technicianName: technician.name,
         technicianRegistrationNumber: technician.registrationNumber,
         technicianCompany: technician.employer ?? 'Independent technician',
+        examSubmissionId: trainerForm.examSubmissionId || undefined,
         courseTitle: trainerForm.courseTitle,
         examDate: trainerForm.examDate,
         theoryScore,
@@ -226,6 +235,7 @@ export default function CertificationsPage() {
       setNotice(`Assessment recorded for ${technician.name} and submitted for admin approval.`);
       setTrainerForm((current) => ({
         ...current,
+        examSubmissionId: '',
         theoryScore: '78',
         practicalScore: '84',
         notes: '',
@@ -366,6 +376,9 @@ export default function CertificationsPage() {
                   <p className="mt-1 text-xs text-gray-500">
                     Trainer: {request.trainerName} · Submitted {formatDate(request.submittedAt)}
                   </p>
+                  <p className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${request.examSubmissionId ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                    {request.examSubmissionId ? 'Linked to graded exam' : 'Manual entry (not linked to an exam)'}
+                  </p>
                 </div>
                 <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
                   {request.status.replace(/-/g, ' ')}
@@ -448,7 +461,27 @@ export default function CertificationsPage() {
                 ))}
               </select>
 
+              <label className="grid gap-1 text-sm text-gray-600">
+                Based on a graded exam
+                <select
+                  value={trainerForm.examSubmissionId}
+                  onChange={(event) => setTrainerForm((current) => ({ ...current, examSubmissionId: event.target.value }))}
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-gray-900 outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Manual entry (for example an in-person practical)</option>
+                  {passedExams.map((exam) => (
+                    <option key={exam.id} value={exam.id}>
+                      {exam.studentName} · {exam.courseTitle} · {exam.score}%
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-gray-500">
+                  A linked exam supplies the course, date and theory score. The learner&apos;s email must match the technician&apos;s registry email.
+                </span>
+              </label>
+
               <select
+                disabled={trainerForm.examSubmissionId !== ''}
                 value={trainerForm.courseTitle}
                 onChange={(event) => setTrainerForm((current) => ({ ...current, courseTitle: event.target.value }))}
                 className="rounded-lg border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
@@ -461,6 +494,7 @@ export default function CertificationsPage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <input
                   type="date"
+                  disabled={trainerForm.examSubmissionId !== ''}
                   value={trainerForm.examDate}
                   onChange={(event) => setTrainerForm((current) => ({ ...current, examDate: event.target.value }))}
                   className="rounded-lg border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
@@ -469,6 +503,7 @@ export default function CertificationsPage() {
                   type="number"
                   min="0"
                   max="100"
+                  disabled={trainerForm.examSubmissionId !== ''}
                   value={trainerForm.theoryScore}
                   onChange={(event) => setTrainerForm((current) => ({ ...current, theoryScore: event.target.value }))}
                   placeholder="Theory %"

@@ -105,7 +105,8 @@ export function useCourse(id: string | undefined) {
 }
 
 export async function createCourse(
-  body: Omit<ManagedCourse, 'id' | 'status' | 'createdAt' | 'updatedAt'>
+  body: Omit<ManagedCourse, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'passMark' | 'cpdCredits'> &
+    Partial<Pick<ManagedCourse, 'passMark' | 'cpdCredits'>>
 ): Promise<ManagedCourse> {
   const result = await post<ManagedCourse>('/api/courses', body);
   await mutate('/api/courses');
@@ -114,7 +115,7 @@ export async function createCourse(
 
 export async function updateCourse(
   id: string,
-  body: Partial<Pick<ManagedCourse, 'title' | 'description' | 'modules'>>
+  body: Partial<Pick<ManagedCourse, 'title' | 'description' | 'modules' | 'passMark' | 'cpdCredits'>>
 ): Promise<ManagedCourse> {
   const result = await patch<ManagedCourse>(`/api/courses/${id}`, body);
   await mutate('/api/courses');
@@ -147,6 +148,15 @@ export async function rejectCourse(id: string, reason: string): Promise<ManagedC
   await mutate('/api/courses');
   await mutate(`/api/courses/${id}`);
   return result;
+}
+
+export async function enrollInCourse(courseId: string): Promise<void> {
+  await post(`/api/courses/${courseId}/enroll`);
+  await mutate('/api/enrollments');
+}
+
+export function useEnrollments(enabled = true) {
+  return useSWR<Array<{ courseId: string; enrolledAt: string }>>(enabled ? '/api/enrollments' : null, fetcher);
 }
 
 export async function unpublishCourse(id: string, reason: string): Promise<ManagedCourse> {
@@ -207,7 +217,7 @@ export function useExamSubmissions(enabled = true) {
 
 export async function gradeExamSubmission(
   id: string,
-  body: { score: number; passed: boolean; feedback: string }
+  body: { score: number; passed?: boolean; feedback: string }
 ): Promise<ExamSubmission> {
   const result = await post<ExamSubmission>(`/api/exam-submissions/${id}/grade`, body);
   await mutate('/api/exam-submissions');

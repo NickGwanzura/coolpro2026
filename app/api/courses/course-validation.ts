@@ -30,6 +30,8 @@ export function toManagedCourse(row: typeof courses.$inferSelect): ManagedCourse
     modules: row.modules as ManagedCourse['modules'],
     status: row.status as ManagedCourse['status'],
     rejectionReason: row.rejectionReason ?? undefined,
+    passMark: row.passMark,
+    cpdCredits: row.cpdCredits,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -131,7 +133,13 @@ export function courseReferencesMaterial(modules: unknown, r2Key: string) {
   return findAttachment(modules, r2Key) !== undefined;
 }
 
-export function validateCourseBasics(body: { title?: unknown; description?: unknown }) {
+function wholeNumberInRange(value: unknown, min: number, max: number): number | null {
+  const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() ? Number(value) : Number.NaN;
+  return Number.isInteger(n) && n >= min && n <= max ? n : null;
+}
+
+/** passMark and cpdCredits are optional on input; when present they must be whole numbers in range. */
+export function validateCourseBasics(body: { title?: unknown; description?: unknown; passMark?: unknown; cpdCredits?: unknown }) {
   const title = cleanText(body.title);
   const description = cleanText(body.description);
 
@@ -140,5 +148,18 @@ export function validateCourseBasics(body: { title?: unknown; description?: unkn
   if (title.length > 180) return { error: 'Course title must be 180 characters or fewer.' };
   if (description.length > 3000) return { error: 'Course description must be 3000 characters or fewer.' };
 
-  return { title, description };
+  let passMark: number | undefined;
+  if (body.passMark !== undefined && body.passMark !== null) {
+    const value = wholeNumberInRange(body.passMark, 1, 100);
+    if (value === null) return { error: 'Pass mark must be a whole number between 1 and 100.' };
+    passMark = value;
+  }
+  let cpdCredits: number | undefined;
+  if (body.cpdCredits !== undefined && body.cpdCredits !== null) {
+    const value = wholeNumberInRange(body.cpdCredits, 0, 100);
+    if (value === null) return { error: 'CPD credits must be a whole number between 0 and 100.' };
+    cpdCredits = value;
+  }
+
+  return { title, description, passMark, cpdCredits };
 }

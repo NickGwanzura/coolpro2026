@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateCertificateRequest, validateExamAnswers, validateGrade, MAX_EXAM_ANSWERS } from './lms-validation';
+import { validateCertificateRequest, validateExamAnswers, validateGrade, MAX_EXAM_ANSWERS, DEFAULT_PASS_MARK } from './lms-validation';
 
 describe('validateGrade', () => {
   it('accepts a valid grade and trims feedback', () => {
@@ -11,9 +11,21 @@ describe('validateGrade', () => {
     expect(validateGrade({ score, passed: true, feedback: '' }).ok).toBe(false);
   });
 
-  it('requires an explicit pass or fail', () => {
-    expect(validateGrade({ score: 50, feedback: '' }).ok).toBe(false);
-    expect(validateGrade({ score: 50, passed: 'yes' }).ok).toBe(false);
+  it('works out pass or fail from the pass mark when none is sent', () => {
+    expect(validateGrade({ score: 70 }, 70)).toMatchObject({ ok: true, value: { passed: true } });
+    expect(validateGrade({ score: 69.99 }, 70)).toMatchObject({ ok: true, value: { passed: false } });
+    expect(validateGrade({ score: 55 }, 50)).toMatchObject({ ok: true, value: { passed: true } });
+    expect(validateGrade({ score: DEFAULT_PASS_MARK })).toMatchObject({ ok: true, value: { passed: true } });
+  });
+
+  it('rejects a pass or fail that contradicts the pass mark', () => {
+    const tooLow = validateGrade({ score: 40, passed: true }, 70);
+    expect(tooLow.ok).toBe(false);
+    expect(tooLow.ok === false && tooLow.error).toMatch(/below the pass mark of 70/);
+    const tooHigh = validateGrade({ score: 90, passed: false }, 70);
+    expect(tooHigh.ok).toBe(false);
+    expect(validateGrade({ score: 90, passed: true }, 70).ok).toBe(true);
+    expect(validateGrade({ score: 50, passed: 'yes' }, 70).ok).toBe(false);
   });
 
   it('rejects overlong feedback and non-object bodies', () => {
@@ -57,6 +69,7 @@ describe('validateCertificateRequest', () => {
     expect(result).toEqual({
       ok: true,
       value: {
+        examSubmissionId: null,
         technicianId: valid.technicianId,
         technicianRegistrationNumber: 'TEC-2024-001',
         courseTitle: 'RAC Refrigerant Safety',
@@ -70,6 +83,25 @@ describe('validateCertificateRequest', () => {
 
   it('allows an exam dated today', () => {
     expect(validateCertificateRequest({ ...valid, examDate: '2026-10-09' }, today).ok).toBe(true);
+  });
+
+  it('accepts a request linked to a graded exam without course, date or theory score', () => {
+    const examId = '22222222-2222-4222-8222-222222222222';
+    const result = validateCertificateRequest(
+      { technicianId: valid.technicianId, technicianRegistrationNumber: 'TEC-1', examSubmissionId: examId, practicalScore: 90 },
+      today,
+    );
+    expect(result).toMatchObject({ ok: true, value: { examSubmissionId: examId, theoryScore: null, practicalScore: 90 } });
+  });
+
+  it('still requires a practical score and a valid id when linked', () => {
+    const base = { technicianId: valid.technicianId, technicianRegistrationNumber: 'TEC-1' };
+    expect(validateCertificateRequest({ ...base, examSubmissionId: 'not-a-uuid', practicalScore: 90 }, today).ok).toBe(false);
+    expect(validateCertificateRequest({ ...base, examSubmissionId: '22222222-2222-4222-8222-222222222222' }, today).ok).toBe(false);
+  });
+
+  it('keeps a manual request unlinked', () => {
+    expect(validateCertificateRequest(valid, today)).toMatchObject({ ok: true, value: { examSubmissionId: null } });
   });
 
   it('rejects a bad technician id, future or invalid dates', () => {

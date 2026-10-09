@@ -11,6 +11,9 @@ export const trainerCertificateStatusEnum = pgEnum('trainer_certificate_status',
 export const trainerCertificateRequests = pgTable('trainer_certificate_requests', {
   id: uuid('id').primaryKey().defaultRandom(),
   technicianId: uuid('technician_id').notNull(),
+  // The graded LMS exam this request is based on. Null means the trainer entered the scores by hand
+  // (for example an in-person practical), which the admin screen shows as a manual entry.
+  examSubmissionId: uuid('exam_submission_id'),
   technicianName: text('technician_name').notNull(),
   technicianRegistrationNumber: text('technician_registration_number').notNull(),
   technicianCompany: text('technician_company').notNull(),

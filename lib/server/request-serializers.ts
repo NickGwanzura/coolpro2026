@@ -6,6 +6,7 @@ export function toTrainerCertificateRequest(
 ): TrainerCertificateRequest {
   return {
     id: row.id,
+    examSubmissionId: row.examSubmissionId ?? undefined,
     technicianId: row.technicianId,
     technicianName: row.technicianName,
     technicianRegistrationNumber: row.technicianRegistrationNumber,
