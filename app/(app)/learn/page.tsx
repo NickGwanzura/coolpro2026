@@ -4,11 +4,12 @@ import TrainerLearningHub from '@/components/TrainerLearningHub';
 import LMS from '@/components/LMS';
 import LearnerDashboard from '@/components/LearnerDashboard';
 import { useAuth } from '@/lib/auth';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 export default function LearnPage() {
     const { user: session, isLoading } = useAuth();
     const isTrainer = session?.role === 'trainer' || session?.role === 'lecturer';
-    const isLearner = session?.role === 'student' || session?.role === 'technician';
+    const isLearner = session?.role === 'student' || isFieldWorkerRole(session?.role);
 
     if (isLoading) {
         return (

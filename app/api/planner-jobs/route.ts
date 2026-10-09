@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { plannerJobs } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { PlannerJob } from '@/types/index';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 function toPlannerJob(row: typeof plannerJobs.$inferSelect): PlannerJob {
   return {
@@ -33,13 +34,13 @@ function toPlannerJob(row: typeof plannerJobs.$inferSelect): PlannerJob {
 export async function GET(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'org_admin']);
+    session = await requireRole(req, ['technician', 'contractor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
 
   const rows =
-    session.role === 'technician'
+    isFieldWorkerRole(session.role)
       ? await db
           .select()
           .from(plannerJobs)
@@ -53,7 +54,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'org_admin']);
+    session = await requireRole(req, ['technician', 'contractor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -76,8 +77,8 @@ export async function POST(req: Request) {
   }
 
   // Technicians can only schedule jobs under their own identity.
-  const technicianId = session.role === 'technician' ? session.id : (body.technicianId ?? session.id);
-  const technicianName = session.role === 'technician' ? session.name : (body.technicianName ?? session.name);
+  const technicianId = isFieldWorkerRole(session.role) ? session.id : (body.technicianId ?? session.id);
+  const technicianName = isFieldWorkerRole(session.role) ? session.name : (body.technicianName ?? session.name);
 
   const [inserted] = await db
     .insert(plannerJobs)

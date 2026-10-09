@@ -44,6 +44,7 @@ import { CertificateRecord, JobTypeLabels, RefrigerantLog } from '@/types/index'
 import { BRAND as colors } from '@/constants/colors';
 import { rangeMsFor, type SimpleDateRange } from '@/lib/dateRange';
 import { Drilldown } from '@/components/ui/Drilldown';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 export default function DashboardPage() {
     const { user: session, isLoading } = useAuth();
@@ -60,8 +61,7 @@ export default function DashboardPage() {
         };
     }, []);
     const isAdmin = session?.role === 'org_admin';
-    const isTechnician = session?.role === 'technician';
-    const isContractor = session?.role === 'contractor';
+    const isTechnician = isFieldWorkerRole(session?.role);
     const isVendor = session?.role === 'vendor';
     const isTrainerOrLecturer = session?.role === 'trainer' || session?.role === 'lecturer';
     const isStudent = session?.role === 'student';
@@ -887,12 +887,6 @@ export default function DashboardPage() {
                             ))
                         )}
                     </div>
-                </div>
-            )}
-
-            {isContractor && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-                    Contractor reporting is not available yet. Technician-only job and refrigerant records are not shown in this account.
                 </div>
             )}
 

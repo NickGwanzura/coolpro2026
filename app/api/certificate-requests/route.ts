@@ -5,11 +5,12 @@ import { trainerCertificateRequests, technicians } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { toTrainerCertificateRequest } from '@/lib/server/request-serializers';
 import type { TrainerCertificateRequest } from '@/types/index';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 export async function GET(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['trainer', 'lecturer', 'org_admin', 'technician']);
+    session = await requireRole(req, ['trainer', 'lecturer', 'org_admin', 'technician', 'contractor']);
   } catch (e) {
     return e as Response;
   }
@@ -17,7 +18,7 @@ export async function GET(req: Request) {
   let rows;
   if (session.role === 'org_admin') {
     rows = await db.select().from(trainerCertificateRequests).orderBy(desc(trainerCertificateRequests.submittedAt));
-  } else if (session.role === 'technician') {
+  } else if (isFieldWorkerRole(session.role)) {
     const matchingTechnicians = await db.select({ id: technicians.id }).from(technicians).where(eq(technicians.email, session.email));
     const technicianIds = [session.id, ...matchingTechnicians.map((technician) => technician.id)];
     rows = await db

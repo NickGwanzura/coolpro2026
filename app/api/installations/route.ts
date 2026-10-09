@@ -49,7 +49,7 @@ function toInstallation(row: typeof installations.$inferSelect): Installation {
 export async function GET(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'org_admin']);
+    session = await requireRole(req, ['technician', 'contractor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'org_admin']);
+    session = await requireRole(req, ['technician', 'contractor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

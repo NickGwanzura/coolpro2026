@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { examSubmissions, courses } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { ExamSubmission } from '@/lib/platformStore';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 function toExamSubmission(row: typeof examSubmissions.$inferSelect): ExamSubmission {
   return {
@@ -25,12 +26,12 @@ function toExamSubmission(row: typeof examSubmissions.$inferSelect): ExamSubmiss
 export async function GET(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'student', 'trainer', 'lecturer', 'org_admin']);
+    session = await requireRole(req, ['technician', 'contractor', 'student', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
 
-  if (session.role === 'technician' || session.role === 'student') {
+  if (isFieldWorkerRole(session.role) || session.role === 'student') {
     const rows = await db
       .select()
       .from(examSubmissions)
@@ -59,7 +60,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'student']);
+    session = await requireRole(req, ['technician', 'contractor', 'student']);
   } catch (e) {
     return e as Response;
   }

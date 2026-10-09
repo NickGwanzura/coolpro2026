@@ -58,40 +58,40 @@ const NAV_SECTIONS: NavSection[] = [
     {
         label: 'Operations',
         items: [
-            { name: 'Learning Hub', href: '/learn', icon: BookOpen, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
+            { name: 'Learning Hub', href: '/learn', icon: BookOpen, roles: ['technician', 'contractor', 'trainer', 'lecturer', 'org_admin', 'student'] },
             { name: 'Manage Courses', href: '/learn/manage', icon: BookOpen, roles: ['trainer', 'lecturer'] },
-            { name: 'Safety Center', href: '/safety-center', icon: ShieldCheck, roles: ['technician', 'trainer', 'lecturer', 'student'] },
-            { name: 'Field Operations', href: '/field-operations', icon: Wrench, roles: ['technician', 'org_admin'] },
+            { name: 'Safety Center', href: '/safety-center', icon: ShieldCheck, roles: ['technician', 'contractor', 'trainer', 'lecturer', 'student'] },
+            { name: 'Field Operations', href: '/field-operations', icon: Wrench, roles: ['technician', 'contractor', 'org_admin'] },
         ],
     },
     {
         label: 'Field Tools',
         items: [
-            { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician', 'org_admin'] },
+            { name: 'Field Toolkit', href: '/field-toolkit', icon: Wrench, roles: ['technician', 'contractor', 'org_admin'] },
         ],
     },
     {
         label: 'Tools',
         items: [
-            { name: 'WhatGas + Risk Engine', href: '/whatgas', icon: FlaskConical, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
-            { name: 'Sizing Tool', href: '/sizing-tool', icon: Calculator, roles: ['technician'] },
+            { name: 'WhatGas + Risk Engine', href: '/whatgas', icon: FlaskConical, roles: ['technician', 'contractor', 'trainer', 'lecturer', 'org_admin', 'student'] },
+            { name: 'Sizing Tool', href: '/sizing-tool', icon: Calculator, roles: ['technician', 'contractor'] },
         ],
     },
     {
         label: 'Refrigerants',
         items: [
-            { name: 'Refrigerant Catalogue', href: '/refrigerants', icon: Database, roles: ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] },
-            { name: 'Cylinder Registry', href: '/cylinders', icon: Cylinder, roles: ['technician', 'vendor', 'org_admin'] },
+            { name: 'Refrigerant Catalogue', href: '/refrigerants', icon: Database, roles: ['technician', 'contractor', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'] },
+            { name: 'Cylinder Registry', href: '/cylinders', icon: Cylinder, roles: ['technician', 'contractor', 'vendor', 'org_admin'] },
             { name: 'Import/Export Permits', href: '/permits', icon: FileText, roles: ['vendor', 'org_admin'] },
-            { name: 'Reclamation', href: '/reclamation', icon: Recycle, roles: ['technician', 'vendor', 'org_admin'] },
-            { name: 'Recycling', href: '/recycling', icon: RefreshCw, roles: ['technician', 'org_admin'] },
+            { name: 'Reclamation', href: '/reclamation', icon: Recycle, roles: ['technician', 'contractor', 'vendor', 'org_admin'] },
+            { name: 'Recycling', href: '/recycling', icon: RefreshCw, roles: ['technician', 'contractor', 'org_admin'] },
         ],
     },
     {
         label: 'Compliance',
         items: [
-            { name: 'Certification', href: '/certifications', icon: Award, roles: ['technician', 'trainer', 'lecturer', 'org_admin', 'student'] },
-            { name: 'Rewards', href: '/rewards', icon: Award, roles: ['technician', 'vendor', 'org_admin'] },
+            { name: 'Certification', href: '/certifications', icon: Award, roles: ['technician', 'contractor', 'trainer', 'lecturer', 'org_admin', 'student'] },
+            { name: 'Rewards', href: '/rewards', icon: Award, roles: ['technician', 'contractor', 'vendor', 'org_admin'] },
             { name: 'Supplier Compliance', href: '/supplier-compliance', icon: ShieldCheck, roles: ['vendor'] },
             { name: 'Supply Reports', href: '/suppliers', icon: Factory, roles: ['vendor', 'org_admin'] },
             { name: 'Vendor Reorder', href: '/suppliers/reorder', icon: Factory, roles: ['vendor'] },

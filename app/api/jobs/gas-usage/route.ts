@@ -4,11 +4,12 @@ import { db } from '@/db/client';
 import { gasUsageLogs } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { JobType, JobTypeLabels, GasUsageByJobTypeEntry, GasUsageByJobTypeResponse } from '@/types/index';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 export async function GET(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
+    session = await requireRole(req, ['technician', 'contractor', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
   }
 
   const conditions = [];
-  if (session.role === 'technician') conditions.push(eq(gasUsageLogs.technicianId, session.id));
+  if (isFieldWorkerRole(session.role)) conditions.push(eq(gasUsageLogs.technicianId, session.id));
   if (fromDate) conditions.push(gte(gasUsageLogs.timestamp, fromDate));
   if (toDate) conditions.push(lte(gasUsageLogs.timestamp, toDate));
   const rows = await db.select().from(gasUsageLogs)

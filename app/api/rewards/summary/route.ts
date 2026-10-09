@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readSessionFromRequest } from '@/lib/server/auth';
 import { computeTechnicianRewardSummary, computeVendorRewardSummary } from '@/lib/server/rewards';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 export async function GET(req: Request) {
   const session = await readSessionFromRequest(req);
@@ -9,7 +10,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const requestedTechnicianId = url.searchParams.get('technicianId');
 
-  if (session.role === 'technician') {
+  if (isFieldWorkerRole(session.role)) {
     const summary = await computeTechnicianRewardSummary(session.id);
     return NextResponse.json(summary);
   }

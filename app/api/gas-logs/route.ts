@@ -5,6 +5,7 @@ import { db } from '@/db/client';
 import { gasUsageLogs, refrigerants, supplierApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { RefrigerantLog } from '@/types/index';
+import { isFieldWorkerRole } from '@/lib/field-worker';
 
 const gasLogSchema = z.object({
   id: z.uuid(),
@@ -59,7 +60,7 @@ function toRefrigerantLog(row: typeof gasUsageLogs.$inferSelect): RefrigerantLog
 export async function POST(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician']);
+    session = await requireRole(req, ['technician', 'contractor']);
   } catch (e) {
     return e as Response;
   }
@@ -136,7 +137,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'trainer', 'lecturer', 'org_admin']);
+    session = await requireRole(req, ['technician', 'contractor', 'trainer', 'lecturer', 'org_admin']);
   } catch (e) {
     return e as Response;
   }
@@ -160,7 +161,7 @@ export async function GET(req: Request) {
   }
 
   const conditions = [];
-  if (session.role === 'technician') conditions.push(eq(gasUsageLogs.technicianId, session.id));
+  if (isFieldWorkerRole(session.role)) conditions.push(eq(gasUsageLogs.technicianId, session.id));
   if (fromDate) conditions.push(gte(gasUsageLogs.timestamp, fromDate));
   if (toDate) conditions.push(lte(gasUsageLogs.timestamp, toDate));
 

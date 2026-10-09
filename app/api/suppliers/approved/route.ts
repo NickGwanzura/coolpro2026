@@ -48,7 +48,7 @@ async function toApprovedSupplier(row: typeof supplierApplications.$inferSelect)
 // to select a verified supplier when logging refrigerant purchases.
 export async function GET(req: Request) {
   try {
-    await requireRole(req, ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin']);
+    await requireRole(req, ['technician', 'contractor', 'trainer', 'lecturer', 'vendor', 'org_admin']);
   } catch (e) {
     return e as Response;
   }

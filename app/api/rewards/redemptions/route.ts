@@ -49,7 +49,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let session;
   try {
-    session = await requireRole(req, ['technician', 'vendor']);
+    session = await requireRole(req, ['technician', 'contractor', 'vendor']);
     if (session.role === 'vendor') session = await requireApprovedSupplier(req);
   } catch (e) {
     return e as Response;

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/server/auth';
 import { getRefrigerantDetail } from '@/lib/whatgas/service';
 
-const ALL_ROLES = ['technician', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'];
+const ALL_ROLES = ['technician', 'contractor', 'trainer', 'lecturer', 'vendor', 'org_admin', 'student'];
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
