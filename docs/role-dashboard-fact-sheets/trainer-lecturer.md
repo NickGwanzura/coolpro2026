@@ -1,42 +1,50 @@
 # Trainer / Assessor and Lecturer Dashboard: Fact Sheet
 
-**Page:** `/dashboard` (titled "My Dashboard")  |  **Roles in system:** `trainer`, `lecturer`  |  **Test logins:** trainer@zimhvacregistry.org, lecturer@zimhvacregistry.org
+**Page:** `/dashboard` (titled "My Dashboard")  |  **Roles in system:** `trainer`, `lecturer`
 
-> Trainers and Lecturers share one dashboard and the same permissions in the code. The only difference is the label (Trainer/Assessor vs Lecturer).
+> Trainers and Lecturers share one dashboard and the same permissions. The only difference is the label.
 
 ## Purpose
-Lets training providers author courses, grade exams, run training sessions and request certificates for learners who pass.
+Lets training providers author courses, see how learners are doing, grade exams, and put technicians forward for certificates.
 
 ## Who it's for
 Accredited trainers, assessors and college lecturers who deliver HVAC-R training.
 
 ## KPI cards (top row)
-| Card | What it shows | How it's counted |
-|---|---|---|
-| Approved Courses | Courses approved by the admin | Courses with approved status; subnote shows how many are draft or awaiting approval |
-| Pending Grading | Exam submissions to mark | Submissions with status pending; subnote shows total submissions |
-| Upcoming Sessions | Training sessions ahead | Sessions marked scheduled or open (a status count, not a calendar forecast) |
-| Certificate Requests | Requests awaiting admin | Certificate requests in "submitted for admin approval" |
+All four are current totals and are not affected by the period filter.
+
+| Card | What it shows |
+|---|---|
+| Approved Courses | Your courses an administrator has approved. The note shows how many are awaiting approval and how many are drafts |
+| Needs Your Attention | Your courses an administrator rejected or sent back for correction. Edit and resubmit them |
+| Pending Grading | Exam submissions on your courses still waiting to be graded; the note shows the total number of submissions |
+| Certificate Requests | Certificate requests you submitted that an administrator has not yet approved |
+
+## Panels
+- **Grading Queue.** Pending exam submissions, linking to Course Management.
+- **My Courses.** Each course with its status. Approved courses also show how many learners are enrolled and the pass rate (learners who passed out of learners graded), or "no graded exams yet".
+- **Training Sessions.** Scheduled sessions with venue and date.
+- **Ready for a certificate.** Learners who passed an exam on your courses and have no certificate request yet, with their score, newest first.
+
+## Course settings
+When you create or edit a course you set:
+- **Pass mark** (1 to 100, default 70). A learner's result follows the score; the grading screen shows Pass or Fail automatically.
+- **CPD credits** (0 to 100, default 12), shown on certificates for that course.
+
+Learners enrol before sitting the exam and get three attempts. If the exam is not passed after three, the learner must ask for a reset.
 
 ## Quick actions
-- **Manage Courses**: author and submit courses for approval
-- **Technician Registry**: look up registered technicians
-- **Certificate Requests**: submit exam results for admin approval
-- **WhatGas Registry**: refrigerant reference for course content
-
-## Dashboard panels
-- **Grading Queue**: pending exam submissions, links to Course Management
-- **My Courses**: the trainer's courses with status
-- **Training Sessions**: scheduled sessions
+Manage Courses, Technician Registry, Certificate Requests, WhatGas Registry.
 
 ## Menu items available
 Dashboard, Learning Hub, Manage Courses, Safety Center, WhatGas + Risk Engine, Refrigerant Catalogue, Certification, Technician Registry, Certificate Verification, plus the Emergency Mode button.
 
-## Key tools
-- **Course Management** (`/learn/manage`): step-by-step course builder (basics, curriculum, materials, preview, create)
-- **Trainer Learning Hub**: upcoming sessions with venue and fees; metrics for upcoming trainings, seats open, expected revenue and active provinces
-- **Technician Registry**: read lookups
+## Certificate requests
+You can base a certificate request on a graded, passed exam. The course, date and theory score then come from the exam, and the learner's login email must match the technician's registry email. A request without a linked exam, such as an in-person practical, is allowed and is shown to administrators as a manual entry.
+
+## Notifications
+You are notified when a course is approved, rejected or returned for correction (with the reason), and when a certificate request is approved, rejected or issued.
 
 ## Notes for the fact sheet
-- Course approval and certificate approval both go to the Organization Admin; trainers cannot approve their own.
+- Course approval and certificate approval both go to the Organization Admin. Trainers cannot approve their own.
 - Trainers do not see Rewards, supplier pages or admin pages.

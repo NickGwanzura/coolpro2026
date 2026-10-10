@@ -847,7 +847,9 @@ export default function DashboardPage() {
                     {nowMs > 0 && !jobsQ.isLoading && !cocQ.isLoading && !gasLogsQ.isLoading && (
                         <GettingStartedChecklist items={checklist} storageKey={`coolpro_checklist_${session.id}`} />
                     )}
-                    <StandingPanel standing={standingQ.data} now={statsNow} />
+                    {(session.role !== 'contractor' || standingQ.data?.technician || standingQ.data?.membership) && (
+                        <StandingPanel standing={standingQ.data} now={statsNow} />
+                    )}
                     {/* Upcoming Schedule + Certifications */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Upcoming Scheduled Jobs */}
