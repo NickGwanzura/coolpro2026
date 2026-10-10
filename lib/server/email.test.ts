@@ -40,6 +40,8 @@ describe('verification email', () => {
     expect(email.html).toContain('https://zimhvacregistry.org/verify-email?token=abc123');
     expect(email.html).toContain('a trainer or assessor');
     expect(email.html).toContain('48 hours');
+    expect(email.subject).toMatch(/Confirm your email/);
+    expect(email.html).toContain('We received your application');
   });
 });
 
@@ -98,7 +100,7 @@ describe('rejection email', () => {
   it('has no message block when none is given', async () => {
     const { sendApplicationRejectedEmail } = await loadEmail();
     await sendApplicationRejectedEmail({ email: 'r@example.com', name: 'Rae', role: 'lecturer' });
-    expect(lastEmail().html).not.toContain('border-left: 3px solid');
+    expect(lastEmail().html).not.toContain('Message from the review team');
   });
 });
 
@@ -127,5 +129,73 @@ describe('sending safely', () => {
     const { sendApprovalEmail } = await import('./email');
     await expect(sendApprovalEmail({ email: 'e@example.com', name: 'E', role: 'student' })).resolves.toEqual({ sent: false });
     expect(send).not.toHaveBeenCalled();
+  });
+});
+
+describe('new application email for administrators', () => {
+  const base = {
+    to: 'admin@example.com',
+    adminName: 'Admin',
+    roleLabel: 'Trainer / Assessor',
+    applicantName: 'Ada <Lovelace>',
+    applicantEmail: 'ada@example.com',
+    details: [
+      { label: 'Phone', value: '+263 77 100 0001' },
+      { label: 'Province', value: 'Harare' },
+    ],
+    reviewUrl: 'https://zimhvacregistry.org/admin/applications',
+  };
+
+  it('shows who applied, the details, and a review button', async () => {
+    const { sendNewApplicationAdminEmail } = await loadEmail();
+    await sendNewApplicationAdminEmail({ ...base, emailConfirmed: false });
+    const email = lastEmail();
+    expect(email.to).toBe('admin@example.com');
+    expect(email.subject).toBe('New trainer / assessor application: Ada <Lovelace>');
+    expect(email.html).toContain('Ada &lt;Lovelace&gt;');
+    expect(email.html).not.toContain('Ada <Lovelace>');
+    expect(email.html).toContain('+263 77 100 0001');
+    expect(email.html).toContain('https://zimhvacregistry.org/admin/applications');
+    expect(email.html).toContain('Review application');
+  });
+
+  it('warns when the applicant has not confirmed their email, and not when they have', async () => {
+    const { sendNewApplicationAdminEmail } = await loadEmail();
+    await sendNewApplicationAdminEmail({ ...base, emailConfirmed: false });
+    expect(lastEmail().html).toContain('has been asked to confirm their email');
+    await sendNewApplicationAdminEmail({ ...base, emailConfirmed: true });
+    expect(lastEmail().html).not.toContain('has been asked to confirm their email');
+    expect(lastEmail().html).toContain('Yes, ready to review');
+  });
+});
+
+describe('branded layout', () => {
+  it('shows both logos on every email, with absolute URLs and alt text', async () => {
+    const { sendVerificationEmail, sendApprovalEmail, sendApplicationRejectedEmail } = await loadEmail();
+    await sendVerificationEmail({ email: 'a@example.com', name: 'A', role: 'student', verifyUrl: 'https://x.test/v', hours: 48 });
+    const html = lastEmail().html;
+    expect(html).toMatch(/src="https?:\/\/[^"]+\/logos\/ministry-of-environment\.jpeg"/);
+    expect(html).toMatch(/src="https?:\/\/[^"]+\/logos\/hevacraz-logo\.jpeg"/);
+    expect(html).toContain('alt="Ministry of Environment, Climate and Wildlife, Government of Zimbabwe"');
+    expect(html).toContain('alt="HEVACRAZ');
+    expect(html).toContain('width="96"');
+    for (const send of [
+      () => sendApprovalEmail({ email: 'a@example.com', name: 'A', role: 'student' }),
+      () => sendApplicationRejectedEmail({ email: 'a@example.com', name: 'A', role: 'student' }),
+    ]) {
+      await send();
+      expect(lastEmail().html).toContain('/logos/ministry-of-environment.jpeg');
+      expect(lastEmail().html).toContain('/logos/hevacraz-logo.jpeg');
+    }
+  });
+
+  it('uses table layout and a hidden preview line for mail clients', async () => {
+    const { sendApprovalEmail } = await loadEmail();
+    await sendApprovalEmail({ email: 'a@example.com', name: 'A', role: 'student' });
+    const html = lastEmail().html;
+    expect(html).toContain('role="presentation"');
+    expect(html).toContain('display: none');
+    expect(html).toContain('Your NOU / HEVACRAZ application has been approved.');
+    expect(html).toContain('info@hevacraz.co.zw');
   });
 });

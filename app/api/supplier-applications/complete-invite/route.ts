@@ -5,6 +5,7 @@ import { supplierApplications } from '@/db/schema/index';
 import { readSessionFromRequest } from '@/lib/server/auth';
 import { generateSupplierRegistrationNumber } from '@/lib/server/registration-number';
 import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
+import { supplierDetails } from '@/lib/application-details';
 import { SITE_URL } from '@/lib/site-url';
 import type { SupplierRegistration, SupplierSurveyData } from '@/types/index';
 
@@ -55,8 +56,12 @@ export async function POST(req: Request) {
   notifyAdminsOfNewApplication({
     applicantName: inserted.contactName,
     applicantEmail: inserted.email,
-    roleLabel: 'supplier',
+    roleLabel: 'Supplier',
     reviewPath: `${SITE_URL}/admin/applications`,
+    details: supplierDetails(inserted),
+    emailConfirmed: true, // the invite already proved this address
+    entityType: 'supplier_application',
+    entityId: inserted.id,
   }).catch(() => {});
   return NextResponse.json({ ...inserted, submittedAt: inserted.submittedAt.toISOString() }, { status: 201 });
 }

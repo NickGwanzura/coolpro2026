@@ -1,35 +1,64 @@
-import { eq, and } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { users } from '@/db/schema/index';
-import { sendAdminNoticeEmail } from '@/lib/server/email';
+import { sendNewApplicationAdminEmail } from '@/lib/server/email';
+import { logEmail } from '@/lib/server/email-log';
+import type { DetailRow } from '@/lib/application-details';
 
 /**
- * Notifies every active, real (non-demo) org_admin that a new applicant is awaiting review.
- * Fire-and-forget by design (callers should not await this in the request's
- * critical path) — a failed or unconfigured send must never block a signup.
+ * Emails every active, real (non-demo) org_admin that a new application has been submitted.
+ * Each send is logged. Fire-and-forget by design: a failed or unconfigured send must never block
+ * a signup, so this never throws.
  */
 export async function notifyAdminsOfNewApplication(input: {
   applicantName: string;
   applicantEmail: string;
   roleLabel: string;
   reviewPath: string;
+  details?: DetailRow[];
+  /** False for a self-registration whose email link has not been clicked yet. */
+  emailConfirmed?: boolean;
+  entityType?: string;
+  entityId?: string;
 }): Promise<void> {
-  const admins = await db
-    .select({ email: users.email, name: users.name })
-    .from(users)
-    .where(and(eq(users.role, 'org_admin'), eq(users.status, 'active'), eq(users.isDemo, false)));
-
+  let admins: Array<{ email: string; name: string }>;
+  try {
+    admins = await db
+      .select({ email: users.email, name: users.name })
+      .from(users)
+      .where(and(eq(users.role, 'org_admin'), eq(users.status, 'active'), eq(users.isDemo, false)));
+  } catch (err) {
+    console.error('[notify-admins] could not load administrators:', err instanceof Error ? err.message : err);
+    return;
+  }
   if (admins.length === 0) return;
 
   await Promise.all(
-    admins.map((admin) =>
-      sendAdminNoticeEmail({
-        email: admin.email,
-        name: admin.name,
-        title: `New ${input.roleLabel} application awaiting review`,
-        message: `${input.applicantName} (${input.applicantEmail}) has confirmed their email address and is waiting for their ${input.roleLabel} application to be reviewed on the NOU / HEVACRAZ registry.`,
-        action: `Review and approve or reject this application at ${input.reviewPath}.`,
-      }).catch(() => {}),
-    ),
+    admins.map(async (admin) => {
+      let sent = false;
+      try {
+        sent = (
+          await sendNewApplicationAdminEmail({
+            to: admin.email,
+            adminName: admin.name,
+            roleLabel: input.roleLabel,
+            applicantName: input.applicantName,
+            applicantEmail: input.applicantEmail,
+            details: input.details ?? [],
+            emailConfirmed: input.emailConfirmed ?? true,
+            reviewUrl: input.reviewPath,
+          })
+        ).sent;
+      } catch {
+        sent = false;
+      }
+      await logEmail({
+        emailType: 'admin_new_application',
+        recipientEmail: admin.email,
+        relatedEntityType: input.entityType,
+        relatedEntityId: input.entityId,
+        sent,
+      }).catch(() => {});
+    }),
   );
 }

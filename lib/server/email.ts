@@ -1,18 +1,10 @@
 import { Resend } from 'resend';
 import { SITE_URL } from '@/lib/site-url';
 import { APPLICANT_ROLES, isApplicantRole } from '@/lib/application-roles';
+import { BRAND, bulletList, button, callout, detailCard, emailShell, escapeHtml, eyebrow, heading, paragraph, smallPrint, stepList } from '@/lib/server/email-layout';
 
 const FROM_ADDRESS = process.env.EMAIL_FROM ?? 'NOU / HEVACRAZ <noreply@zimhvacregistry.org>';
 const CONTACT_TO_ADDRESS = process.env.CONTACT_TO_EMAIL ?? 'info@hevacraz.co.zw';
-const BRAND = {
-  ink: '#1C1917',
-  amber: '#D97706',
-  green: '#5A7D5A',
-  line: '#E5E0DB',
-  muted: '#78716C',
-  soft: '#FAFAF9',
-};
-
 let _resend: Resend | null = null;
 
 function getResendClient(): Resend | null {
@@ -20,48 +12,6 @@ function getResendClient(): Resend | null {
   if (!apiKey) return null;
   if (!_resend) _resend = new Resend(apiKey);
   return _resend;
-}
-
-// Every email in this app renders through emailShell, so the NOU / HEVACRAZ header banner
-// (logo + brand line) and footer are guaranteed to appear on every outbound message —
-// this is the single point of control for that requirement.
-function emailShell(bodyHtml: string, preview = 'NOU / HEVACRAZ Zimbabwe HVAC Compliance Registry'): string {
-  return `
-    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent;">
-      ${escapeHtml(preview)}
-    </div>
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff;">
-      <div style="background: ${BRAND.ink}; padding: 28px 24px; text-align: center;">
-        <img src="${SITE_URL}/logos/hevacraz-logo.jpeg" alt="NOU / HEVACRAZ" width="40" height="40"
-             style="border-radius: 6px; display: block; margin: 0 auto 12px;" />
-        <p style="color: ${BRAND.amber}; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; margin: 0;">
-          NOU / HEVACRAZ &middot; National Ozone Unit Zimbabwe
-        </p>
-        <p style="color: #ffffff; font-size: 20px; font-weight: 750; margin: 8px 0 0;">
-          Zimbabwe HVAC Compliance Registry
-        </p>
-      </div>
-      <div style="padding: 28px; border: 1px solid ${BRAND.line}; border-top: none;">
-        ${bodyHtml}
-      </div>
-      <div style="padding: 22px 24px; text-align: center; background: ${BRAND.soft};">
-        <p style="color: ${BRAND.muted}; font-size: 11px; line-height: 1.7; margin: 0;">
-          NOU / HEVACRAZ &middot; <a href="mailto:info@hevacraz.co.zw" style="color: ${BRAND.muted};">info@hevacraz.co.zw</a><br />
-          National Ozone Unit &middot; <a href="mailto:nou@environment.gov.zw" style="color: ${BRAND.muted};">nou@environment.gov.zw</a><br />
-          <a href="${SITE_URL}" style="color: ${BRAND.amber}; font-weight: 700; text-decoration: none;">${SITE_URL.replace(/^https?:\/\//, '')}</a>
-        </p>
-      </div>
-    </div>
-  `;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 interface OutgoingEmail {
@@ -106,24 +56,13 @@ function roleInfo(role: string | undefined) {
 }
 
 function inviteEmailHtml(input: { inviteUrl: string; role: string; invitedBy: string }): string {
-  const invitedBy = escapeHtml(input.invitedBy);
   const role = escapeHtml(input.role.replace('_', ' '));
-  const inviteUrl = escapeHtml(input.inviteUrl);
-
   return emailShell(`
-    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Registry access</p>
-    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">You've been invited</p>
-    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
-      ${invitedBy} has invited you to join the HEVACRAZ / National Ozone Unit Zimbabwe
-      compliance platform as a <strong>${role}</strong>.
-    </p>
-    <a href="${inviteUrl}"
-       style="display: inline-block; margin-top: 18px; background: ${BRAND.amber}; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 22px; border-radius: 4px;">
-      Accept invite
-    </a>
-    <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
-      This invite expires in 7 days. If you didn't expect this, you can ignore this email.
-    </p>
+    ${eyebrow('Registry access')}
+    ${heading("You've been invited")}
+    ${paragraph(`${escapeHtml(input.invitedBy)} has invited you to join the HEVACRAZ / National Ozone Unit Zimbabwe compliance platform as a <strong>${role}</strong>.`)}
+    ${button('Accept invite', input.inviteUrl)}
+    ${smallPrint("This invite expires in 7 days. If you didn't expect it, you can ignore this email.")}
   `, 'You have been invited to the NOU / HEVACRAZ Zimbabwe registry.');
 }
 
@@ -174,35 +113,16 @@ function approvalEmailHtml(input: {
   role: string;
   loginUrl: string;
 }): string {
-  const name = escapeHtml(input.name);
   const info = roleInfo(input.role);
-  const roleLabel = escapeHtml(info ? info.label.toLowerCase() : input.role.replace('_', ' '));
-  const loginUrl = escapeHtml(input.loginUrl);
-  const steps = info
-    ? `<p style="color: ${BRAND.ink}; font-size: 14px; font-weight: 700; margin: 18px 0 6px;">What you can do now</p>
-       <ul style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0; padding-left: 20px;">
-         ${info.afterApproval.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}
-       </ul>`
-    : '';
-
+  const roleText = info ? escapeHtml(info.withArticle) : `a ${escapeHtml(input.role.replace('_', ' '))}`;
   return emailShell(`
-    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Application update</p>
-    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">You're approved</p>
-    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
-      Hi ${name}, your application to join HEVACRAZ / National Ozone Unit Zimbabwe
-      as ${info ? escapeHtml(info.withArticle) : `a <strong>${roleLabel}</strong>`} has been approved.
-    </p>
-    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 12px 0 0;">
-      Log in with the email address and password you chose when you applied.
-    </p>
-    <a href="${loginUrl}"
-       style="display: inline-block; margin-top: 18px; background: ${BRAND.amber}; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 22px; border-radius: 4px;">
-      Log in now
-    </a>
-    ${steps}
-    <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
-      Forgotten your password? Use "Forgot password" on the login page. If you didn't apply for this account, you can ignore this email.
-    </p>
+    ${eyebrow('Application approved')}
+    ${heading("You're approved")}
+    ${paragraph(`Hi ${escapeHtml(input.name)}, your application to join HEVACRAZ / National Ozone Unit Zimbabwe as ${roleText} has been approved. Your account is ready.`)}
+    ${paragraph('Log in with the email address and password you chose when you applied.')}
+    ${button('Log in now', input.loginUrl)}
+    ${info ? `<p style="margin: 22px 0 6px; font-size: 15px; font-weight: 700;">What you can do now</p>${bulletList(info.afterApproval)}` : ''}
+    ${smallPrint('Forgotten your password? Use "Forgot password" on the login page. If you didn\'t apply for this account, you can ignore this email.')}
   `, 'Your NOU / HEVACRAZ application has been approved.');
 }
 
@@ -225,25 +145,67 @@ export async function sendApprovalEmail(input: {
 }
 
 // ---------------------------------------------------------------------------
+// New application alert for administrators
+// ---------------------------------------------------------------------------
+
+export interface NewApplicationAdminEmail {
+  to: string;
+  adminName: string;
+  roleLabel: string;
+  applicantName: string;
+  applicantEmail: string;
+  /** Extra facts about the applicant, shown in a table (phone, province, organisation ...). */
+  details: Array<{ label: string; value: string }>;
+  /** False when the applicant has not yet clicked their confirmation link. */
+  emailConfirmed: boolean;
+  reviewUrl: string;
+}
+
+function newApplicationAdminEmailHtml(input: NewApplicationAdminEmail): string {
+  const role = input.roleLabel.toLowerCase();
+  return emailShell(`
+    ${eyebrow('Action needed')}
+    ${heading(`New ${role} application`)}
+    ${paragraph(`Hello ${escapeHtml(input.adminName)}, <strong>${escapeHtml(input.applicantName)}</strong> has submitted a ${escapeHtml(role)} application to join the registry.`)}
+    ${detailCard([
+      { label: 'Role', value: input.roleLabel },
+      { label: 'Name', value: input.applicantName },
+      { label: 'Email', value: input.applicantEmail },
+      ...input.details,
+      { label: 'Email confirmed', value: input.emailConfirmed ? 'Yes, ready to review' : 'Not yet' },
+    ])}
+    ${input.emailConfirmed
+      ? ''
+      : callout('The applicant has been asked to confirm their email address. You can approve the application once they have; the Applications page will show it as ready.', 'warning')}
+    ${button('Review application', input.reviewUrl)}
+    ${smallPrint('You are getting this because you are an administrator of the registry. Approving or rejecting sends the applicant an email.')}
+  `, `New ${role} application from ${input.applicantName}.`);
+}
+
+/** Tells an administrator that a new application has been submitted. */
+export async function sendNewApplicationAdminEmail(input: NewApplicationAdminEmail): Promise<{ sent: boolean }> {
+  return deliver({
+    to: input.to,
+    subject: `New ${input.roleLabel.toLowerCase()} application: ${input.applicantName}`,
+    html: newApplicationAdminEmailHtml(input),
+    label: 'new-application-admin',
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Admin operational notices
 // ---------------------------------------------------------------------------
 
 function adminNoticeEmailHtml(input: { name: string; title: string; message: string; action?: string }): string {
-  const name = escapeHtml(input.name);
-  const title = escapeHtml(input.title);
-  const message = escapeHtml(input.message);
-  const action = input.action ? escapeHtml(input.action) : null;
-
   return emailShell(`
-    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Platform update</p>
-    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">${title}</p>
-    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">Hello ${name},</p>
-    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 12px 0 0;">${message}</p>
-    ${action ? `<div style="margin-top: 18px; border-left: 3px solid ${BRAND.amber}; background: ${BRAND.soft}; padding: 12px 14px; color: ${BRAND.ink}; font-size: 14px; line-height: 1.6;"><strong>Action:</strong> ${action}</div>` : ''}
+    ${eyebrow('Platform update')}
+    ${heading(input.title)}
+    ${paragraph(`Hello ${escapeHtml(input.name)},`)}
+    ${paragraph(escapeHtml(input.message))}
+    ${input.action ? callout(`Action: ${input.action}`, 'warning') : ''}
   `, input.title);
 }
 
-/** Sends a branded operational update to an administrator. */
 export async function sendAdminNoticeEmail(input: {
   email: string;
   name: string;
@@ -368,28 +330,23 @@ function contactConfirmationHtml(input: {
 // ---------------------------------------------------------------------------
 
 function applicationReceivedEmailHtml(input: { name: string; role?: string }): string {
-  const name = escapeHtml(input.name);
   const info = roleInfo(input.role ?? 'technician');
   const who = info ? escapeHtml(info.withArticle) : 'a member';
   const focus = info ? escapeHtml(info.reviewFocus) : 'your details';
-  const time = info ? escapeHtml(info.reviewTime) : 'a few working days';
+  const time = info ? info.reviewTime : 'a few working days';
   return emailShell(`
-    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Application received</p>
-    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Thanks, ${name}</p>
-    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
-      Your application to join as ${who} is now in the HEVACRAZ review queue. We are checking ${focus}.
-    </p>
-    <div style="margin-top: 18px; background: ${BRAND.soft}; border: 1px solid ${BRAND.line}; padding: 14px 16px; font-size: 14px; color: ${BRAND.ink}; line-height: 1.6;">
-      <strong>What happens next</strong><br />
-      A reviewer will look at your application, usually within ${time}. We'll email you as soon as a decision is made. You don't need to do anything else.
-    </div>
-    <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
-      Questions? Email info@hevacraz.co.zw.
-    </p>
-  `, 'Your NOU / HEVACRAZ application has been received.');
+    ${eyebrow('Email confirmed')}
+    ${heading('Your application is in review')}
+    ${paragraph(`Thanks, ${escapeHtml(input.name)}. Your email is confirmed and your application to join as ${who} is now with the HEVACRAZ review team. We are checking ${focus}.`)}
+    ${stepList([
+      { title: 'Email confirmed', body: 'Done. Thank you.' },
+      { title: 'Review in progress', body: `A reviewer will look at your application, usually within ${time}.` },
+      { title: 'You hear from us', body: 'We email you the decision. If approved, you can log in straight away.' },
+    ])}
+    ${smallPrint('You do not need to do anything else. Questions? Email info@hevacraz.co.zw.')}
+  `, 'Your NOU / HEVACRAZ application is now in review.');
 }
 
-/** Sent to an applicant once their email address is confirmed and their application is in review. */
 export async function sendApplicationReceivedEmail(input: { email: string; name: string; role?: string }): Promise<{ sent: boolean }> {
   const label = roleInfo(input.role ?? 'technician')?.label.toLowerCase() ?? 'registry';
   return deliver({
@@ -401,29 +358,22 @@ export async function sendApplicationReceivedEmail(input: { email: string; name:
 }
 
 function verificationEmailHtml(input: { name: string; role: string; verifyUrl: string; hours: number }): string {
-  const name = escapeHtml(input.name);
   const info = roleInfo(input.role);
   const who = info ? escapeHtml(info.withArticle) : 'a member';
-  const verifyUrl = escapeHtml(input.verifyUrl);
   return emailShell(`
-    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">One more step</p>
-    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Confirm your email address</p>
-    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
-      Hi ${name}, thanks for applying to join HEVACRAZ / National Ozone Unit Zimbabwe as ${who}.
-      Please confirm this email address so we can start reviewing your application.
-    </p>
-    <a href="${verifyUrl}"
-       style="display: inline-block; margin-top: 18px; background: ${BRAND.amber}; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 22px; border-radius: 4px;">
-      Confirm my email
-    </a>
-    <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
-      This link works for ${input.hours} hours. Your application is not reviewed until you confirm.
-      If you didn't apply, you can ignore this email and nothing will happen.
-    </p>
-  `, 'Confirm your email to start your NOU / HEVACRAZ application review.');
+    ${eyebrow('Application submitted')}
+    ${heading('We received your application')}
+    ${paragraph(`Hi ${escapeHtml(input.name)}, thanks for applying to join HEVACRAZ / National Ozone Unit Zimbabwe as ${who}. There is one more step: please confirm this email address so we can start reviewing.`)}
+    ${button('Confirm my email', input.verifyUrl)}
+    ${stepList([
+      { title: 'Application submitted', body: 'Done. An administrator has been told.' },
+      { title: 'Confirm your email', body: 'Click the button above. It takes a few seconds.' },
+      { title: 'Review and decision', body: info ? `We check ${info.reviewFocus}, usually within ${info.reviewTime}, then email you.` : 'We review your application and email you the decision.' },
+    ])}
+    ${smallPrint(`This link works for ${input.hours} hours. Your application is not reviewed until you confirm. If you didn't apply, you can ignore this email and nothing will happen.`)}
+  `, 'We received your application. Confirm your email to start the review.');
 }
 
-/** Sent right after someone submits a self-registration, asking them to confirm their address. */
 export async function sendVerificationEmail(input: {
   email: string;
   name: string;
@@ -440,22 +390,14 @@ export async function sendVerificationEmail(input: {
 }
 
 function applicationRejectedEmailHtml(input: { name: string; role?: string; applicantMessage?: string }): string {
-  const name = escapeHtml(input.name);
-  const role = escapeHtml(roleInfo(input.role)?.label.toLowerCase() ?? input.role?.replace('_', ' ') ?? 'application');
-  const message = input.applicantMessage ? escapeHtml(input.applicantMessage) : null;
+  const role = roleInfo(input.role)?.label.toLowerCase() ?? input.role?.replace('_', ' ') ?? 'application';
   return emailShell(`
-    <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Application update</p>
-    <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Application not approved</p>
-    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
-      Hi ${name}, your HEVACRAZ / National Ozone Unit Zimbabwe ${role} application was not approved at this time.
-    </p>
-    ${message ? `<div style="margin-top: 18px; border-left: 3px solid ${BRAND.amber}; background: ${BRAND.soft}; padding: 12px 14px; color: ${BRAND.ink}; font-size: 14px; line-height: 1.6;">${message}</div>` : ''}
-    <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 16px 0 0;">
-      You are welcome to apply again once you have addressed the points above.
-    </p>
-    <p style="color: ${BRAND.muted}; font-size: 12px; line-height: 1.6; margin-top: 20px;">
-      If you have questions, contact HEVACRAZ at info@hevacraz.co.zw.
-    </p>
+    ${eyebrow('Application update')}
+    ${heading('Application not approved')}
+    ${paragraph(`Hi ${escapeHtml(input.name)}, your HEVACRAZ / National Ozone Unit Zimbabwe ${escapeHtml(role)} application was not approved at this time.`)}
+    ${input.applicantMessage ? `${paragraph('<strong>Message from the review team</strong>')}${callout(input.applicantMessage, 'warning')}` : ''}
+    ${paragraph('You are welcome to apply again once you have addressed the points above.')}
+    ${smallPrint('If you have questions, contact HEVACRAZ at info@hevacraz.co.zw.')}
   `, 'Your NOU / HEVACRAZ application was not approved.');
 }
 

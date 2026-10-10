@@ -8,6 +8,7 @@ import {
 } from '@/db/schema/index';
 import { APPLICANT_ROLES, type ApplicantRole } from '@/lib/application-roles';
 import { SITE_URL } from '@/lib/site-url';
+import { professionalDetails, studentDetails, supplierDetails, technicianDetails, type DetailRow } from '@/lib/application-details';
 import { recordAuditEvent } from '@/lib/server/audit';
 import { checkDecisionAllowed, type ReviewAction } from '@/lib/server/application-rules';
 import {
@@ -44,24 +45,24 @@ const ENTITY_ROLE: Record<Exclude<ApplicationEntityType, 'registration_applicati
 export async function describeApplication(
   entityType: ApplicationEntityType,
   entityId: string,
-): Promise<(ApplicationIdentity & { status: string }) | null> {
+): Promise<(ApplicationIdentity & { status: string; details: DetailRow[] }) | null> {
   if (entityType === 'technician_application') {
     const [row] = await db.select().from(technicianApplications).where(eq(technicianApplications.id, entityId)).limit(1);
-    return row ? { entityType, entityId, role: ENTITY_ROLE[entityType], name: row.name, email: row.email, status: row.status } : null;
+    return row ? { entityType, entityId, role: ENTITY_ROLE[entityType], name: row.name, email: row.email, status: row.status, details: technicianDetails(row) } : null;
   }
   if (entityType === 'student_application') {
     const [row] = await db.select().from(studentApplications).where(eq(studentApplications.id, entityId)).limit(1);
     return row
-      ? { entityType, entityId, role: ENTITY_ROLE[entityType], name: `${row.firstName} ${row.lastName}`.trim(), email: row.email, status: row.status }
+      ? { entityType, entityId, role: ENTITY_ROLE[entityType], name: `${row.firstName} ${row.lastName}`.trim(), email: row.email, status: row.status, details: studentDetails(row) }
       : null;
   }
   if (entityType === 'supplier_application') {
     const [row] = await db.select().from(supplierApplications).where(eq(supplierApplications.id, entityId)).limit(1);
-    return row ? { entityType, entityId, role: ENTITY_ROLE[entityType], name: row.contactName, email: row.email, status: row.status } : null;
+    return row ? { entityType, entityId, role: ENTITY_ROLE[entityType], name: row.contactName, email: row.email, status: row.status, details: supplierDetails(row) } : null;
   }
   const [row] = await db.select().from(registrationApplications).where(eq(registrationApplications.id, entityId)).limit(1);
   return row
-    ? { entityType, entityId, role: row.role, name: `${row.firstName} ${row.lastName}`.trim(), email: row.email, status: row.status }
+    ? { entityType, entityId, role: row.role, name: `${row.firstName} ${row.lastName}`.trim(), email: row.email, status: row.status, details: professionalDetails(row) }
     : null;
 }
 
@@ -86,10 +87,10 @@ async function sendAndLog(
 }
 
 /**
- * Called right after a self-registration is saved: asks the applicant to confirm their email.
- * Never throws, so a mail problem cannot fail the signup. The applicant can ask for another link.
+ * Creates a fresh confirmation link and emails it to the applicant. Used for the first send and
+ * for "send me the link again". Never throws, so a mail problem cannot fail a signup.
  */
-export async function startApplicantVerification(identity: ApplicationIdentity): Promise<void> {
+async function sendConfirmationLink(identity: ApplicationIdentity): Promise<void> {
   try {
     const token = await createEmailVerification({
       entityType: identity.entityType,
@@ -106,16 +107,41 @@ export async function startApplicantVerification(identity: ApplicationIdentity):
         hours: VERIFICATION_TTL_HOURS,
       }),
     );
-    await recordAuditEvent({
+  } catch (err) {
+    console.error('[application-flow] could not send the confirmation link:', err instanceof Error ? err.message : err);
+  }
+}
+
+/**
+ * Called right after a self-registration is saved. The applicant is emailed straight away (a
+ * confirmation that we received the application, with a link to confirm their address) and every
+ * administrator is emailed that a new application is waiting. Never throws.
+ */
+export async function startApplicantVerification(identity: ApplicationIdentity): Promise<void> {
+  await sendConfirmationLink(identity);
+  await recordAuditEvent({
+    entityType: identity.entityType,
+    entityId: identity.entityId,
+    action: 'submitted',
+    newStatus: 'submitted',
+    performedBy: identity.name,
+    performedByRole: 'applicant',
+  }).catch(() => {});
+
+  try {
+    const described = await describeApplication(identity.entityType, identity.entityId);
+    await notifyAdminsOfNewApplication({
+      applicantName: identity.name,
+      applicantEmail: identity.email,
+      roleLabel: APPLICANT_ROLES[identity.role].label,
+      reviewPath: `${SITE_URL}/admin/applications`,
+      details: described?.details ?? [],
+      emailConfirmed: false,
       entityType: identity.entityType,
       entityId: identity.entityId,
-      action: 'submitted',
-      newStatus: 'submitted',
-      performedBy: identity.name,
-      performedByRole: 'applicant',
-    }).catch(() => {});
+    });
   } catch (err) {
-    console.error('[application-flow] could not start email verification:', err instanceof Error ? err.message : err);
+    console.error('[application-flow] could not alert administrators:', err instanceof Error ? err.message : err);
   }
 }
 
@@ -125,8 +151,9 @@ export interface VerificationOutcome {
 }
 
 /**
- * Handles a clicked confirmation link. The first time it succeeds, the applicant gets the
- * "received" email and admins are told a confirmed application is waiting.
+ * Handles a clicked confirmation link. The first time it succeeds, the applicant gets an
+ * "in review" email. Administrators already have the application: the Applications page and its
+ * badge switch it to "ready to review", so they are not emailed a second time.
  */
 export async function completeApplicantVerification(token: string): Promise<VerificationOutcome> {
   const result = await consumeEmailVerification(token);
@@ -139,12 +166,6 @@ export async function completeApplicantVerification(token: string): Promise<Veri
     await sendAndLog('application_received', identity, () =>
       sendApplicationReceivedEmail({ email: identity.email, name: identity.name, role: identity.role }),
     );
-    notifyAdminsOfNewApplication({
-      applicantName: identity.name,
-      applicantEmail: identity.email,
-      roleLabel: APPLICANT_ROLES[identity.role].label.toLowerCase(),
-      reviewPath: `${SITE_URL}/admin/applications`,
-    }).catch(() => {});
     await recordAuditEvent({
       entityType: identity.entityType,
       entityId: identity.entityId,
@@ -161,7 +182,7 @@ export async function resendApplicantVerification(entityType: ApplicationEntityT
   const identity = await describeApplication(entityType, entityId);
   if (!identity || !['submitted', 'under-review'].includes(identity.status)) return false;
   if (!(await isVerificationPending(entityType, entityId))) return false;
-  await startApplicantVerification(identity);
+  await sendConfirmationLink(identity);
   return true;
 }
 
