@@ -16,6 +16,39 @@ interface OcrNameplateScannerProps {
     onUseRefrigerant?: (refrigerantCode: string) => void;
 }
 
+async function enhanceForOcr(file: File): Promise<Blob> {
+    // Greyscale + contrast stretch + upscale small images; fall back to the original on any failure.
+    try {
+        const bitmap = await createImageBitmap(file);
+        const scale = bitmap.width < 1600 ? 2 : 1;
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width * scale;
+        canvas.height = bitmap.height * scale;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return file;
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = img.data;
+        let min = 255;
+        let max = 0;
+        for (let i = 0; i < d.length; i += 4) {
+            const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            d[i] = d[i + 1] = d[i + 2] = g;
+            if (g < min) min = g;
+            if (g > max) max = g;
+        }
+        const range = Math.max(1, max - min);
+        for (let i = 0; i < d.length; i += 4) {
+            const v = ((d[i] - min) / range) * 255;
+            d[i] = d[i + 1] = d[i + 2] = v;
+        }
+        ctx.putImageData(img, 0, 0);
+        return await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b ?? file), 'image/png'));
+    } catch {
+        return file;
+    }
+}
+
 export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerProps = {}) {
     const [preview, setPreview] = useState<string>('');
     const [result, setResult] = useState<OcrScanRecord | null>(null);
@@ -63,7 +96,7 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
         try {
             const { createWorker } = await import('tesseract.js');
             const worker = await createWorker('eng');
-            const scan = await worker.recognize(file);
+            const scan = await worker.recognize(await enhanceForOcr(file));
             await worker.terminate();
 
             const parsed = await extractNameplateData(scan.data.text);
@@ -143,6 +176,9 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
                 </div>
 
                 <div className="space-y-4">
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                        <strong>Upload a clear image for best results.</strong> Photograph the plate straight on, in good light, with no glare, and crop to the plate. Photos of screens or blurry shots often misread the model and serial. Always check the fields before confirming.
+                    </div>
                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-5">
                         <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                             <ScanText className="h-4 w-4" />

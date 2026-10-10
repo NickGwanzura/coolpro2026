@@ -10,9 +10,18 @@ export { getEmergencySafetyScripts } from '@/lib/emergencySafety';
 
 const NAMEPLATE_PATTERNS = {
     refrigerantCode: /(R[- ]?\d{2,3}[A-Z]?)/i,
-    serialNumber: /(serial|s\/n|sn)[^\w]?[:#]?\s*([A-Z0-9-]{5,})/i,
-    model: /(model)[^\w]?[:#]?\s*([A-Z0-9-]{3,})/i,
+    // Tolerate OCR noise around the label and a single space inside the value (e.g. "QL11 4980907").
+    serialNumber: /(serial|s\/n|\bsn)[^A-Z0-9\n]{0,4}\s*([A-Z0-9-]{3,}(?: [0-9]{4,})?)/i,
+    model: /(model|mod\.?|\bmdl)[^A-Z0-9\n]{0,4}\s*([A-Z0-9-]{3,})/i,
+    // Fallback when the label is unreadable: a token that mixes letters and digits like SZ185S4CC.
+    modelShape: /\b([A-Z]{1,4}\d{2,4}[A-Z0-9-]{2,})\b/,
 };
+
+const KNOWN_MANUFACTURERS = [
+    'Copeland', 'Performer', 'Danfoss', 'Bitzer', 'Carrier', 'Daikin', 'Mitsubishi', 'Panasonic',
+    'LG', 'Samsung', 'Trane', 'York', 'Midea', 'Gree', 'Hisense', 'Embraco', 'Tecumseh', 'Bock',
+    'Frascold', 'Hitachi', 'Toshiba', 'Fujitsu', 'Emerson', 'Lennox', 'Rheem',
+];
 
 const RISK_TEXT: Record<SafetyAlertColor, string> = {
     green: 'Green: stable handling profile with standard controls.',
@@ -159,13 +168,12 @@ export async function buildPreJobChecklist(code: string | undefined | null) {
 export async function extractNameplateData(rawText: string): Promise<OcrScanRecord> {
     const refrigerantCode = rawText.match(NAMEPLATE_PATTERNS.refrigerantCode)?.[1]?.replace(' ', '-') ?? undefined;
     const serialNumber = rawText.match(NAMEPLATE_PATTERNS.serialNumber)?.[2];
-    const model = rawText.match(NAMEPLATE_PATTERNS.model)?.[2];
+    const model = rawText.match(NAMEPLATE_PATTERNS.model)?.[2]
+        ?? rawText.toUpperCase().match(NAMEPLATE_PATTERNS.modelShape)?.[1];
     const whatGasMatch = await fetchWhatGasProfile(refrigerantCode);
 
-    const manufacturerLine = rawText
-        .split('\n')
-        .map((line) => line.trim())
-        .find((line) => line.length > 3 && /^[A-Z0-9 .,&-]+$/.test(line));
+    // Prefer a known brand; a loose all-caps line is too often just "SCROLL COMPRESSOR", so leave it blank.
+    const manufacturerLine = KNOWN_MANUFACTURERS.find((name) => new RegExp(`\\b${name}\\b`, 'i').test(rawText));
 
     return {
         id: `ocr-${Date.now()}`,
