@@ -4,9 +4,11 @@ import { users } from '@/db/schema/index';
 import { sendNewApplicationAdminEmail } from '@/lib/server/email';
 import { logEmail } from '@/lib/server/email-log';
 import type { DetailRow } from '@/lib/application-details';
+import { isUndeliverableAddress } from '@/lib/deliverable-address';
 
 /**
- * Emails every active, real (non-demo) org_admin that a new application has been submitted.
+ * Emails every active org_admin that a new application has been submitted. The only ones skipped
+ * are placeholder addresses that cannot receive mail (such as the @coolpro.demo sample account).
  * Each send is logged. Fire-and-forget by design: a failed or unconfigured send must never block
  * a signup, so this never throws.
  */
@@ -26,11 +28,12 @@ export async function notifyAdminsOfNewApplication(input: {
     admins = await db
       .select({ email: users.email, name: users.name })
       .from(users)
-      .where(and(eq(users.role, 'org_admin'), eq(users.status, 'active'), eq(users.isDemo, false)));
+      .where(and(eq(users.role, 'org_admin'), eq(users.status, 'active')));
   } catch (err) {
     console.error('[notify-admins] could not load administrators:', err instanceof Error ? err.message : err);
     return;
   }
+  admins = admins.filter((admin) => !isUndeliverableAddress(admin.email));
   if (admins.length === 0) return;
 
   await Promise.all(
