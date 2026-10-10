@@ -82,7 +82,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .finally(() => setIsLoading(false));
     }, []);
 
-    const handleLogin = async (email: string, password?: string) => {
+    // Renew the short-lived session cookie while the tab is in use, so long tasks
+    // (e.g. nameplate scans) do not fail with 401 after 15 minutes.
+    useEffect(() => {
+        if (!user) return;
+        const renew = () => { fetch('/api/auth/session').catch(() => {}); };
+        const timer = setInterval(() => {
+            if (document.visibilityState === 'visible') renew();
+        }, 5 * 60 * 1000);
+        const onVisible = () => { if (document.visibilityState === 'visible') renew(); };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+            clearInterval(timer);
+            document.removeEventListener('visibilitychange', onVisible);
+        };
+    }, [user]);
+
+    const handleLogin =async (email: string, password?: string) => {
         const session = await loginByEmail(email, password);
         setUser(session);
     };

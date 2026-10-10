@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { users } from '@/db/schema/index';
-import { readSessionFromRequest } from '@/lib/server/auth';
+import { readSessionFromRequest, sessionCookie, signSession } from '@/lib/server/auth';
 import type { UserSession } from '@/lib/session-types';
 
 export async function GET(req: Request) {
@@ -28,5 +28,7 @@ export async function GET(req: Request) {
     isDemo: user.isDemo,
   };
 
-  return NextResponse.json({ user: userSession });
+  // Sliding renewal: an active session keeps its 15-minute window instead of expiring mid-task.
+  const { exp: _exp, ...claims } = session;
+  return NextResponse.json({ user: userSession }, { headers: { 'Set-Cookie': sessionCookie(signSession(claims)) } });
 }

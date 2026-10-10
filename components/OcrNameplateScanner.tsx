@@ -101,7 +101,8 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
             });
             setConfirmed(true);
         } catch (saveError) {
-            setError(saveError instanceof Error ? saveError.message : 'Could not save the confirmed scan.');
+            const message = saveError instanceof Error ? saveError.message : '';
+            setError(message.endsWith('401') ? 'Your session expired. Sign in again, then re-confirm the scan.' : message || 'Could not save the confirmed scan.');
         } finally {
             setIsSaving(false);
         }
