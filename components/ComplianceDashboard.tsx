@@ -1,12 +1,19 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Download, ShieldCheck, AlertTriangle, TrendingDown, TrendingUp } from 'lucide-react';
 import OccupationalAccidentSection from './OccupationalAccidentSection';
 import { useReorders, useTechnicians, useGasLogs } from '@/lib/api';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
 import { Drilldown } from '@/components/ui/Drilldown';
+import {
+  complianceKpis,
+  expiringCertificates,
+  monthlyApprovedKg,
+  PERIOD_LABEL,
+  type CompliancePeriod,
+} from '@/lib/compliance-stats';
 
 const NATURAL_REFRIGERANTS = new Set(['R-290', 'R-600a', 'R-744', 'R-717', 'R-1270']);
 
@@ -40,90 +47,51 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, unit, trend, positive, 
   </div>
 );
 
+const LEAK_LOG_LIMIT = 1000;
+
 const ComplianceDashboard: React.FC = () => {
-  const { data: reorders = [], isLoading: reordersLoading } = useReorders();
-  const { data: technicians = [], isLoading: techniciansLoading } = useTechnicians();
-  const leakLookbackFrom = useMemo(() => {
-    const from = new Date();
-    from.setDate(from.getDate() - 30);
-    return from.toISOString();
-  }, []);
-  const { data: gasLogs = [], isLoading: gasLogsLoading } = useGasLogs(leakLookbackFrom, undefined, 100);
+  const [period, setPeriod] = useState<CompliancePeriod>('ytd');
+  const [now] = useState(() => Date.now());
+  const { data: reorders = [], isLoading: reordersLoading, error: reordersError } = useReorders();
+  const { data: technicians = [], isLoading: techniciansLoading, error: techniciansError } = useTechnicians();
+  const leakLookbackFrom = useMemo(() => new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString(), [now]);
+  const { data: gasLogs = [], isLoading: gasLogsLoading, error: gasLogsError } = useGasLogs(leakLookbackFrom, undefined, LEAK_LOG_LIMIT);
   const isLoading = reordersLoading || techniciansLoading || gasLogsLoading;
+  const failed = [reordersError && 'reorders', techniciansError && 'the technician registry', gasLogsError && 'leak reports'].filter(Boolean) as string[];
 
   // Leak Repair entries logged via the Field Toolkit in the last 30 days, most recent first.
-  const leakAlerts = useMemo(
+  const allLeaks = useMemo(
     () =>
       gasLogs
         .filter(log => log.actionType === 'Leak Repair')
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 5),
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
     [gasLogs]
   );
+  const leakAlerts = allLeaks.slice(0, 5);
+  const leaksMayBeTruncated = gasLogs.length >= LEAK_LOG_LIMIT;
 
-  // Compute last 6 months of refrigerant volume from reorders
-  const usageData = useMemo(() => {
-    const now = new Date();
-    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const buckets: Array<{ key: string; month: string; consumption: number }> = [];
-    for (let i = 5; i >= 0; i -= 1) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      buckets.push({ key, month: monthLabels[d.getMonth()], consumption: 0 });
-    }
-
-    for (const reorder of reorders) {
-      const created = new Date(reorder.createdAt);
-      const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`;
-      const bucket = buckets.find(b => b.key === key);
-      if (bucket) {
-        bucket.consumption += reorder.quantityKg;
-      }
-    }
-
-    return buckets.map(({ month, consumption }) => ({ month, consumption }));
-  }, [reorders]);
-
-  const topPerformers = useMemo(
-    () =>
-      technicians
-        .map(tech => ({
-          id: tech.id,
-          name: tech.name,
-          validCertCount: tech.certifications.filter(cert => cert.status === 'valid').length,
-        }))
-        .sort((a, b) => b.validCertCount - a.validCertCount)
-        .slice(0, 3),
-    [technicians]
+  // Approved volume per month. Year to date shows January onward; the other views show 12 months.
+  const usageData = useMemo(
+    () => monthlyApprovedKg(reorders, period === 'ytd' ? new Date(now).getUTCMonth() + 1 : 12, now),
+    [reorders, period, now]
   );
 
+  const expiring = useMemo(() => expiringCertificates(technicians, now), [technicians, now]);
+
   const kpiValues = useMemo(() => {
-    const approvedReorders = reorders.filter(r => r.status === 'approved');
-    const totalKg = approvedReorders.reduce((sum, r) => sum + r.quantityKg, 0);
-
-    const gwpImpactTonnes = approvedReorders.reduce((sum, r) => {
-      const gwp = REFRIGERANT_REFERENCE[r.gasType]?.gwp ?? 0;
-      return sum + (r.quantityKg * gwp) / 1000;
-    }, 0);
-
-    const naturalKg = approvedReorders
-      .filter(r => NATURAL_REFRIGERANTS.has(r.gasType))
-      .reduce((sum, r) => sum + r.quantityKg, 0);
-    const naturalSharePct = totalKg > 0 ? Math.round((naturalKg / totalKg) * 100) : 0;
-
+    const base = complianceKpis({
+      reorders,
+      period,
+      now,
+      gwpOf: gas => REFRIGERANT_REFERENCE[gas]?.gwp,
+      naturalGases: NATURAL_REFRIGERANTS,
+    });
     const activeCerts = technicians.reduce(
       (sum, tech) => sum + tech.certifications.filter(cert => cert.status === 'valid').length,
       0
     );
-
-    return {
-      gwpImpactTonnes: Math.round(gwpImpactTonnes),
-      naturalSharePct,
-      activeCerts,
-      approvedKg: Math.round(totalKg),
-      pendingReviewCount: reorders.filter(r => r.status === 'pending_hevacraz' || r.status === 'pending_nou').length,
-    };
-  }, [reorders, technicians]);
+    return { ...base, activeCerts };
+  }, [reorders, technicians, period, now]);
 
   const exportPdf = async () => {
     const { jsPDF } = await import('jspdf');
@@ -133,18 +101,18 @@ const ComplianceDashboard: React.FC = () => {
     doc.setFontSize(18);
     doc.text('HEVACRAZ Compliance Report', 14, 18);
     doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleString('en-ZW')}`, 14, 26);
+    doc.text(`Generated: ${new Date().toLocaleString('en-ZW')}  |  Period: ${PERIOD_LABEL[period]}`, 14, 26);
 
     autoTable(doc, {
       startY: 34,
       head: [['Metric', 'Value']],
       body: [
-        ['Total GWP Impact', `${kpiValues.gwpImpactTonnes.toLocaleString()} tCO2e`],
-        ['Approved Refrigerant Volume', `${kpiValues.approvedKg.toLocaleString()} kg`],
+        [`GWP Impact (${PERIOD_LABEL[period]})`, `${kpiValues.gwpImpactTonnes.toLocaleString()} tCO2e`],
+        [`Approved Refrigerant Volume (${PERIOD_LABEL[period]})`, `${kpiValues.approvedKg.toLocaleString()} kg`],
         ['Active Technicians', `${technicians.filter(t => t.status === 'active').length}`],
         ['Valid Certifications', `${kpiValues.activeCerts}`],
-        ['Natural Gas Transition', `${kpiValues.naturalSharePct}%`],
-        ['Pending Reorder Reviews', `${kpiValues.pendingReviewCount}`],
+        [`Natural Gas Share (${PERIOD_LABEL[period]})`, `${kpiValues.naturalSharePct}%`],
+        ['Pending Reorder Reviews (now)', `${kpiValues.pendingReviewCount}`],
       ],
       headStyles: { fillColor: [15, 23, 42] },
     });
@@ -162,39 +130,62 @@ const ComplianceDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {failed.length > 0 && (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          Some figures could not be loaded ({failed.join(', ')}). The numbers below may be incomplete, so do not treat them as final.
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-gray-500">Figures for <span className="font-semibold text-gray-800">{PERIOD_LABEL[period].toLowerCase()}</span>, unless a card says it is current.</p>
+        <div className="flex rounded-lg border border-gray-200 bg-white divide-x divide-gray-200" role="group" aria-label="Reporting period">
+          {(Object.keys(PERIOD_LABEL) as CompliancePeriod[]).map(option => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setPeriod(option)}
+              aria-pressed={period === option}
+              className={`px-3 py-1.5 text-xs font-semibold transition-colors ${period === option ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              {PERIOD_LABEL[option]}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* KPI Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          label="Total GWP Impact"
+          label="GWP of Approved Reorders"
           value={kpiValues.gwpImpactTonnes.toLocaleString()}
           unit="tCO2e"
-          trend="YTD"
+          trend={PERIOD_LABEL[period]}
           positive={false}
-          description="Approved reorders weighted by refrigerant GWP"
+          description="Approved reorders in the selected period, each weighted by its refrigerant's global warming potential. This is the potential impact of what was bought."
         />
         <KpiCard
           label="Approved Volume"
           value={kpiValues.approvedKg.toLocaleString()}
           unit="kg"
-          trend={`${kpiValues.pendingReviewCount} pending`}
+          trend={`${kpiValues.pendingReviewCount} pending now`}
           positive={true}
-          description="Approved refrigerant reorders with active review backlog"
+          description="Refrigerant reorders approved in the selected period. The pending count is the review backlog right now, whatever the period."
         />
         <KpiCard
           label="Active Technicians"
           value={String(technicians.filter(t => t.status === 'active').length)}
-          unit="Certified"
-          trend={`${kpiValues.activeCerts} valid certs`}
+          unit="active"
+          trend={`${kpiValues.activeCerts} valid certificates`}
           positive={true}
-          description="Technicians currently active in the registry"
+          description="Technicians marked active in the registry right now, and the valid certificates they hold. Not affected by the period."
         />
         <KpiCard
-          label="Natural Gas Transition"
+          label="Natural Gas Share"
           value={String(kpiValues.naturalSharePct)}
           unit="%"
-          trend="Approved volumes"
+          trend={PERIOD_LABEL[period]}
           positive={true}
-          description="Share of approved reorders using R-290/R-744/R-717"
+          description="Share of the approved volume in the selected period that is a natural refrigerant (R-290, R-600a, R-744, R-717, R-1270)."
         />
       </div>
 
@@ -203,8 +194,8 @@ const ComplianceDashboard: React.FC = () => {
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Refrigerant Phasedown Progress</h3>
-              <p className="text-sm text-gray-500">Monthly aggregate of approved and submitted reorders</p>
+              <h3 className="text-lg font-semibold text-gray-900">Refrigerant Purchased</h3>
+              <p className="text-sm text-gray-500">Approved reorder volume per month, in kg. Rejected and pending reorders are not included.</p>
             </div>
             <button
               type="button"
@@ -230,7 +221,7 @@ const ComplianceDashboard: React.FC = () => {
                 <Tooltip
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
-                <Area type="monotone" dataKey="consumption" stroke="#0ea5e9" strokeWidth={2} fillOpacity={1} fill="url(#colorCons)" />
+                <Area type="monotone" dataKey="kg" name="Approved kg" stroke="#0ea5e9" strokeWidth={2} fillOpacity={1} fill="url(#colorCons)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -240,13 +231,14 @@ const ComplianceDashboard: React.FC = () => {
         <div className="space-y-6">
           {/* Alerts */}
           <div className="bg-gray-900 text-white p-6 rounded-2xl shadow-lg">
-            <h4 className="text-base font-semibold mb-4">Critical Leak Alerts</h4>
+            <h4 className="text-base font-semibold mb-1">Leak Repairs, last 30 days</h4>
+            <p className="mb-4 text-xs text-gray-400">{allLeaks.length}{leaksMayBeTruncated ? '+' : ''} reported{leaksMayBeTruncated ? ' (the most recent ' + LEAK_LOG_LIMIT + ' log entries were checked)' : ''}. Showing the latest 5.</p>
             {leakAlerts.length === 0 ? (
               <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
                 <div className="flex items-start gap-3">
                   <ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-400" />
                   <p>
-                    No active leak alerts in the last 30 days. Leak reports appear here when submitted via the Field Toolkit.
+                    No leak repairs were reported in the last 30 days. They appear here when technicians log them in the Field Toolkit.
                   </p>
                 </div>
               </div>
@@ -267,20 +259,24 @@ const ComplianceDashboard: React.FC = () => {
             )}
           </div>
 
-          {/* Top Performers */}
-          <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-2xl">
-            <h4 className="text-base font-semibold text-emerald-900 mb-4">Top Tech Performers</h4>
-            {topPerformers.length === 0 ? (
-              <p className="rounded-xl border border-emerald-200 bg-white/60 p-3 text-sm text-emerald-800">
-                No technicians registered yet.
+          {/* Certificates expiring */}
+          <div className="bg-amber-50 border border-amber-100 p-6 rounded-2xl">
+            <h4 className="text-base font-semibold text-amber-900 mb-1">Certificates expiring soon</h4>
+            <p className="mb-4 text-xs text-amber-800">Active technicians, within 90 days or already expired.</p>
+            {expiring.length === 0 ? (
+              <p className="rounded-xl border border-amber-200 bg-white/60 p-3 text-sm text-amber-900">
+                No certificates are due for renewal in the next 90 days.
               </p>
             ) : (
               <div className="space-y-2">
-                {topPerformers.map((tech) => (
-                  <div key={tech.id} className="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-emerald-200">
-                    <span className="text-sm font-semibold text-emerald-800">{tech.name}</span>
-                    <span className="text-xs font-bold bg-emerald-500 text-white px-2 py-1 rounded-full">
-                      {tech.validCertCount} {tech.validCertCount === 1 ? 'cert' : 'certs'}
+                {expiring.map((row) => (
+                  <div key={`${row.technicianId}-${row.certificate}`} className="flex items-center justify-between gap-3 p-3 bg-white/60 rounded-xl border border-amber-200">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-amber-900">{row.technicianName}</span>
+                      <span className="block truncate text-xs text-amber-800">{row.certificate}</span>
+                    </span>
+                    <span className={`shrink-0 text-xs font-bold px-2 py-1 rounded-full text-white ${row.daysLeft < 0 ? 'bg-red-600' : 'bg-amber-500'}`}>
+                      {row.daysLeft < 0 ? `${Math.abs(row.daysLeft)} d overdue` : `${row.daysLeft} d left`}
                     </span>
                   </div>
                 ))}
