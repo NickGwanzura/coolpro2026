@@ -34,6 +34,7 @@ import {
 import { useAuth, logout } from '@/lib/auth';
 import { useEmergencyMode } from '@/lib/emergencyMode';
 import { UserProfileModal } from '@/components/UserProfileModal';
+import { useApplicationCounts } from '@/lib/api';
 
 interface NavItem {
     name: string;
@@ -42,6 +43,8 @@ interface NavItem {
     roles: string[];
     exact?: boolean;
     children?: NavItem[];
+    /** Shows a live count pill next to the item. */
+    badge?: 'applications';
 }
 
 interface NavSection {
@@ -110,7 +113,7 @@ const NAV_SECTIONS: NavSection[] = [
         label: 'People',
         items: [
             { name: 'System Users', href: '/admin/users', icon: Users, roles: ['org_admin'] },
-            { name: 'Applications', href: '/admin/applications', icon: ShieldCheck, roles: ['org_admin'] },
+            { name: 'Applications', href: '/admin/applications', icon: ShieldCheck, roles: ['org_admin'], badge: 'applications' },
             { name: 'Invites', href: '/admin/invites', icon: UserPlus, roles: ['org_admin'] },
         ],
     },
@@ -186,7 +189,7 @@ const ADMIN_NAV_SECTIONS: NavSection[] = [
             { name: 'Certifications', href: '/certifications', icon: Award, roles: ['org_admin'] },
             { name: 'Rewards', href: '/rewards', icon: Award, roles: ['org_admin'] },
             { name: 'System Users', href: '/admin/users', icon: Users, roles: ['org_admin'] },
-            { name: 'Applications', href: '/admin/applications', icon: ShieldCheck, roles: ['org_admin'] },
+            { name: 'Applications', href: '/admin/applications', icon: ShieldCheck, roles: ['org_admin'], badge: 'applications' },
             { name: 'Applicants', href: '/admin/applicants', icon: ClipboardList, roles: ['org_admin'] },
             { name: 'Memberships', href: '/admin/memberships', icon: Award, roles: ['org_admin'] },
             { name: 'Email Log', href: '/admin/email-log', icon: Mail, roles: ['org_admin'] },
@@ -213,6 +216,8 @@ interface SidebarProps {
 }
 
 function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string; onClose?: () => void }) {
+    const { data: applicationCounts } = useApplicationCounts(item.badge === 'applications');
+    const badgeCount = item.badge === 'applications' ? applicationCounts?.total.awaitingReview ?? 0 : 0;
     const isActive = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
     return (
         <Link
@@ -233,7 +238,15 @@ function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string;
                 )}
             />
             <span className="truncate">{item.name}</span>
-            {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#F59E0B] flex-shrink-0" />}
+            {badgeCount > 0 && (
+                <span
+                    className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#F59E0B] px-1.5 text-[11px] font-bold text-[#1C1917]"
+                    aria-label={`${badgeCount} applications waiting for review`}
+                >
+                    {badgeCount}
+                </span>
+            )}
+            {isActive && <span className={cn('w-1.5 h-1.5 rounded-full bg-[#F59E0B] flex-shrink-0', badgeCount === 0 && 'ml-auto')} />}
         </Link>
     );
 }

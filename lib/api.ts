@@ -1,5 +1,6 @@
 "use client";
 
+import type { ApplicationCounts } from '@/lib/application-counts';
 import useSWR, { mutate } from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import type {
@@ -534,6 +535,11 @@ export type RegistrationApplicationInput = {
   /** Hidden honeypot field; always sent empty by the real form. */
   website?: string;
 };
+
+/** Live count of applications waiting for an admin; refreshes every minute. */
+export function useApplicationCounts(enabled = true) {
+  return useSWR<ApplicationCounts>(enabled ? '/api/admin/application-counts' : null, fetcher, { refreshInterval: 60_000 });
+}
 
 export function useRegistrationApplications() {
   return useSWR<RegistrationApplication[]>('/api/registration-applications', fetcher);

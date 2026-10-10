@@ -4,7 +4,7 @@ import { users } from '@/db/schema/index';
 import { sendAdminNoticeEmail } from '@/lib/server/email';
 
 /**
- * Notifies every active org_admin that a new applicant is awaiting review.
+ * Notifies every active, real (non-demo) org_admin that a new applicant is awaiting review.
  * Fire-and-forget by design (callers should not await this in the request's
  * critical path) — a failed or unconfigured send must never block a signup.
  */
@@ -17,7 +17,7 @@ export async function notifyAdminsOfNewApplication(input: {
   const admins = await db
     .select({ email: users.email, name: users.name })
     .from(users)
-    .where(and(eq(users.role, 'org_admin'), eq(users.status, 'active')));
+    .where(and(eq(users.role, 'org_admin'), eq(users.status, 'active'), eq(users.isDemo, false)));
 
   if (admins.length === 0) return;
 

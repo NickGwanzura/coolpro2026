@@ -14,6 +14,7 @@ import {
     useExamSubmissions,
     useTrainingSessions,
     useCertificateRequests,
+    useApplicationCounts,
 } from '@/lib/api';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import {            ClipboardCheck,
@@ -66,6 +67,7 @@ export default function DashboardPage() {
     const isTrainerOrLecturer = session?.role === 'trainer' || session?.role === 'lecturer';
     const isStudent = session?.role === 'student';
 
+    const { data: applicationCounts } = useApplicationCounts(isAdmin);
     const { data: technicians = [] } = useTechnicians(undefined, isAdmin);
     const { data: reorders = [] } = useReorders(isAdmin || isVendor);
     const { data: plannerJobs = [] } = usePlannerJobs(isTechnician || isAdmin);
@@ -586,6 +588,26 @@ export default function DashboardPage() {
             </div>
 
             {/* KPI Cards */}
+            {isAdmin && applicationCounts && (applicationCounts.total.awaitingReview > 0 || applicationCounts.total.awaitingEmail > 0) && (
+                <Link
+                    href="/admin/applications"
+                    className="flex flex-col gap-1 rounded-lg border border-amber-300 bg-amber-50 p-4 transition hover:bg-amber-100 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <span className="text-sm font-semibold text-amber-900">
+                        {applicationCounts.total.awaitingReview > 0
+                            ? `${applicationCounts.total.awaitingReview} registration application${applicationCounts.total.awaitingReview === 1 ? ' is' : 's are'} waiting for your review`
+                            : 'No applications are ready for review yet'}
+                    </span>
+                    <span className="text-xs text-amber-800">
+                        {applicationCounts.total.awaitingEmail > 0
+                            ? `${applicationCounts.total.awaitingEmail} more waiting for the applicant to confirm their email. `
+                            : ''}
+                        Review applications
+                        <ArrowRight className="ml-1 inline h-3 w-3" />
+                    </span>
+                </Link>
+            )}
+
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 ${isAdmin ? 'xl:grid-cols-5' : 'lg:grid-cols-4'}`}>
                 {stats.map((stat, index) => {
                     const Icon = stat.icon;
