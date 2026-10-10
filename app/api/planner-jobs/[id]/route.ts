@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { plannerJobs } from '@/db/schema/index';
+import { plannerJobs, users } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { PlannerJob } from '@/types/index';
 import { isFieldWorkerRole } from '@/lib/field-worker';
+import { isValidIsoDate } from '@/lib/planner-conflicts';
 import { appendJobNote, outstandingChecklist, stampChecklist, validateTransition } from '@/lib/planner-lifecycle';
 
 function toPlannerJob(row: typeof plannerJobs.$inferSelect): PlannerJob {
@@ -80,6 +81,42 @@ export async function PATCH(
   }
 
   const updateFields: Record<string, unknown> = {};
+
+  // Editing the visit itself: only while the job is still open.
+  const edits = ['scheduledDate', 'location', 'technicianId'].some(key => body[key as keyof typeof body] !== undefined);
+  if (edits) {
+    if (existing.status === 'completed') {
+      return NextResponse.json({ error: 'A completed job cannot be rescheduled or reassigned. Flag it for follow-up instead.' }, { status: 400 });
+    }
+    if (body.scheduledDate !== undefined) {
+      if (!isValidIsoDate(body.scheduledDate)) {
+        return NextResponse.json({ error: 'scheduledDate must be a valid YYYY-MM-DD date.' }, { status: 400 });
+      }
+      updateFields.scheduledDate = body.scheduledDate;
+    }
+    if (body.location !== undefined) {
+      if (!body.location.trim()) {
+        return NextResponse.json({ error: 'location cannot be empty.' }, { status: 400 });
+      }
+      updateFields.location = body.location.trim();
+    }
+    if (body.technicianId !== undefined && body.technicianId !== existing.technicianId) {
+      if (session.role !== 'org_admin') {
+        return NextResponse.json({ error: 'Only an organisation admin can reassign a job.' }, { status: 403 });
+      }
+      const [assignee] = await db
+        .select({ id: users.id, name: users.name, role: users.role, status: users.status })
+        .from(users)
+        .where(eq(users.id, body.technicianId))
+        .limit(1);
+      if (!assignee || assignee.status !== 'active' || !isFieldWorkerRole(assignee.role)) {
+        return NextResponse.json({ error: 'The new assignee must be an active technician or contractor.' }, { status: 400 });
+      }
+      updateFields.technicianId = assignee.id;
+      updateFields.technicianName = assignee.name;
+    }
+  }
+
   if (body.status) updateFields.status = body.status;
   if (body.note?.trim()) updateFields.notes = appendJobNote(existing.notes, body.note, session.name, now);
   else if (body.notes !== undefined) updateFields.notes = body.notes;

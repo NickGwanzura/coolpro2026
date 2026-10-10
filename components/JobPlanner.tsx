@@ -13,6 +13,8 @@ import {
 } from '@/types/index';
 import { DEFAULT_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
 import { useTechnicians, usePlannerJobs, createPlannerJob } from '@/lib/api';
+import { useClientSession } from '@/lib/useClientSession';
+import { findConflicts, isPastDate } from '@/lib/planner-conflicts';
 import JobActions from '@/components/JobActions';
 import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 
@@ -70,6 +72,8 @@ function daysFromToday(days: number) {
 }
 
 export default function JobPlanner() {
+    const session = useClientSession();
+    const todayIso = isoDate(new Date());
     const { data: techniciansData } = useTechnicians();
     const technicians = techniciansData ?? [];
     const { data: jobsData, isLoading: jobsLoading } = usePlannerJobs();
@@ -86,10 +90,11 @@ export default function JobPlanner() {
         clientId: '', clientName: '', location: '', province: '', district: '',
         jobType: 'COLD_ROOM', refrigerantClass: 'A1',
         refrigerant: null, amount: 0,
-        scheduledDate: '2026-04-04', technicianId: '',
+        scheduledDate: daysFromToday(0), technicianId: '',
         technicianName: '', preJobChecklistComplete: false, notes: '',
     });
 
+    const formNewJobConflicts = findConflicts(jobs, formData.technicianId || session?.id, formData.scheduledDate);
     const safetyRequired = formData.refrigerantClass === 'A2L' || formData.refrigerantClass === 'A3';
 
     const filteredJobs = useMemo(() => jobs.filter(job => {
@@ -323,7 +328,7 @@ export default function JobPlanner() {
                                         </div>
                                     )}
 
-                                    <JobActions job={job} />
+                                    <JobActions job={job} allJobs={jobs} technicians={session?.role === 'org_admin' ? technicians : undefined} today={todayIso} />
                                 </div>
                             ))}
                         </div>
@@ -417,6 +422,12 @@ export default function JobPlanner() {
                                         {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                     </select>
                                 </div>
+                                {(isPastDate(formData.scheduledDate, todayIso) || formNewJobConflicts.length > 0) && (
+                                    <div className="md:col-span-2 space-y-1 border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                        {isPastDate(formData.scheduledDate, todayIso) && <p>This date is in the past.</p>}
+                                        {formNewJobConflicts.length > 0 && <p>Already booked that day: {formNewJobConflicts.map(c => c.clientName).join(', ')}.</p>}
+                                    </div>
+                                )}
                             </div>
 
                             {safetyRequired && (

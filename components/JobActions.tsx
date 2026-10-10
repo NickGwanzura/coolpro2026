@@ -4,18 +4,30 @@ import { useState } from 'react';
 import { ClipboardCheck, Play, ShieldAlert } from 'lucide-react';
 import { updatePlannerJob } from '@/lib/api';
 import { outstandingChecklist } from '@/lib/planner-lifecycle';
-import type { PlannerJob } from '@/types/index';
+import { findConflicts, isPastDate } from '@/lib/planner-conflicts';
+import type { PlannerJob, Technician } from '@/types/index';
 
-type Panel = 'none' | 'checklist' | 'complete' | 'follow-up';
+type Panel = 'none' | 'checklist' | 'complete' | 'follow-up' | 'edit';
 
 const button = 'inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60';
 
 /** Start / checklist / complete / follow-up controls for one planner job card. */
-export default function JobActions({ job }: { job: PlannerJob }) {
+interface JobActionsProps {
+    job: PlannerJob;
+    allJobs: PlannerJob[];
+    /** Present only for org admins, who may reassign. */
+    technicians?: Technician[];
+    today: string;
+}
+
+export default function JobActions({ job, allJobs, technicians, today }: JobActionsProps) {
     const [panel, setPanel] = useState<Panel>('none');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [note, setNote] = useState('');
+    const [editDate, setEditDate] = useState(job.scheduledDate);
+    const [editLocation, setEditLocation] = useState(job.location);
+    const [editTechnician, setEditTechnician] = useState(job.technicianId);
     const [amount, setAmount] = useState(job.amount != null ? String(job.amount) : '');
 
     const outstanding = outstandingChecklist(job.checklistItems, job.refrigerantClass);
@@ -39,6 +51,16 @@ export default function JobActions({ job }: { job: PlannerJob }) {
         run(() => updatePlannerJob(job.id, {
             checklistItems: job.checklistItems.map(item => (item.id === itemId ? { ...item, completed } : item)),
         }));
+
+    const conflicts = findConflicts(allJobs, editTechnician, editDate, job.id);
+    const saveEdit = () => run(
+        () => updatePlannerJob(job.id, {
+            ...(editDate !== job.scheduledDate ? { scheduledDate: editDate } : {}),
+            ...(editLocation.trim() !== job.location ? { location: editLocation } : {}),
+            ...(editTechnician !== job.technicianId ? { technicianId: editTechnician } : {}),
+        }),
+        () => setPanel('none'),
+    );
 
     const submitStatus = (status: 'completed' | 'follow-up') => {
         const parsed = amount.trim() === '' ? undefined : Number(amount);
@@ -74,6 +96,12 @@ export default function JobActions({ job }: { job: PlannerJob }) {
                     className={`${button} border-gray-200 bg-white text-gray-700 hover:bg-gray-50`}>
                     Needs follow-up
                 </button>
+                {!isDone && (
+                    <button type="button" onClick={() => setPanel(panel === 'edit' ? 'none' : 'edit')}
+                        className={`${button} border-gray-200 bg-white text-gray-700 hover:bg-gray-50`}>
+                        Edit
+                    </button>
+                )}
             </div>
 
             {blocked && job.status === 'scheduled' && !isDone && (
@@ -94,6 +122,43 @@ export default function JobActions({ job }: { job: PlannerJob }) {
                             </span>
                         </label>
                     ))}
+                </div>
+            )}
+
+            {panel === 'edit' && !isDone && (
+                <div className="space-y-2 border border-gray-200 bg-gray-50 p-3">
+                    <label className="block text-xs font-semibold text-gray-600">
+                        Date
+                        <input type="date" value={editDate} onChange={event => setEditDate(event.target.value)}
+                            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-normal outline-none focus:border-blue-300" />
+                    </label>
+                    <label className="block text-xs font-semibold text-gray-600">
+                        Site / location
+                        <input value={editLocation} onChange={event => setEditLocation(event.target.value)}
+                            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-normal outline-none focus:border-blue-300" />
+                    </label>
+                    {technicians && (
+                        <label className="block text-xs font-semibold text-gray-600">
+                            Technician
+                            <select value={editTechnician} onChange={event => setEditTechnician(event.target.value)}
+                                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-normal outline-none focus:border-blue-300">
+                                {!technicians.some(t => t.id === job.technicianId) && <option value={job.technicianId}>{job.technicianName}</option>}
+                                {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            </select>
+                        </label>
+                    )}
+                    {isPastDate(editDate, today) && editDate !== job.scheduledDate && (
+                        <p className="text-xs text-amber-700">This date is in the past.</p>
+                    )}
+                    {conflicts.length > 0 && (
+                        <p className="text-xs text-amber-700">
+                            Already booked that day: {conflicts.map(c => c.clientName).join(', ')}.
+                        </p>
+                    )}
+                    <button type="button" disabled={busy || !editDate || !editLocation.trim()} onClick={saveEdit}
+                        className="w-full rounded-lg bg-[#D97706] px-3 py-2 text-xs font-semibold text-white hover:bg-[#b45309] disabled:opacity-60">
+                        {busy ? 'Saving…' : 'Save changes'}
+                    </button>
                 </div>
             )}
 
