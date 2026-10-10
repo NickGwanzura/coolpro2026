@@ -57,6 +57,17 @@ const REF_STYLES: Partial<Record<RefrigerantSafetyClass, string>> = {
 };
 function refStyle(c: RefrigerantSafetyClass) { return REF_STYLES[c] ?? 'bg-gray-100 text-gray-600'; }
 
+function isoDate(date: Date) {
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+    return local.toISOString().slice(0, 10);
+}
+
+function daysFromToday(days: number) {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return isoDate(date);
+}
+
 export default function JobPlanner() {
     const { data: techniciansData } = useTechnicians();
     const technicians = techniciansData ?? [];
@@ -65,8 +76,8 @@ export default function JobPlanner() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClient, setSelectedClient] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
-    const [startDate, setStartDate] = useState('2026-03-29');
-    const [endDate, setEndDate] = useState('2026-04-30');
+    const [startDate, setStartDate] = useState(() => daysFromToday(-30));
+    const [endDate, setEndDate] = useState(() => daysFromToday(60));
     const [showModal, setShowModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [notice, setNotice] = useState('');
@@ -218,6 +229,19 @@ export default function JobPlanner() {
                         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
                             className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white" />
                     </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                    {[
+                        { label: 'Next 7 days', from: daysFromToday(0), to: daysFromToday(7) },
+                        { label: 'Next 30 days', from: daysFromToday(0), to: daysFromToday(30) },
+                        { label: 'Default window', from: daysFromToday(-30), to: daysFromToday(60) },
+                        { label: 'All dates', from: '0000-01-01', to: '9999-12-31' },
+                    ].map(range => (
+                        <button key={range.label} type="button" onClick={() => { setStartDate(range.from); setEndDate(range.to); }}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+                            {range.label}
+                        </button>
+                    ))}
                 </div>
                 <p className="mt-3 text-xs text-gray-400">{filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} across {sortedDates.length} date{sortedDates.length !== 1 ? 's' : ''}</p>
             </div>

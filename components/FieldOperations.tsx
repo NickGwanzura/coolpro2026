@@ -90,9 +90,16 @@ function JobsAndLogsPanel() {
     const { data: installationsData } = useInstallations();
     const { data: gasLogsData } = useGasLogs(undefined, undefined, 200);
 
-    const installations = installationsData ?? EMPTY_INSTALLATIONS;
-    const logs = (gasLogsData ?? EMPTY_LOGS) as RefrigerantLog[];
     const isAdmin = session?.role === 'org_admin';
+    // Match on the user id, never the display name: two technicians can share a name.
+    const installations = useMemo(
+        () => (installationsData ?? EMPTY_INSTALLATIONS).filter(item => isAdmin || !session || item.technicianId === session.id),
+        [installationsData, isAdmin, session],
+    );
+    const logs = useMemo(
+        () => ((gasLogsData ?? EMPTY_LOGS) as RefrigerantLog[]).filter(log => isAdmin || !session || log.technicianId === session.id),
+        [gasLogsData, isAdmin, session],
+    );
 
     const visibleJobs = useMemo(
         () => isAdmin || !session ? plannerJobs : plannerJobs.filter(job => job.technicianId === session.id),
@@ -116,12 +123,11 @@ function JobsAndLogsPanel() {
         }));
 
         const installationRecords = installations
-            .filter(installation => isAdmin || !session || installation.technicianName === session.name)
             .map(installation => ({
                 id: installation.id,
                 type: 'Installation',
                 clientName: installation.clientName,
-                location: installation.technicianName,
+                location: installation.location || 'No site recorded',
                 date: installation.installationDate,
                 status: installation.status,
                 technicianName: installation.technicianName,
@@ -130,7 +136,6 @@ function JobsAndLogsPanel() {
             }));
 
         const gasLogRecords = logs
-            .filter(log => isAdmin || !session || log.technicianName === session.name)
             .map(log => ({
                 id: log.id,
                 type: 'Refrigerant log',
@@ -146,7 +151,7 @@ function JobsAndLogsPanel() {
         return [...jobRecords, ...installationRecords, ...gasLogRecords].sort((a, b) =>
             new Date(b.date).getTime() - new Date(a.date).getTime(),
         );
-    }, [installations, isAdmin, logs, session, visibleJobs]);
+    }, [installations, logs, visibleJobs]);
 
     return (
         <div className="space-y-6">

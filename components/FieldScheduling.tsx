@@ -12,7 +12,7 @@ import {
 } from '@/types/index';
 import { DEFAULT_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
-import { useEquipmentRecords, createPlannerJob } from '@/lib/api';
+import { useEquipmentRecords, usePlannerJobs, createPlannerJob } from '@/lib/api';
 
 type ViewScope = 'own' | 'fleet';
 
@@ -28,7 +28,11 @@ function statusStyles(status: EquipmentStatus) {
 }
 
 async function seedPlannerJob(record: EquipmentRecord) {
-    const refrigerantDefinition = REFRIGERANT_REFERENCE[record.refrigerantType] ?? REFRIGERANT_REFERENCE['R-290'];
+    // Never guess a refrigerant: a wrong safety class would put the wrong checklist on the job.
+    const refrigerantDefinition = REFRIGERANT_REFERENCE[record.refrigerantType];
+    if (!refrigerantDefinition) {
+        throw new Error(`Refrigerant ${record.refrigerantType || '(unknown)'} on ${record.equipmentId} is not in the reference list. Create the job from the Planner and choose the refrigerant.`);
+    }
     await createPlannerJob({
         clientId: record.id,
         clientName: record.clientName,
@@ -38,11 +42,8 @@ async function seedPlannerJob(record: EquipmentRecord) {
         refrigerantClass: refrigerantDefinition.ashraeSafetyClass,
         status: 'scheduled',
         scheduledDate: record.nextServiceDue,
-        preJobChecklistComplete: record.status === 'normal',
-        checklistItems: DEFAULT_PLANNER_SAFETY_CHECKLIST.map(item => ({
-            ...item,
-            completed: record.status === 'normal'
-        })),
+        preJobChecklistComplete: false,
+        checklistItems: DEFAULT_PLANNER_SAFETY_CHECKLIST.map(item => ({ ...item, completed: false })),
         notes: `Scheduled from ${record.equipmentId} predictive maintenance alert.`,
     });
 }
@@ -59,6 +60,8 @@ export default function FieldScheduling() {
     const records = recordsData ?? [];
     const [selectedRecord, setSelectedRecord] = useState<EquipmentRecord | null>(null);
     const [message, setMessage] = useState('');
+    const [schedulingId, setSchedulingId] = useState<string | null>(null);
+    const { data: plannerJobs = [] } = usePlannerJobs();
 
     const filteredRecords = useMemo(() => {
         return records.filter(record => {
@@ -105,14 +108,27 @@ export default function FieldScheduling() {
             'refrigerantType' in entry
                 ? entry
                 : records.find(item => item.id === entry.id || item.equipmentId === entry.equipmentId);
-        if (!record) return;
+        if (!record || schedulingId) return;
 
+        // One open job per equipment alert: scheduling again would only create a duplicate.
+        const existing = plannerJobs.find(job =>
+            job.status !== 'completed' && job.notes?.includes(`from ${record.equipmentId} predictive`),
+        );
+        if (existing) {
+            setMessage(`${record.equipmentId} already has an open job (${existing.scheduledDate}). Opening the planner.`);
+            router.push('/field-operations?tab=planner');
+            return;
+        }
+
+        setSchedulingId(record.id);
         try {
             await seedPlannerJob(record);
             setMessage(`Scheduled a planner job from ${record.equipmentId}.`);
             router.push('/field-operations?tab=planner');
         } catch (err) {
             setMessage(err instanceof Error ? err.message : 'Failed to schedule the planner job.');
+        } finally {
+            setSchedulingId(null);
         }
     };
 
@@ -254,6 +270,7 @@ export default function FieldScheduling() {
                                                     <button
                                                         type="button"
                                                         onClick={() => handleScheduleService(record)}
+                                                        disabled={schedulingId !== null}
                                                         className="inline-flex items-center gap-2 border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
                                                     >
                                                         <Plus className="h-3.5 w-3.5" />
@@ -323,7 +340,8 @@ export default function FieldScheduling() {
                                         <button
                                             type="button"
                                             onClick={() => handleScheduleService(alert)}
-                                            className="inline-flex w-full items-center justify-center gap-2 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                                            disabled={schedulingId !== null}
+                                            className="inline-flex w-full disabled:cursor-not-allowed disabled:opacity-60 items-center justify-center gap-2 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
                                         >
                                             Create Job
                                         </button>
