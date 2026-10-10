@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from 'react';
 import {
-    CalendarDays, ChevronRight, Clock3, ClipboardCheck, ClipboardList, MapPin,
+    CalendarDays, ChevronRight, Clock3, ClipboardList, MapPin,
     Plus, Search, ShieldAlert, ShieldCheck, Sparkles, User, X,
 } from 'lucide-react';
 import {
@@ -12,7 +12,8 @@ import {
     type Refrigerant,
 } from '@/types/index';
 import { DEFAULT_PLANNER_SAFETY_CHECKLIST } from '@/constants/job-planner';
-import { useTechnicians, usePlannerJobs, createPlannerJob, updatePlannerJob } from '@/lib/api';
+import { useTechnicians, usePlannerJobs, createPlannerJob } from '@/lib/api';
+import JobActions from '@/components/JobActions';
 import { RefrigerantAutocomplete, refrigerantLabel } from '@/components/RefrigerantAutocomplete';
 
 interface PlannerFormState {
@@ -322,9 +323,7 @@ export default function JobPlanner() {
                                         </div>
                                     )}
 
-                                    {job.status !== 'completed' && (
-                                        <MarkCompleteButton jobId={job.id} />
-                                    )}
+                                    <JobActions job={job} />
                                 </div>
                             ))}
                         </div>
@@ -468,40 +467,5 @@ export default function JobPlanner() {
                 </div>
             )}
         </div>
-    );
-}
-
-function MarkCompleteButton({ jobId }: { jobId: string }) {
-    const [marking, setMarking] = useState(false);
-    const [done, setDone] = useState(false);
-
-    const handleMarkComplete = async () => {
-        if (marking || done) return;
-        setMarking(true);
-        try {
-            await updatePlannerJob(jobId, { status: 'completed' });
-            setDone(true);
-        } catch (err) {
-            console.error('Failed to mark job complete:', err);
-        } finally {
-            setMarking(false);
-        }
-    };
-
-    if (done) {
-        return (
-            <button disabled
-                className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default">
-                ✓ Completed
-            </button>
-        );
-    }
-
-    return (
-        <button onClick={handleMarkComplete} disabled={marking}
-            className="mt-3 rounded-lg w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition-colors disabled:cursor-not-allowed">
-            <ClipboardCheck className="h-3.5 w-3.5" />
-            {marking ? 'Marking…' : 'Mark Complete'}
-        </button>
     );
 }

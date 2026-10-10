@@ -129,6 +129,8 @@ export interface PlannerSafetyChecklistItem {
   required: boolean;
   completed: boolean;
   appliesTo: RefrigerantSafetyClass[] | 'all';
+  completedBy?: string;
+  completedAt?: string;
 }
 
 export interface PlannerJob {

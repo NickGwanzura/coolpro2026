@@ -803,7 +803,7 @@ export async function createPlannerJob(
 
 export async function updatePlannerJob(
   id: string,
-  body: Partial<Pick<PlannerJob, 'status' | 'notes' | 'checklistItems' | 'preJobChecklistComplete'>>,
+  body: Partial<Pick<PlannerJob, 'status' | 'notes' | 'checklistItems' | 'amount'>> & { note?: string },
 ): Promise<PlannerJob> {
   const result = await patch<PlannerJob>(`/api/planner-jobs/${id}`, body);
   await mutate('/api/planner-jobs');

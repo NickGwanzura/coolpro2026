@@ -5,6 +5,7 @@ import { plannerJobs } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import type { PlannerJob } from '@/types/index';
 import { isFieldWorkerRole } from '@/lib/field-worker';
+import { appendJobNote, outstandingChecklist, stampChecklist, validateTransition } from '@/lib/planner-lifecycle';
 
 function toPlannerJob(row: typeof plannerJobs.$inferSelect): PlannerJob {
   return {
@@ -43,47 +44,52 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await req.json().catch(() => ({})) as Partial<PlannerJob>;
+  const body = await req.json().catch(() => ({})) as Partial<PlannerJob> & { note?: string };
 
-  // Validate status transitions
-  const allowedUpdates: Record<string, string[]> = {
-    scheduled: ['in-progress', 'completed', 'follow-up'],
-    'in-progress': ['completed', 'follow-up'],
-    completed: ['follow-up'],
-    'follow-up': ['completed'],
-  };
+  const [existing] = await db.select().from(plannerJobs).where(eq(plannerJobs.id, id));
+  if (!existing) {
+    return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+  }
 
-  if (body.status) {
-    // Fetch current job to validate transition
-    const [existing] = await db
-      .select()
-      .from(plannerJobs)
-      .where(eq(plannerJobs.id, id));
+  // Technicians can only change their own jobs, whatever the field being changed.
+  if (isFieldWorkerRole(session.role) && existing.technicianId !== session.id) {
+    return NextResponse.json({ error: 'Not authorized to update this job' }, { status: 403 });
+  }
 
-    if (!existing) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+  const now = new Date();
+  const existingItems = (existing.checklistItems ?? []) as PlannerJob['checklistItems'];
+  const checklist = body.checklistItems !== undefined
+    ? stampChecklist(existingItems, body.checklistItems, session.name, now)
+    : existingItems;
+
+  const amount = body.amount !== undefined ? body.amount : undefined;
+  if (body.status && body.status !== existing.status) {
+    const problem = validateTransition({
+      from: existing.status as PlannerJob['status'],
+      to: body.status,
+      refrigerantClass: existing.refrigerantClass,
+      checklist,
+      note: body.note,
+      amount,
+    });
+    if (problem) {
+      return NextResponse.json({ error: problem }, { status: 400 });
     }
-
-    // Technicians can only update their own jobs
-    if (isFieldWorkerRole(session.role) && existing.technicianId !== session.id) {
-      return NextResponse.json({ error: 'Not authorized to update this job' }, { status: 403 });
-    }
-
-    const validNext = allowedUpdates[existing.status];
-    if (!validNext || !validNext.includes(body.status)) {
-      return NextResponse.json(
-        { error: `Cannot transition from "${existing.status}" to "${body.status}"` },
-        { status: 400 },
-      );
-    }
+  } else if (amount != null && (!Number.isFinite(amount) || amount < 0)) {
+    return NextResponse.json({ error: 'Refrigerant amount must be zero or more.' }, { status: 400 });
   }
 
   const updateFields: Record<string, unknown> = {};
   if (body.status) updateFields.status = body.status;
-  if (body.notes !== undefined) updateFields.notes = body.notes;
-  if (body.checklistItems !== undefined) updateFields.checklistItems = body.checklistItems;
-  if (body.preJobChecklistComplete !== undefined) updateFields.preJobChecklistComplete = body.preJobChecklistComplete;
-  updateFields.updatedAt = new Date();
+  if (body.note?.trim()) updateFields.notes = appendJobNote(existing.notes, body.note, session.name, now);
+  else if (body.notes !== undefined) updateFields.notes = body.notes;
+  if (body.checklistItems !== undefined) {
+    updateFields.checklistItems = checklist;
+    // Derived from the items, never trusted from the client.
+    updateFields.preJobChecklistComplete = outstandingChecklist(checklist, existing.refrigerantClass).length === 0;
+  }
+  if (amount !== undefined) updateFields.amount = amount == null ? null : amount.toString();
+  updateFields.updatedAt = now;
 
   const [updated] = await db
     .update(plannerJobs)
