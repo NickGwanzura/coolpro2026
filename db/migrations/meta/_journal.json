@@ -190,6 +190,13 @@
       "when": 1791621636081,
       "tag": "0026_email_activity",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791622256957,
+      "tag": "0027_planner_cancel_and_equipment_link",
+      "breakpoints": true
     }
   ]
 }

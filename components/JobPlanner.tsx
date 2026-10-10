@@ -51,6 +51,7 @@ const STATUS_STYLES: Record<PlannerJobStatus, string> = {
     'in-progress':'bg-amber-50 text-amber-700 border-amber-200',
     completed:    'bg-emerald-50 text-emerald-700 border-emerald-200',
     'follow-up':  'bg-rose-50 text-rose-700 border-rose-200',
+    cancelled:    'bg-gray-100 text-gray-500 border-gray-200',
 };
 
 const REF_STYLES: Partial<Record<RefrigerantSafetyClass, string>> = {
@@ -218,6 +219,7 @@ export default function JobPlanner() {
                         <option value="in-progress">In Progress</option>
                         <option value="completed">Completed</option>
                         <option value="follow-up">Follow-up</option>
+                        <option value="cancelled">Cancelled</option>
                     </select>
                     <button onClick={() => setShowModal(true)}
                         className="rounded-lg flex items-center justify-center gap-2 bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#b45309]">

@@ -11,6 +11,7 @@ function toPlannerJob(row: typeof plannerJobs.$inferSelect): PlannerJob {
     id: row.id,
     clientId: row.clientId,
     clientName: row.clientName,
+    equipmentId: row.equipmentId ?? undefined,
     location: row.location,
     province: row.province,
     district: row.district ?? undefined,
@@ -85,6 +86,7 @@ export async function POST(req: Request) {
     .values({
       clientId: body.clientId!,
       clientName: body.clientName!,
+      equipmentId: body.equipmentId ?? null,
       location: body.location!,
       province: body.province!,
       district: body.district ?? null,

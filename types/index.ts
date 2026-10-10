@@ -95,7 +95,7 @@ export interface Job {
   refrigerantUsage: number;
 }
 
-export type PlannerJobStatus = 'scheduled' | 'in-progress' | 'completed' | 'follow-up';
+export type PlannerJobStatus = 'scheduled' | 'in-progress' | 'completed' | 'follow-up' | 'cancelled';
 export type RefrigerantSafetyClass = 'A1' | 'A2L' | 'A2' | 'A3' | 'B1' | 'B2L' | 'B2' | 'B3';
 export type EquipmentStatus = 'normal' | 'due-soon' | 'overdue';
 export type SupplierQuotaStatus = 'within-quota' | 'near-limit' | 'exceeded';
@@ -137,6 +137,7 @@ export interface PlannerJob {
   id: string;
   clientId: string;
   clientName: string;
+  equipmentId?: string;
   location: string;
   province: string;
   district?: string;

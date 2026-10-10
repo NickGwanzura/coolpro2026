@@ -13,6 +13,7 @@ function toPlannerJob(row: typeof plannerJobs.$inferSelect): PlannerJob {
     id: row.id,
     clientId: row.clientId,
     clientName: row.clientName,
+    equipmentId: row.equipmentId ?? undefined,
     location: row.location,
     province: row.province,
     district: row.district ?? undefined,
@@ -85,8 +86,8 @@ export async function PATCH(
   // Editing the visit itself: only while the job is still open.
   const edits = ['scheduledDate', 'location', 'technicianId'].some(key => body[key as keyof typeof body] !== undefined);
   if (edits) {
-    if (existing.status === 'completed') {
-      return NextResponse.json({ error: 'A completed job cannot be rescheduled or reassigned. Flag it for follow-up instead.' }, { status: 400 });
+    if (existing.status === 'completed' || existing.status === 'cancelled') {
+      return NextResponse.json({ error: 'A completed or cancelled job cannot be rescheduled or reassigned. Flag a completed job for follow-up instead.' }, { status: 400 });
     }
     if (body.scheduledDate !== undefined) {
       if (!isValidIsoDate(body.scheduledDate)) {

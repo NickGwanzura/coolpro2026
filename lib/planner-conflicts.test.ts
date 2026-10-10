@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { findConflicts, isPastDate, isValidIsoDate } from './planner-conflicts';
 
-const job = (id: string, technicianId: string, scheduledDate: string, status: 'scheduled' | 'completed' = 'scheduled') =>
+const job = (id: string, technicianId: string, scheduledDate: string, status: 'scheduled' | 'completed' | 'cancelled' = 'scheduled') =>
     ({ id, technicianId, scheduledDate, status, clientName: `Client ${id}` });
 
 describe('findConflicts', () => {
-    const jobs = [job('1', 't1', '2026-10-12'), job('2', 't1', '2026-10-12', 'completed'), job('3', 't2', '2026-10-12'), job('4', 't1', '2026-10-13')];
+    const jobs = [job('1', 't1', '2026-10-12'), job('2', 't1', '2026-10-12', 'completed'), job('3', 't2', '2026-10-12'), job('4', 't1', '2026-10-13'), job('5', 't1', '2026-10-12', 'cancelled')];
     it('finds only open jobs for the same technician and date', () => {
         expect(findConflicts(jobs, 't1', '2026-10-12').map(j => j.id)).toEqual(['1']);
     });

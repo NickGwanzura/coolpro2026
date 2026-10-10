@@ -12,7 +12,7 @@ export function findConflicts(
         job.id !== ignoreJobId &&
         job.technicianId === technicianId &&
         job.scheduledDate === date &&
-        job.status !== 'completed',
+        job.status !== 'completed' && job.status !== 'cancelled',
     );
 }
 

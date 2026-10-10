@@ -36,6 +36,7 @@ async function seedPlannerJob(record: EquipmentRecord) {
     await createPlannerJob({
         clientId: record.id,
         clientName: record.clientName,
+        equipmentId: record.equipmentId,
         location: record.province,
         province: record.province,
         jobType: 'COLD_ROOM',
@@ -112,7 +113,11 @@ export default function FieldScheduling() {
 
         // One open job per equipment alert: scheduling again would only create a duplicate.
         const existing = plannerJobs.find(job =>
-            job.status !== 'completed' && job.notes?.includes(`from ${record.equipmentId} predictive`),
+            job.status !== 'completed' && job.status !== 'cancelled' && (
+                job.equipmentId === record.equipmentId ||
+                // Jobs created before equipmentId existed are recognised by their note.
+                (!job.equipmentId && job.notes?.includes(`from ${record.equipmentId} predictive`))
+            ),
         );
         if (existing) {
             setMessage(`${record.equipmentId} already has an open job (${existing.scheduledDate}). Opening the planner.`);

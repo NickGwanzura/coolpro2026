@@ -40,6 +40,19 @@ describe('validateTransition', () => {
     });
 });
 
+describe('cancelling', () => {
+    const base = { refrigerantClass: 'A1', checklist: [] as PlannerSafetyChecklistItem[] };
+    it('needs a reason and is allowed from open states', () => {
+        expect(validateTransition({ ...base, from: 'scheduled', to: 'cancelled' })).toMatch(/reason/i);
+        expect(validateTransition({ ...base, from: 'scheduled', to: 'cancelled', note: 'Client closed' })).toBeNull();
+        expect(validateTransition({ ...base, from: 'in-progress', to: 'cancelled', note: 'x' })).toBeNull();
+    });
+    it('cannot cancel a completed job or revive a cancelled one', () => {
+        expect(validateTransition({ ...base, from: 'completed', to: 'cancelled', note: 'x' })).toMatch(/cannot transition/i);
+        expect(validateTransition({ ...base, from: 'cancelled', to: 'scheduled' })).toMatch(/cannot transition/i);
+    });
+});
+
 describe('stampChecklist', () => {
     const now = new Date('2026-10-10T09:00:00Z');
     it('stamps newly ticked items and keeps earlier stamps', () => {

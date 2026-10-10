@@ -2,10 +2,11 @@
 import type { PlannerJob, PlannerJobStatus, PlannerSafetyChecklistItem, RefrigerantSafetyClass } from '@/types/index';
 
 export const STATUS_TRANSITIONS: Record<PlannerJobStatus, PlannerJobStatus[]> = {
-    scheduled: ['in-progress', 'completed', 'follow-up'],
-    'in-progress': ['completed', 'follow-up'],
+    scheduled: ['in-progress', 'completed', 'follow-up', 'cancelled'],
+    'in-progress': ['completed', 'follow-up', 'cancelled'],
     completed: ['follow-up'],
-    'follow-up': ['completed'],
+    'follow-up': ['completed', 'cancelled'],
+    cancelled: [],
 };
 
 export function isFlammableClass(refrigerantClass: RefrigerantSafetyClass | string): boolean {
@@ -81,6 +82,9 @@ export function validateTransition(input: TransitionInput): string | null {
 
     if (to === 'completed' && from !== 'completed' && !note?.trim()) {
         return 'Add a completion note describing the work done before completing the job.';
+    }
+    if (to === 'cancelled' && !note?.trim()) {
+        return 'Add a reason for cancelling the job.';
     }
     if (to === 'follow-up' && !note?.trim()) {
         return 'Add a note explaining what follow-up is needed.';

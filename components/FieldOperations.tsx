@@ -69,6 +69,7 @@ function StatusPill({ status }: { status: string }) {
             case 'submitted':
                 return 'border-slate-200 bg-slate-50 text-slate-700';
             case 'rejected':
+            case 'cancelled':
             case 'Leak Repair':
                 return 'border-rose-200 bg-rose-50 text-rose-700';
             default:
@@ -280,7 +281,7 @@ export default function FieldOperations() {
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                         <SummaryCard label="Equipment" value={equipment.length} />
                         <SummaryCard label="Jobs" value={jobs.length} />
-                        <SummaryCard label="Open work" value={jobs.filter(job => job.status !== 'completed').length} />
+                        <SummaryCard label="Open work" value={jobs.filter(job => job.status !== 'completed' && job.status !== 'cancelled').length} />
                     </div>
                 </div>
             </div>

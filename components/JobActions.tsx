@@ -7,7 +7,7 @@ import { outstandingChecklist } from '@/lib/planner-lifecycle';
 import { findConflicts, isPastDate } from '@/lib/planner-conflicts';
 import type { PlannerJob, Technician } from '@/types/index';
 
-type Panel = 'none' | 'checklist' | 'complete' | 'follow-up' | 'edit';
+type Panel = 'none' | 'checklist' | 'complete' | 'follow-up' | 'edit' | 'cancel';
 
 const button = 'inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60';
 
@@ -62,7 +62,7 @@ export default function JobActions({ job, allJobs, technicians, today }: JobActi
         () => setPanel('none'),
     );
 
-    const submitStatus = (status: 'completed' | 'follow-up') => {
+    const submitStatus = (status: 'completed' | 'follow-up' | 'cancelled') => {
         const parsed = amount.trim() === '' ? undefined : Number(amount);
         return run(
             () => updatePlannerJob(job.id, { status, note, ...(status === 'completed' && parsed !== undefined ? { amount: parsed } : {}) }),
@@ -70,7 +70,8 @@ export default function JobActions({ job, allJobs, technicians, today }: JobActi
         );
     };
 
-    const isDone = job.status === 'completed';
+    const isDone = job.status === 'completed' || job.status === 'cancelled';
+    if (job.status === 'cancelled') return null;
 
     return (
         <div className="mt-3 space-y-2">
@@ -100,6 +101,12 @@ export default function JobActions({ job, allJobs, technicians, today }: JobActi
                     <button type="button" onClick={() => setPanel(panel === 'edit' ? 'none' : 'edit')}
                         className={`${button} border-gray-200 bg-white text-gray-700 hover:bg-gray-50`}>
                         Edit
+                    </button>
+                )}
+                {!isDone && (
+                    <button type="button" onClick={() => setPanel(panel === 'cancel' ? 'none' : 'cancel')}
+                        className={`${button} border-rose-100 bg-white text-rose-700 hover:bg-rose-50`}>
+                        Cancel job
                     </button>
                 )}
             </div>
@@ -162,10 +169,10 @@ export default function JobActions({ job, allJobs, technicians, today }: JobActi
                 </div>
             )}
 
-            {(panel === 'complete' || panel === 'follow-up') && (
+            {(panel === 'complete' || panel === 'follow-up' || panel === 'cancel') && (
                 <div className="space-y-2 border border-gray-200 bg-gray-50 p-3">
                     <label className="block text-xs font-semibold text-gray-600">
-                        {panel === 'complete' ? 'What was done? (required)' : 'What follow-up is needed? (required)'}
+                        {panel === 'complete' ? 'What was done? (required)' : panel === 'cancel' ? 'Reason for cancelling (required)' : 'What follow-up is needed? (required)'}
                         <textarea value={note} onChange={event => setNote(event.target.value)} rows={3}
                             className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-normal outline-none focus:border-blue-300" />
                     </label>
@@ -176,9 +183,9 @@ export default function JobActions({ job, allJobs, technicians, today }: JobActi
                                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-normal outline-none focus:border-blue-300" />
                         </label>
                     )}
-                    <button type="button" disabled={busy || !note.trim()} onClick={() => submitStatus(panel === 'complete' ? 'completed' : 'follow-up')}
+                    <button type="button" disabled={busy || !note.trim()} onClick={() => submitStatus(panel === 'complete' ? 'completed' : panel === 'cancel' ? 'cancelled' : 'follow-up')}
                         className="w-full rounded-lg bg-[#D97706] px-3 py-2 text-xs font-semibold text-white hover:bg-[#b45309] disabled:opacity-60">
-                        {busy ? 'Saving…' : panel === 'complete' ? 'Mark job complete' : 'Save follow-up'}
+                        {busy ? 'Saving…' : panel === 'complete' ? 'Mark job complete' : panel === 'cancel' ? 'Cancel this job' : 'Save follow-up'}
                     </button>
                 </div>
             )}

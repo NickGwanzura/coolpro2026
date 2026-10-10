@@ -5,12 +5,15 @@ export const plannerJobStatusEnum = pgEnum('planner_job_status', [
   'in-progress',
   'completed',
   'follow-up',
+  'cancelled',
 ]);
 
 export const plannerJobs = pgTable('planner_jobs', {
   id: uuid('id').primaryKey().defaultRandom(),
   clientId: text('client_id').notNull(),
   clientName: text('client_name').notNull(),
+  // Register id of the equipment this job services, when it came from an equipment alert.
+  equipmentId: text('equipment_id'),
   location: text('location').notNull(),
   province: text('province').notNull(),
   district: text('district'),
