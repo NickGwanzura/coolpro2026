@@ -238,7 +238,7 @@ export function useReorders(enabled = true) {
 }
 
 export async function createReorder(
-  body: Pick<SupplierReorder, 'gasType' | 'quantityKg' | 'purpose' | 'supplierNotes'>
+  body: Pick<SupplierReorder, 'gasType' | 'quantityKg' | 'purpose' | 'supplierNotes'> & { reorderType?: SupplierReorder['reorderType'] }
 ): Promise<SupplierReorder> {
   const result = await post<SupplierReorder>('/api/supplier-reorders', body);
   await mutate('/api/supplier-reorders');
@@ -360,6 +360,8 @@ export type SupplierApplicationRecord = SupplierRegistration & {
   reviewedAt?: string;
   reviewedBy?: string;
   reviewNote?: string;
+  /** Annual import quota in kg set by an administrator; absent until one is set. */
+  importQuotaKg?: number;
 };
 
 export function useSupplierApplications(enabled = true) {
@@ -412,6 +414,11 @@ export async function submitContractorOnboarding(
   const result = await patch<ContractorApplication>('/api/contractor-applications', body);
   await mutate('/api/contractor-applications');
   return result;
+}
+
+export async function setSupplierImportQuota(id: string, importQuotaKg: number | null): Promise<void> {
+  await patch(`/api/supplier-applications/${id}/quota`, { importQuotaKg });
+  await mutate('/api/supplier-applications');
 }
 
 export async function approveSupplierApplication(id: string): Promise<SupplierApplicationRecord> {
@@ -540,6 +547,16 @@ export type RegistrationApplicationInput = {
   /** When the form was opened (ms since epoch), so the server can spot instant bot posts. */
   formStartedAt?: number;
 };
+
+export interface RecoveryTotals {
+  fieldRecoveredKg: number;
+  fieldEmissionsAvoidedTonnes: number;
+}
+
+/** Refrigerant recovered in the field, all time, counted from technicians' logs. */
+export function useRecoveryTotals(enabled = true) {
+  return useSWR<RecoveryTotals>(enabled ? '/api/admin/recovery-totals' : null, fetcher);
+}
 
 export interface MyStanding {
   technician: {

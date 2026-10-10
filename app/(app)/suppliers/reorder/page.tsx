@@ -35,6 +35,7 @@ export default function ReorderPage() {
     const [refrigerant, setRefrigerant] = useState<Refrigerant | null>(null);
     const [quantityKg, setQuantityKg] = useState<string>('');
     const [purpose, setPurpose] = useState('');
+    const [reorderType, setReorderType] = useState<'purchase' | 'recovery'>('purchase');
     const [supplierNotes, setSupplierNotes] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
@@ -84,6 +85,7 @@ export default function ReorderPage() {
                 gasType: refrigerant ? refrigerantLabel(refrigerant) : '',
                 quantityKg: parseFloat(quantityKg),
                 purpose: purpose.trim(),
+                reorderType,
                 supplierNotes: supplierNotes.trim(),
             });
             setRefrigerant(null);
@@ -158,6 +160,21 @@ export default function ReorderPage() {
                             className="mt-2 w-full border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         />
                         {errors.quantityKg && <p className="mt-1 text-xs text-rose-600">{errors.quantityKg}</p>}
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500" htmlFor="reorder-type">
+                            What is this reorder?
+                        </label>
+                        <select
+                            id="reorder-type"
+                            value={reorderType}
+                            onChange={e => setReorderType(e.target.value as 'purchase' | 'recovery')}
+                            className="mt-2 w-full border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                            <option value="purchase">Purchase of new stock</option>
+                            <option value="recovery">Return of recovered refrigerant</option>
+                        </select>
                     </div>
 
                     <div className="md:col-span-2">

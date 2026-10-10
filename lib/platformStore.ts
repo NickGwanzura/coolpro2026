@@ -94,6 +94,8 @@ export interface SupplierReorder {
     gasType: string;
     quantityKg: number;
     purpose: string;
+    /** New stock bought, or reclaimed refrigerant returned. */
+    reorderType: 'purchase' | 'recovery';
     supplierNotes: string;
     status: ReorderStatus;
     hevacrazReviewerId?: string;

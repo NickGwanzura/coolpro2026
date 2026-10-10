@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { jsPDF } from 'jspdf';
 import {
@@ -24,10 +24,62 @@ import { useAuth } from '@/lib/auth';
 import { useToast } from '@/components/ui/Toast';
 import { Drilldown } from '@/components/ui/Drilldown';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
-import { useCourses, useReorders, useVerifications, useSupplierApplications, useSupplierLedger, useSupplierComplianceApplications, useTechnicians, useGasLogs } from '@/lib/api';
-import type { SupplierQuotaStatus, NOUDiscrepancyAlert, NOUGreyMarketAlert } from '@/types/index';
+import { useCourses, useReorders, useVerifications, useSupplierApplications, useSupplierLedger, useSupplierComplianceApplications, useTechnicians, useGasLogs, useRecoveryTotals, useAdminDashboardSummary, setSupplierImportQuota } from '@/lib/api';
+import { quotaUsage, type QuotaStatus } from '@/lib/supplier-quota';
+import { emissionsAvoidedTonnes, type RecoveryRow } from '@/lib/recovery-emissions';
+import type { NOUDiscrepancyAlert, NOUGreyMarketAlert } from '@/types/index';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Lets an administrator set or change a supplier's annual import quota in kg. */
+function QuotaEditor({ supplierId, current }: { supplierId: string; current: number | null }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(current === null ? '' : String(current));
+  const [saving, setSaving] = useState(false);
+  const [problem, setProblem] = useState('');
+
+  async function save() {
+    setSaving(true);
+    setProblem('');
+    try {
+      await setSupplierImportQuota(supplierId, value.trim() === '' ? null : Number(value));
+      setEditing(false);
+    } catch (err) {
+      setProblem(err instanceof Error ? err.message : 'Could not save the quota.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <button type="button" onClick={() => setEditing(true)} className="text-xs font-semibold text-blue-700 hover:underline">
+        {current === null ? 'Set annual quota' : 'Change quota'}
+      </button>
+    );
+  }
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min="1"
+          step="any"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          aria-label="Annual import quota in kilograms"
+          placeholder="kg per year"
+          className="w-28 rounded border border-gray-300 px-2 py-1 text-xs"
+        />
+        <button type="button" onClick={save} disabled={saving} className="rounded bg-slate-900 px-2 py-1 text-xs font-semibold text-white disabled:opacity-50">
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+        <button type="button" onClick={() => setEditing(false)} className="text-xs text-gray-500 hover:underline">Cancel</button>
+      </div>
+      {problem && <p className="text-xs text-rose-600">{problem}</p>}
+    </div>
+  );
+}
 
 function AccessDenied() {
   const router = useRouter();
@@ -74,6 +126,8 @@ export default function NouDashboard() {
   const { data: reorders = [] } = useReorders();
   const { data: verifications = [] } = useVerifications();
   const { data: techniciansData = [] } = useTechnicians();
+  const { data: registrySummary } = useAdminDashboardSummary('month', 'all');
+  const { data: recoveryTotals } = useRecoveryTotals();
 
   const { data: supplierApplications = [] } = useSupplierApplications();
   const { data: supplierLedger = [] } = useSupplierLedger();
@@ -109,30 +163,33 @@ export default function NouDashboard() {
     }),
     [supplierApplications]
   );
-  const supplierStatusStyles: Record<SupplierQuotaStatus, string> = {
+  const supplierStatusStyles: Record<QuotaStatus, string> = {
+    'no-quota': 'bg-gray-100 text-gray-600',
     'within-quota': 'bg-emerald-50 text-emerald-700',
     'near-limit': 'bg-amber-50 text-amber-700',
     exceeded: 'bg-rose-50 text-rose-700',
   };
 
-  // Live NOU stats derived from reorders
+  // Live NOU figures. Purchases and recoveries come from the type recorded on each reorder, not
+  // from guessing at the purpose text. Field recovery comes from technicians' own logs.
   const liveStats = useMemo(() => {
     const approved = reorders.filter(r => r.status === 'approved');
-    const purchaseReorders = approved.filter(r => !/recover/i.test(r.purpose));
-    const recoveryReorders = approved.filter(r => /recover/i.test(r.purpose));
+    const purchaseReorders = approved.filter(r => r.reorderType !== 'recovery');
+    const recoveryReorders = approved.filter(r => r.reorderType === 'recovery');
     const totalPurchasedKg = purchaseReorders.reduce((sum, r) => sum + r.quantityKg, 0);
-    const totalRecoveredKg = recoveryReorders.reduce((sum, r) => sum + r.quantityKg, 0);
-    const emissionsAvoidedKgCo2 = recoveryReorders.reduce((sum, r) => {
-      const gwp = REFRIGERANT_REFERENCE[r.gasType]?.gwp ?? 0;
-      return sum + r.quantityKg * gwp;
-    }, 0);
+    const supplierRecoveredKg = recoveryReorders.reduce((sum, r) => sum + r.quantityKg, 0);
+    const supplierRows: RecoveryRow[] = recoveryReorders.map(r => ({ refrigerant: r.gasType, kg: r.quantityKg, gwp: null }));
+    const supplierEmissions = emissionsAvoidedTonnes(supplierRows, gas => REFRIGERANT_REFERENCE[gas]?.gwp);
+    const fieldRecoveredKg = recoveryTotals?.fieldRecoveredKg ?? 0;
     return {
-      totalTechnicians: techniciansData.length,
+      totalTechnicians: registrySummary?.technicians.total ?? 0,
       totalPurchasedKg,
-      totalRecoveredKg,
-      emissionsAvoidedTonnes: Math.round(emissionsAvoidedKgCo2 / 1000),
+      supplierRecoveredKg,
+      fieldRecoveredKg,
+      totalRecoveredKg: Math.round((supplierRecoveredKg + fieldRecoveredKg) * 10) / 10,
+      emissionsAvoidedTonnes: Math.round((supplierEmissions + (recoveryTotals?.fieldEmissionsAvoidedTonnes ?? 0)) * 10) / 10,
     };
-  }, [reorders, techniciansData]);
+  }, [reorders, registrySummary, recoveryTotals]);
 
   // Refrigerant breakdown from approved reorders
   const refrigerantBreakdown = useMemo(() => {
@@ -177,36 +234,37 @@ export default function NouDashboard() {
     return buckets.map(({ month, purchasedKg, usedKg }) => ({ month, purchasedKg, usedKg }));
   }, [reorders, supplierLedger]);
 
-  // Approved suppliers with quota math derived from registration data + ledger
+  // Approved suppliers, measured against the annual quota an administrator set for each one.
+  // A supplier with no quota is shown as such; no figure is made up for them.
   const approvedSuppliers = useMemo(() => {
-    const approved = supplierApplications.filter(app => app.status === 'approved');
-    return approved.map(app => {
-      const totalSalesKg = supplierLedger
-        .filter(e => e.supplierId === app.id && e.direction === 'sale')
-        .reduce((sum, e) => sum + e.quantityKg, 0);
-      const importQuotaKg = 3000;
-      const usage = importQuotaKg > 0 ? (totalSalesKg / importQuotaKg) * 100 : 0;
-      const quotaStatus: SupplierQuotaStatus =
-        usage >= 100 ? 'exceeded' : usage >= 85 ? 'near-limit' : 'within-quota';
-      return {
-        id: app.id,
-        name: app.companyName,
-        refrigerants: app.refrigerantsSupplied,
-        totalSalesKg,
-        importQuotaKg,
-        usagePercent: usage,
-        quotaStatus,
-        province: app.province,
-      };
-    });
+    const now = Date.now();
+    return supplierApplications
+      .filter(app => app.status === 'approved')
+      .map(app => {
+        const usage = quotaUsage({
+          sales: supplierLedger.filter(e => e.supplierId === app.id && e.direction === 'sale'),
+          quotaKg: app.importQuotaKg,
+          now,
+        });
+        return {
+          id: app.id,
+          name: app.companyName,
+          refrigerants: app.refrigerantsSupplied,
+          salesKg: usage.salesKg,
+          importQuotaKg: usage.quotaKg,
+          usagePercent: usage.usagePercent,
+          quotaStatus: usage.status,
+          province: app.province,
+        };
+      });
   }, [supplierApplications, supplierLedger]);
 
   const kpis = useMemo(
     () => [
       { label: 'Registered Technicians', value: String(liveStats.totalTechnicians), hint: 'Across the registry', icon: Warehouse },
-      { label: 'Purchased Kg', value: liveStats.totalPurchasedKg.toLocaleString(), hint: 'Approved reorders', icon: BarChart3 },
-      { label: 'Recovered Kg', value: liveStats.totalRecoveredKg.toLocaleString(), hint: 'Supplier returns & recoveries', icon: RefreshCcw },
-      { label: 'Emissions Avoided', value: `${liveStats.emissionsAvoidedTonnes}t`, hint: 'CO2-eq from recovered gas', icon: ShieldCheck },
+      { label: 'Purchased Kg', value: liveStats.totalPurchasedKg.toLocaleString(), hint: 'Approved purchase reorders', icon: BarChart3 },
+      { label: 'Recovered Kg', value: liveStats.totalRecoveredKg.toLocaleString(), hint: `${liveStats.fieldRecoveredKg.toLocaleString()} kg in the field, ${liveStats.supplierRecoveredKg.toLocaleString()} kg supplier returns`, icon: RefreshCcw },
+      { label: 'Emissions Avoided', value: `${liveStats.emissionsAvoidedTonnes}t`, hint: 'CO2-eq from recovered gas, all time', icon: ShieldCheck },
     ],
     [liveStats]
   );
@@ -549,17 +607,17 @@ export default function NouDashboard() {
               </p>
               <Drilldown label="Metric details" className="mt-2 border-t border-gray-100 pt-1">
                 {item.label === 'Registered Technicians' ? (
-                  <p>Counts all technician records currently loaded from the registry ({liveStats.totalTechnicians}). Status is not filtered for this total.</p>
+                  <p>Counts every technician in the registry ({liveStats.totalTechnicians}), whatever their status, worked out in the database.</p>
                 ) : item.label === 'Purchased Kg' ? (
                   <div>
-                    <p>Approved reorder quantities whose purpose is not marked as recovery:</p>
+                    <p>Approved reorders whose type is a purchase of new stock:</p>
                     <ul className="mt-2 space-y-1">{approvedReordersByGas.map(([gas, kg]) => <li key={gas} className="flex justify-between gap-3"><span>{gas}</span><span className="tabular-nums">{kg.toLocaleString()} kg</span></li>)}</ul>
                     <p className="mt-2">This breakdown is year-to-date; the headline KPI is based on all approved reorders returned by the API.</p>
                   </div>
                 ) : item.label === 'Recovered Kg' ? (
-                  <p>Sum of approved reorder records whose purpose contains “recover”. This reflects supplier return/recovery records, not technician field recovery logs.</p>
+                  <p>Refrigerant recovered in the field (the total of technicians&apos; recovery log entries, all time) plus approved reorders of type recovery return. Both are shown in the card note.</p>
                 ) : (
-                  <p>Estimated as recovered kilograms × the refrigerant GWP reference, converted to tonnes of CO₂-equivalent and rounded to a whole tonne. Refrigerants without a configured GWP are excluded from the estimate.</p>
+                  <p>Recovered kilograms × each gas&apos;s global warming potential, in tonnes of CO₂-equivalent to one decimal place. It counts both field recovery logs and supplier recovery returns. A gas with no known potential adds nothing to the estimate.</p>
                 )}
               </Drilldown>
             </article>
@@ -965,23 +1023,29 @@ export default function NouDashboard() {
                 </div>
               ) : (
                 approvedSuppliers.map((supplier) => {
-                  const usage = Math.round(supplier.usagePercent);
+                  const usage = supplier.usagePercent === null ? null : Math.round(supplier.usagePercent);
 
                   return (
-                    <div key={supplier.id} className="grid grid-cols-[1.5fr_1fr_1fr_0.9fr] gap-3 px-4 py-4 text-sm">
+                    <div key={supplier.id} className="grid grid-cols-[1.5fr_1fr_1.2fr_0.9fr] gap-3 px-4 py-4 text-sm">
                       <div>
                         <p className="font-semibold text-gray-900">{supplier.name}</p>
                         <p className="text-xs text-gray-500">{supplier.province}</p>
                       </div>
                       <div className="text-gray-600">{supplier.refrigerants.join(', ')}</div>
                       <div className="space-y-1">
-                        <p className="font-semibold text-gray-900">{usage}%</p>
-                        <div className="h-2 rounded-full bg-gray-100">
-                          <div
-                            className="h-2 rounded-full bg-slate-900"
-                            style={{ width: `${Math.min(usage, 100)}%` }}
-                          />
-                        </div>
+                        <p className="font-semibold text-gray-900">
+                          {usage === null ? 'No quota set' : `${usage}%`}
+                          <span className="ml-2 text-xs font-normal text-gray-500">
+                            {supplier.salesKg.toLocaleString()} kg sold this year
+                            {supplier.importQuotaKg !== null ? ` of ${supplier.importQuotaKg.toLocaleString()} kg` : ''}
+                          </span>
+                        </p>
+                        {usage !== null && (
+                          <div className="h-2 rounded-full bg-gray-100">
+                            <div className="h-2 rounded-full bg-slate-900" style={{ width: `${Math.min(usage, 100)}%` }} />
+                          </div>
+                        )}
+                        <QuotaEditor supplierId={supplier.id} current={supplier.importQuotaKg} />
                       </div>
                       <div>
                         <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${supplierStatusStyles[supplier.quotaStatus]}`}>

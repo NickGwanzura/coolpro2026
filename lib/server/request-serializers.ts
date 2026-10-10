@@ -1,5 +1,6 @@
-import { cocRequests, tradePermits, trainerCertificateRequests } from '@/db/schema/index';
-import type { CocRequest, TradePermit, TrainerCertificateRequest } from '@/types/index';
+import { cocRequests, supplierApplications, supplierReorders, tradePermits, trainerCertificateRequests } from '@/db/schema/index';
+import type { SupplierReorder } from '@/lib/platformStore';
+import type { CocRequest, SupplierRegistration, TradePermit, TrainerCertificateRequest } from '@/types/index';
 
 export function toTrainerCertificateRequest(
   row: typeof trainerCertificateRequests.$inferSelect,
@@ -91,6 +92,63 @@ export function toTradePermit(row: typeof tradePermits.$inferSelect): TradePermi
     reviewNote: row.reviewNote ?? undefined,
     notes: row.notes ?? undefined,
     submittedAt: row.submittedAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export type SupplierRegistrationRecord = SupplierRegistration & {
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+  /** Annual import quota in kg set by an administrator; absent until one is set. */
+  importQuotaKg?: number;
+};
+
+export function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): SupplierRegistrationRecord {
+  return {
+    id: row.id,
+    companyName: row.companyName,
+    tradingName: row.tradingName ?? undefined,
+    registrationNumber: row.registrationNumber,
+    supplierType: row.supplierType as SupplierRegistration['supplierType'],
+    contactName: row.contactName,
+    email: row.email,
+    phone: row.phone,
+    province: row.province,
+    city: row.city,
+    address: row.address,
+    refrigerantsSupplied: row.refrigerantsSupplied as string[],
+    taxNumber: row.taxNumber ?? undefined,
+    pesepayMerchantId: row.pesepayMerchantId ?? undefined,
+    website: row.website ?? undefined,
+    notes: row.notes ?? undefined,
+    surveyData: (row.surveyData as SupplierRegistration['surveyData']) ?? undefined,
+    status: row.status as SupplierRegistration['status'],
+    submittedAt: row.submittedAt.toISOString(),
+    reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
+    reviewedBy: row.reviewedBy ?? undefined,
+    reviewNote: row.reviewNote ?? undefined,
+    importQuotaKg: row.importQuotaKg === null ? undefined : Number(row.importQuotaKg),
+  };
+}
+
+export function toSupplierReorder(row: typeof supplierReorders.$inferSelect): SupplierReorder {
+  return {
+    id: row.id,
+    vendorId: row.vendorId,
+    vendorName: row.vendorName,
+    gasType: row.gasType,
+    quantityKg: Number(row.quantityKg),
+    purpose: row.purpose,
+    reorderType: row.reorderType === 'recovery' ? 'recovery' : 'purchase',
+    supplierNotes: row.supplierNotes,
+    status: row.status as SupplierReorder['status'],
+    hevacrazReviewerId: row.hevacrazReviewerId ?? undefined,
+    hevacrazReviewedAt: row.hevacrazReviewedAt?.toISOString() ?? undefined,
+    nouReviewerId: row.nouReviewerId ?? undefined,
+    nouReviewedAt: row.nouReviewedAt?.toISOString() ?? undefined,
+    rejectionReason: row.rejectionReason ?? undefined,
+    rejectedBy: row.rejectedBy ?? undefined,
     createdAt: row.createdAt.toISOString(),
   };
 }

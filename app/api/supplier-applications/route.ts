@@ -1,3 +1,4 @@
+import { toSupplierRegistration } from '@/lib/server/request-serializers';
 import { ACCOUNT_EXISTS_MESSAGE, accountExistsFor } from '@/lib/server/applicant-lookup';
 import { NextResponse } from 'next/server';
 import { and, eq, or } from 'drizzle-orm';
@@ -29,37 +30,6 @@ const REQUIRED_SURVEY_KEYS: Array<keyof SupplierSurveyData> = [
 function isSupplierSurveyComplete(data: SupplierSurveyData | undefined): boolean {
   if (!data) return false;
   return REQUIRED_SURVEY_KEYS.every((key) => data[key] !== undefined && data[key] !== '');
-}
-
-function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): SupplierRegistration & {
-  reviewedAt?: string;
-  reviewedBy?: string;
-  reviewNote?: string;
-} {
-  return {
-    id: row.id,
-    companyName: row.companyName,
-    tradingName: row.tradingName ?? undefined,
-    registrationNumber: row.registrationNumber,
-    supplierType: row.supplierType as SupplierRegistration['supplierType'],
-    contactName: row.contactName,
-    email: row.email,
-    phone: row.phone,
-    province: row.province,
-    city: row.city,
-    address: row.address,
-    refrigerantsSupplied: row.refrigerantsSupplied as string[],
-    taxNumber: row.taxNumber ?? undefined,
-    pesepayMerchantId: row.pesepayMerchantId ?? undefined,
-    website: row.website ?? undefined,
-    notes: row.notes ?? undefined,
-    surveyData: (row.surveyData as SupplierRegistration['surveyData']) ?? undefined,
-    status: row.status as SupplierRegistration['status'],
-    submittedAt: row.submittedAt.toISOString(),
-    reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
-    reviewedBy: row.reviewedBy ?? undefined,
-    reviewNote: row.reviewNote ?? undefined,
-  };
 }
 
 export async function GET(req: Request) {

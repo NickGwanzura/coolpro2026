@@ -1,30 +1,11 @@
+import { toSupplierReorder } from '@/lib/server/request-serializers';
+import { validateReorder } from '@/lib/server/reorder-validation';
 import { NextResponse } from 'next/server';
 import { eq, inArray } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { supplierReorders } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { requireApprovedSupplier } from '@/lib/server/supplier-access';
-import type { SupplierReorder } from '@/lib/platformStore';
-
-function toSupplierReorder(row: typeof supplierReorders.$inferSelect): SupplierReorder {
-  return {
-    id: row.id,
-    vendorId: row.vendorId,
-    vendorName: row.vendorName,
-    gasType: row.gasType,
-    quantityKg: Number(row.quantityKg),
-    purpose: row.purpose,
-    supplierNotes: row.supplierNotes,
-    status: row.status as SupplierReorder['status'],
-    hevacrazReviewerId: row.hevacrazReviewerId ?? undefined,
-    hevacrazReviewedAt: row.hevacrazReviewedAt?.toISOString() ?? undefined,
-    nouReviewerId: row.nouReviewerId ?? undefined,
-    nouReviewedAt: row.nouReviewedAt?.toISOString() ?? undefined,
-    rejectionReason: row.rejectionReason ?? undefined,
-    rejectedBy: row.rejectedBy ?? undefined,
-    createdAt: row.createdAt.toISOString(),
-  };
-}
 
 export async function GET(req: Request) {
   let session;
@@ -57,7 +38,9 @@ export async function POST(req: Request) {
     return e as Response;
   }
 
-  const body = await req.json() as Pick<SupplierReorder, 'gasType' | 'quantityKg' | 'purpose' | 'supplierNotes'>;
+  const parsed = validateReorder(await req.json().catch(() => null));
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  const body = parsed.value;
 
   const [inserted] = await db
     .insert(supplierReorders)
@@ -67,7 +50,8 @@ export async function POST(req: Request) {
       gasType: body.gasType,
       quantityKg: String(body.quantityKg),
       purpose: body.purpose,
-      supplierNotes: body.supplierNotes ?? '',
+      reorderType: body.reorderType,
+      supplierNotes: body.supplierNotes,
       status: 'pending_hevacraz',
       createdAt: new Date(),
     })

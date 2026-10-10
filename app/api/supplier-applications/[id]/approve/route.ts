@@ -1,3 +1,4 @@
+import { toSupplierRegistration } from '@/lib/server/request-serializers';
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
@@ -5,38 +6,6 @@ import { supplierApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { provisionUserFromApplication, ProvisionConflictError } from '@/lib/server/provision-user';
 import { afterApplicationApproved, reviewBlockedReason } from '@/lib/server/application-flow';
-import type { SupplierRegistration } from '@/types/index';
-
-function toSupplierRegistration(row: typeof supplierApplications.$inferSelect): SupplierRegistration & {
-  reviewedAt?: string;
-  reviewedBy?: string;
-  reviewNote?: string;
-} {
-  return {
-    id: row.id,
-    companyName: row.companyName,
-    tradingName: row.tradingName ?? undefined,
-    registrationNumber: row.registrationNumber,
-    supplierType: row.supplierType as SupplierRegistration['supplierType'],
-    contactName: row.contactName,
-    email: row.email,
-    phone: row.phone,
-    province: row.province,
-    city: row.city,
-    address: row.address,
-    refrigerantsSupplied: row.refrigerantsSupplied as string[],
-    taxNumber: row.taxNumber ?? undefined,
-    pesepayMerchantId: row.pesepayMerchantId ?? undefined,
-    website: row.website ?? undefined,
-    notes: row.notes ?? undefined,
-    surveyData: (row.surveyData as SupplierRegistration['surveyData']) ?? undefined,
-    status: row.status as SupplierRegistration['status'],
-    submittedAt: row.submittedAt.toISOString(),
-    reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
-    reviewedBy: row.reviewedBy ?? undefined,
-    reviewNote: row.reviewNote ?? undefined,
-  };
-}
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let session;
