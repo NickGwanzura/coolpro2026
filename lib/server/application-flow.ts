@@ -23,7 +23,6 @@ import {
   sendApprovalEmail,
   sendVerificationEmail,
 } from '@/lib/server/email';
-import { logEmail } from '@/lib/server/email-log';
 import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
 import { notifyUserByEmail } from '@/lib/server/notifications';
 import { notificationTemplates } from '@/lib/notification-templates';
@@ -68,24 +67,9 @@ export async function describeApplication(
     : null;
 }
 
-async function sendAndLog(
-  emailType: string,
-  identity: Pick<ApplicationIdentity, 'entityType' | 'entityId' | 'email'>,
-  send: () => Promise<{ sent: boolean }>,
-): Promise<void> {
-  let sent = false;
-  try {
-    sent = (await send()).sent;
-  } catch {
-    sent = false;
-  }
-  await logEmail({
-    emailType,
-    recipientEmail: identity.email,
-    relatedEntityType: identity.entityType,
-    relatedEntityId: identity.entityId,
-    sent,
-  }).catch(() => {});
+/** What to record about an application email, so the Email Activity page can link back to it. */
+function logFor(identity: Pick<ApplicationIdentity, 'entityType' | 'entityId' | 'name'>) {
+  return { entityType: identity.entityType, entityId: identity.entityId, label: identity.name };
 }
 
 /**
@@ -100,15 +84,14 @@ async function sendConfirmationLink(identity: ApplicationIdentity): Promise<void
       email: identity.email,
     });
     const verifyUrl = `${SITE_URL}/verify-email?token=${encodeURIComponent(token)}`;
-    await sendAndLog('application_verification', identity, () =>
-      sendVerificationEmail({
-        email: identity.email,
-        name: identity.name,
-        role: identity.role,
-        verifyUrl,
-        hours: VERIFICATION_TTL_HOURS,
-      }),
-    );
+    await sendVerificationEmail({
+      email: identity.email,
+      name: identity.name,
+      role: identity.role,
+      verifyUrl,
+      hours: VERIFICATION_TTL_HOURS,
+      log: logFor(identity),
+    });
   } catch (err) {
     console.error('[application-flow] could not send the confirmation link:', err instanceof Error ? err.message : err);
   }
@@ -165,9 +148,7 @@ export async function completeApplicantVerification(token: string): Promise<Veri
   if (!identity) return { state: 'invalid' };
 
   if (result.state === 'verified') {
-    await sendAndLog('application_received', identity, () =>
-      sendApplicationReceivedEmail({ email: identity.email, name: identity.name, role: identity.role }),
-    );
+    await sendApplicationReceivedEmail({ email: identity.email, name: identity.name, role: identity.role, log: logFor(identity) });
     await recordAuditEvent({
       entityType: identity.entityType,
       entityId: identity.entityId,
@@ -201,9 +182,7 @@ export async function reviewBlockedReason(
 
 /** Emails the applicant and records the decision. Best-effort: never blocks the approval. */
 export async function afterApplicationApproved(identity: ApplicationIdentity, reviewer: { name: string; role: string }, previousStatus: string): Promise<void> {
-  await sendAndLog('application_approved', identity, () =>
-    sendApprovalEmail({ email: identity.email, name: identity.name, role: identity.role }),
-  );
+  await sendApprovalEmail({ email: identity.email, name: identity.name, role: identity.role, log: logFor(identity) });
   await notifyUserByEmail(identity.email, notificationTemplates.welcome(APPLICANT_ROLES[identity.role].label));
   await recordAuditEvent({
     entityType: identity.entityType,
@@ -226,14 +205,13 @@ export async function afterApplicationRejected(
   previousStatus: string,
   notes: { applicantMessage?: string; internalNote?: string },
 ): Promise<void> {
-  await sendAndLog('application_rejected', identity, () =>
-    sendApplicationRejectedEmail({
-      email: identity.email,
-      name: identity.name,
-      role: identity.role,
-      applicantMessage: notes.applicantMessage?.trim() || undefined,
-    }),
-  );
+  await sendApplicationRejectedEmail({
+    email: identity.email,
+    name: identity.name,
+    role: identity.role,
+    applicantMessage: notes.applicantMessage?.trim() || undefined,
+    log: logFor(identity),
+  });
   await recordAuditEvent({
     entityType: identity.entityType,
     entityId: identity.entityId,

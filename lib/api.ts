@@ -1274,6 +1274,26 @@ export function useAuditLog(params: { entityType?: string; entityId?: string } =
   return useSWR<AuditLogEntry[]>(query ? `/api/audit-log?${query}` : null, fetcher);
 }
 
-export function useEmailLog() {
-  return useSWR<EmailLogEntry[]>('/api/email-log', fetcher);
+export interface EmailLogPage {
+  items: EmailLogEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+  summary: { days: number; sent: number; delayed: number; delivered: number; failed: number; bounced: number; complained: number };
+  types: string[];
+}
+
+/** One page of the email activity, filtered in the database. Refreshes every 30 seconds. */
+export function useEmailLog(filters: { status?: string; type?: string; q?: string; from?: string; to?: string; page?: number } = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== '' && !(key === 'page' && value === 1)) params.set(key, String(value));
+  }
+  const qs = params.toString();
+  return useSWR<EmailLogPage>(`/api/email-log${qs ? `?${qs}` : ''}`, fetcher, { refreshInterval: 30_000, keepPreviousData: true });
+}
+
+export async function resendLoggedEmail(id: string): Promise<void> {
+  await post(`/api/email-log/${id}/resend`);
+  await mutate((key) => typeof key === 'string' && key.startsWith('/api/email-log'));
 }

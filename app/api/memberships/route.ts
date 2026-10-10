@@ -7,7 +7,6 @@ import { requireRole } from '@/lib/server/auth';
 import { generateMembershipNumber } from '@/lib/server/membership-number';
 import { recordAuditEvent } from '@/lib/server/audit';
 import { sendInviteEmail, sendMembershipConfirmationEmail } from '@/lib/server/email';
-import { logEmail } from '@/lib/server/email-log';
 import { SITE_URL } from '@/lib/site-url';
 import type { Membership } from '@/types/index';
 
@@ -146,31 +145,19 @@ export async function POST(req: Request) {
     }).catch(() => {}); // best-effort: a pending invite may already exist for this email
 
     const inviteUrl = `${SITE_URL}/accept-invite?token=${token}`;
-    sendInviteEmail({ email: technician.email, inviteUrl, role: 'technician', invitedBy: session.name })
-      .then((result) => logEmail({
-        emailType: 'account_activation',
-        recipientEmail: technician.email!,
-        relatedEntityType: 'membership',
-        relatedEntityId: created.id,
-        sent: result.sent,
-      }))
-      .catch(() => {});
+    await sendInviteEmail({
+      email: technician.email, inviteUrl, role: 'technician', invitedBy: session.name,
+      log: { type: 'account_activation', entityType: 'membership', entityId: created.id, label: technician.name },
+    });
   }
 
-  sendMembershipConfirmationEmail({
+  await sendMembershipConfirmationEmail({
     email: technician.email,
     name: technician.name,
     membershipNumber,
     expiryDate,
-  })
-    .then((result) => logEmail({
-      emailType: 'membership_confirmation',
-      recipientEmail: technician.email!,
-      relatedEntityType: 'membership',
-      relatedEntityId: created.id,
-      sent: result.sent,
-    }))
-    .catch(() => {});
+    log: { entityType: 'membership', entityId: created.id, label: technician.name },
+  });
 
   return NextResponse.json(toMembership(created), { status: 201 });
 }

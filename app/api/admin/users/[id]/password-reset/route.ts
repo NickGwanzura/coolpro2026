@@ -29,7 +29,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { token } = await issuePasswordResetToken(user.id, { email: session.email, role: session.role });
     const resetUrl = new URL('/reset-password', SITE_URL);
     resetUrl.searchParams.set('token', token);
-    const result = await sendPasswordResetEmail({ email: user.email, resetUrl: resetUrl.toString() });
+    const result = await sendPasswordResetEmail({ email: user.email, resetUrl: resetUrl.toString(), log: { entityType: 'user', entityId: user.id, label: user.name } });
     if (!result.sent) {
       return NextResponse.json({ error: 'The reset email could not be sent. Check the email service configuration and retry.' }, { status: 503 });
     }

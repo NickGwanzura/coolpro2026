@@ -183,6 +183,13 @@
       "when": 1791618483933,
       "tag": "0025_dashboards_notifications_progress_quota",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791621636081,
+      "tag": "0026_email_activity",
+      "breakpoints": true
     }
   ]
 }

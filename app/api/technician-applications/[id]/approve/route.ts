@@ -6,7 +6,6 @@ import { technicianApplications, technicians, memberships, users } from '@/db/sc
 import { requireRole } from '@/lib/server/auth';
 import { sendMembershipConfirmationEmail } from '@/lib/server/email';
 import { afterApplicationApproved, reviewBlockedReason } from '@/lib/server/application-flow';
-import { logEmail } from '@/lib/server/email-log';
 import { recordAuditEvent } from '@/lib/server/audit';
 import { generateMembershipNumber } from '@/lib/server/membership-number';
 
@@ -128,20 +127,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     app.status,
   );
 
-  sendMembershipConfirmationEmail({
+  await sendMembershipConfirmationEmail({
     email: app.email,
     name: app.name,
     membershipNumber,
     expiryDate: membershipExpiry,
-  })
-    .then((result) => logEmail({
-      emailType: 'membership_confirmation',
-      recipientEmail: app.email,
-      relatedEntityType: 'membership',
-      relatedEntityId: membershipId,
-      sent: result.sent,
-    }))
-    .catch(() => {});
+    log: { entityType: 'membership', entityId: membershipId, label: app.name },
+  });
 
   return NextResponse.json({
     id: app.id,

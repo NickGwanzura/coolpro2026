@@ -5,7 +5,6 @@ import { studentApplications, invites } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { provisionUserFromApplication, ProvisionConflictError } from '@/lib/server/provision-user';
 import { sendInviteEmail } from '@/lib/server/email';
-import { logEmail } from '@/lib/server/email-log';
 import { SITE_URL } from '@/lib/site-url';
 import type { StudentApplication, StudentSurveyData } from '@/types/index';
 
@@ -91,15 +90,10 @@ export async function POST(req: Request) {
   }).catch(() => {});
 
   const inviteUrl = `${SITE_URL}/accept-invite?token=${token}`;
-  sendInviteEmail({ email, inviteUrl, role: 'student', invitedBy: session.name })
-    .then((result) => logEmail({
-      emailType: 'account_activation',
-      recipientEmail: email,
-      relatedEntityType: 'student_application',
-      relatedEntityId: inserted.id,
-      sent: result.sent,
-    }))
-    .catch(() => {});
+  await sendInviteEmail({
+    email, inviteUrl, role: 'student', invitedBy: session.name,
+    log: { type: 'account_activation', entityType: 'student_application', entityId: inserted.id, label: name },
+  });
 
   return NextResponse.json({
     id: inserted.id,

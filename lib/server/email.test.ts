@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const send = vi.fn();
+const logEmail = vi.fn();
+vi.mock('@/lib/server/email-log', () => ({ logEmail: (...args: unknown[]) => logEmail(...args) }));
 vi.mock('resend', () => ({
   Resend: class {
     emails = { send };
@@ -20,7 +22,9 @@ function lastEmail() {
 
 beforeEach(() => {
   send.mockReset();
-  send.mockResolvedValue({ error: null });
+  send.mockResolvedValue({ data: { id: 're_msg_1' }, error: null });
+  logEmail.mockReset();
+  logEmail.mockResolvedValue(undefined);
 });
 
 describe('verification email', () => {
@@ -116,20 +120,20 @@ describe('sending safely', () => {
   it('reports not sent, without throwing, when the provider rejects', async () => {
     send.mockResolvedValue({ error: { message: 'bad address' } });
     const { sendApprovalEmail } = await loadEmail();
-    await expect(sendApprovalEmail({ email: 'e@example.com', name: 'E', role: 'student' })).resolves.toEqual({ sent: false });
+    await expect(sendApprovalEmail({ email: 'e@example.com', name: 'E', role: 'student' })).resolves.toEqual({ sent: false, error: 'bad address' });
   });
 
   it('reports not sent, without throwing, when sending itself fails', async () => {
     send.mockRejectedValue(new Error('network down'));
     const { sendApprovalEmail } = await loadEmail();
-    await expect(sendApprovalEmail({ email: 'e@example.com', name: 'E', role: 'student' })).resolves.toEqual({ sent: false });
+    await expect(sendApprovalEmail({ email: 'e@example.com', name: 'E', role: 'student' })).resolves.toEqual({ sent: false, error: 'network down' });
   });
 
   it('reports not sent when no API key is configured', async () => {
     vi.resetModules();
     delete process.env.RESEND_API_KEY;
     const { sendApprovalEmail } = await import('./email');
-    await expect(sendApprovalEmail({ email: 'e@example.com', name: 'E', role: 'student' })).resolves.toEqual({ sent: false });
+    await expect(sendApprovalEmail({ email: 'e@example.com', name: 'E', role: 'student' })).resolves.toMatchObject({ sent: false });
     expect(send).not.toHaveBeenCalled();
   });
 });
@@ -199,5 +203,92 @@ describe('branded layout', () => {
     expect(html).toContain('display: none');
     expect(html).toContain('Your NOU / HEVACRAZ application has been approved.');
     expect(html).toContain('info@hevacraz.co.zw');
+  });
+});
+
+describe('every email is recorded in the activity log', () => {
+  const lastLog = () => logEmail.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+
+  it('records a successful send with its subject and the provider id, but not the body', async () => {
+    const { sendApprovalEmail } = await loadEmail();
+    await sendApprovalEmail({ email: 'a@example.com', name: 'A', role: 'student', log: { entityType: 'student_application', entityId: 'id-1', label: 'Ada' } });
+    expect(logEmail).toHaveBeenCalledTimes(1);
+    expect(lastLog()).toMatchObject({
+      emailType: 'application_approved',
+      recipientEmail: 'a@example.com',
+      subject: 'Your NOU / HEVACRAZ student application has been approved',
+      relatedEntityType: 'student_application',
+      relatedEntityId: 'id-1',
+      relatedLabel: 'Ada',
+      sent: true,
+      providerMessageId: 're_msg_1',
+    });
+    expect(JSON.stringify(lastLog())).not.toContain('<table');
+  });
+
+  it("records why a send failed, in the provider's words", async () => {
+    send.mockResolvedValue({ data: null, error: { message: 'The zimhvacregistry.org domain is not verified.' } });
+    const { sendVerificationEmail } = await loadEmail();
+    const result = await sendVerificationEmail({ email: 'a@example.com', name: 'A', role: 'student', verifyUrl: 'https://x.test', hours: 48 });
+    expect(result).toEqual({ sent: false, error: 'The zimhvacregistry.org domain is not verified.' });
+    expect(lastLog()).toMatchObject({ emailType: 'application_verification', sent: false, errorMessage: 'The zimhvacregistry.org domain is not verified.' });
+  });
+
+  it('records a thrown network error as a failure with its message', async () => {
+    send.mockRejectedValue(new Error('socket hang up'));
+    const { sendApprovalEmail } = await loadEmail();
+    const result = await sendApprovalEmail({ email: 'a@example.com', name: 'A', role: 'student' });
+    expect(result).toEqual({ sent: false, error: 'socket hang up' });
+    expect(lastLog()).toMatchObject({ sent: false, errorMessage: 'socket hang up' });
+  });
+
+  it('records a missing API key as a failure with a clear reason', async () => {
+    vi.resetModules();
+    delete process.env.RESEND_API_KEY;
+    const { sendApprovalEmail } = await import('./email');
+    const result = await sendApprovalEmail({ email: 'a@example.com', name: 'A', role: 'student' });
+    expect(result.sent).toBe(false);
+    expect(result.error).toMatch(/RESEND_API_KEY/);
+    expect(lastLog()).toMatchObject({ sent: false });
+    expect(String(lastLog().errorMessage)).toMatch(/not configured/);
+  });
+
+  it('still reports the send result when the log itself cannot be written', async () => {
+    logEmail.mockRejectedValue(new Error('database down'));
+    const { sendApprovalEmail } = await loadEmail();
+    await expect(sendApprovalEmail({ email: 'a@example.com', name: 'A', role: 'student' })).resolves.toEqual({ sent: true });
+  });
+
+  it('gives each kind of email a sensible default type, and lets a caller override it', async () => {
+    const m = await loadEmail();
+    await m.sendPasswordResetEmail({ email: 'a@example.com', resetUrl: 'https://x.test/r' });
+    expect(lastLog().emailType).toBe('password_reset');
+    await m.sendInviteEmail({ email: 'a@example.com', inviteUrl: 'https://x.test/i', role: 'student', invitedBy: 'Admin' });
+    expect(lastLog().emailType).toBe('invite');
+    await m.sendInviteEmail({ email: 'a@example.com', inviteUrl: 'https://x.test/i', role: 'student', invitedBy: 'Admin', log: { type: 'account_activation' } });
+    expect(lastLog().emailType).toBe('account_activation');
+    await m.sendMembershipConfirmationEmail({ email: 'a@example.com', name: 'A', membershipNumber: 'M-1', expiryDate: '2027-01-01' });
+    expect(lastLog().emailType).toBe('membership_confirmation');
+    await m.sendCertificateEmail({ email: 'a@example.com', name: 'A', certificateNumber: 'C-1', pdfBase64: 'AAAA', fileName: 'c.pdf' });
+    expect(lastLog().emailType).toBe('certificate');
+  });
+
+  it('logs both messages of a contact form submission', async () => {
+    const { sendContactEmails } = await loadEmail();
+    await sendContactEmails({ name: 'Visitor', email: 'v@example.com', subject: 'Hello', message: 'Hi there' });
+    expect(logEmail.mock.calls.map((call) => call[0].emailType)).toEqual(['contact_notification', 'contact_confirmation']);
+  });
+
+  it('never stores a reset or invite link', async () => {
+    const m = await loadEmail();
+    await m.sendPasswordResetEmail({ email: 'a@example.com', resetUrl: 'https://x.test/reset?token=SECRET123' });
+    await m.sendInviteEmail({ email: 'a@example.com', inviteUrl: 'https://x.test/invite?token=SECRET456', role: 'student', invitedBy: 'Admin' });
+    for (const call of logEmail.mock.calls) expect(JSON.stringify(call[0])).not.toMatch(/SECRET/);
+  });
+
+  it('sends replies to the team inbox by default', async () => {
+    const { sendApprovalEmail } = await loadEmail();
+    await sendApprovalEmail({ email: 'a@example.com', name: 'A', role: 'student' });
+    expect(send.mock.calls.at(-1)?.[0].replyTo).toBe('info@hevacraz.co.zw');
   });
 });

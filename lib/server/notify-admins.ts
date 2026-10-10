@@ -2,7 +2,6 @@ import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { users } from '@/db/schema/index';
 import { sendNewApplicationAdminEmail } from '@/lib/server/email';
-import { logEmail } from '@/lib/server/email-log';
 import type { DetailRow } from '@/lib/application-details';
 import { isUndeliverableAddress } from '@/lib/deliverable-address';
 
@@ -38,30 +37,21 @@ export async function notifyAdminsOfNewApplication(input: {
 
   await Promise.all(
     admins.map(async (admin) => {
-      let sent = false;
       try {
-        sent = (
-          await sendNewApplicationAdminEmail({
-            to: admin.email,
-            adminName: admin.name,
-            roleLabel: input.roleLabel,
-            applicantName: input.applicantName,
-            applicantEmail: input.applicantEmail,
-            details: input.details ?? [],
-            emailConfirmed: input.emailConfirmed ?? true,
-            reviewUrl: input.reviewPath,
-          })
-        ).sent;
+        await sendNewApplicationAdminEmail({
+          to: admin.email,
+          adminName: admin.name,
+          roleLabel: input.roleLabel,
+          applicantName: input.applicantName,
+          applicantEmail: input.applicantEmail,
+          details: input.details ?? [],
+          emailConfirmed: input.emailConfirmed ?? true,
+          reviewUrl: input.reviewPath,
+          log: { entityType: input.entityType, entityId: input.entityId, label: input.applicantName },
+        });
       } catch {
-        sent = false;
+        // Sending never throws, but one failed administrator must not stop the others.
       }
-      await logEmail({
-        emailType: 'admin_new_application',
-        recipientEmail: admin.email,
-        relatedEntityType: input.entityType,
-        relatedEntityId: input.entityId,
-        sent,
-      }).catch(() => {});
     }),
   );
 }

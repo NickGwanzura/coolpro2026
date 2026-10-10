@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { logEmail } from '@/lib/server/email-log';
 import { SITE_URL } from '@/lib/site-url';
 import { APPLICANT_ROLES, isApplicantRole } from '@/lib/application-roles';
 import { BRAND, bulletList, button, callout, detailCard, emailShell, escapeHtml, eyebrow, heading, paragraph, smallPrint, stepList } from '@/lib/server/email-layout';
@@ -14,43 +15,103 @@ function getResendClient(): Resend | null {
   return _resend;
 }
 
+/** What an email was about, so the Email Activity page can link it to a record. */
+export interface EmailLogContext {
+  /** Overrides the default type for this kind of email, for example "account_activation". */
+  type?: string;
+  entityType?: string;
+  entityId?: string;
+  /** A short human label for the record, such as the applicant's name. */
+  label?: string;
+}
+
+export interface SendResult {
+  sent: boolean;
+  /** Why it was not sent, in plain words. Present only when sent is false. */
+  error?: string;
+}
+
 interface OutgoingEmail {
   to: string;
   subject: string;
   html: string;
-  /** Short name used in server logs, for example "verification". */
+  /** Short name of this kind of email: used in server logs and to pick the default log type. */
   label: string;
+  replyTo?: string;
+  attachments?: Array<{ filename: string; content: string; contentType: string }>;
+  /** Context for the Email Activity log. */
+  log?: EmailLogContext;
 }
 
+// The type recorded in the Email Activity log for each kind of email, unless a caller overrides it.
+const DEFAULT_LOG_TYPE: Record<string, string> = {
+  invite: 'invite',
+  approval: 'application_approved',
+  rejection: 'application_rejected',
+  verification: 'application_verification',
+  'application-received': 'application_received',
+  'new-application-admin': 'admin_new_application',
+  'admin-notice': 'admin_notice',
+  'platform-update': 'platform_update',
+  'membership-confirmation': 'membership_confirmation',
+  certificate: 'certificate',
+  'contact-notification': 'contact_notification',
+  'contact-confirmation': 'contact_confirmation',
+  'password-reset': 'password_reset',
+};
+
 /**
- * Single place that sends an email through Resend. Never throws: a missing API key or a failed
- * send is reported as { sent: false } so the caller (an approval, a signup) is never blocked by
- * email trouble. Recipient addresses are not written to logs.
+ * The one place every email is sent from, and recorded. It never throws: a missing API key or a
+ * failed send comes back as { sent: false, error } so the caller (an approval, a signup) is never
+ * blocked by email trouble. Recipient addresses are not written to server logs, and the body is
+ * never stored (it can hold one-time links).
  */
-async function deliver(email: OutgoingEmail): Promise<{ sent: boolean }> {
+async function deliver(email: OutgoingEmail): Promise<SendResult> {
+  let result: SendResult = { sent: false };
+  let messageId: string | undefined;
+
   const resend = getResendClient();
   if (!resend) {
     console.warn(`[email] RESEND_API_KEY not set — ${email.label} email not sent.`);
-    return { sent: false };
-  }
-  try {
-    const { error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: email.to,
-      subject: email.subject,
-      html: email.html,
-      // Mail is sent from a no-reply address; replies go to the team's real inbox instead.
-      replyTo: process.env.EMAIL_REPLY_TO ?? CONTACT_TO_ADDRESS,
-    });
-    if (error) {
-      console.error(`[email] Resend rejected ${email.label} email:`, error.message);
-      return { sent: false };
+    result = { sent: false, error: 'Email is not configured on the server (the RESEND_API_KEY setting is missing).' };
+  } else {
+    try {
+      const { data, error } = await resend.emails.send({
+        from: FROM_ADDRESS,
+        to: email.to,
+        subject: email.subject,
+        html: email.html,
+        // Mail is sent from a no-reply address; replies go to the team's real inbox instead.
+        replyTo: email.replyTo ?? process.env.EMAIL_REPLY_TO ?? CONTACT_TO_ADDRESS,
+        ...(email.attachments ? { attachments: email.attachments } : {}),
+      });
+      if (error) {
+        console.error(`[email] Resend rejected ${email.label} email:`, error.message);
+        result = { sent: false, error: error.message };
+      } else {
+        messageId = data?.id;
+        result = { sent: true };
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[email] Failed to send ${email.label} email:`, message);
+      result = { sent: false, error: message };
     }
-    return { sent: true };
-  } catch (err) {
-    console.error(`[email] Failed to send ${email.label} email:`, err instanceof Error ? err.message : err);
-    return { sent: false };
   }
+
+  await logEmail({
+    emailType: email.log?.type ?? DEFAULT_LOG_TYPE[email.label] ?? email.label.replace(/-/g, '_'),
+    recipientEmail: email.to,
+    subject: email.subject,
+    relatedEntityType: email.log?.entityType,
+    relatedEntityId: email.log?.entityId,
+    relatedLabel: email.log?.label,
+    sent: result.sent,
+    errorMessage: result.error,
+    providerMessageId: messageId,
+  }).catch((err) => console.error('[email] could not record the email in the activity log:', err instanceof Error ? err.message : err));
+
+  return result;
 }
 
 function roleInfo(role: string | undefined) {
@@ -78,32 +139,15 @@ export async function sendInviteEmail(input: {
   inviteUrl: string;
   role: string;
   invitedBy: string;
-}): Promise<{ sent: boolean }> {
-  const resend = getResendClient();
-  if (!resend) {
-    // Invite URLs are bearer credentials; never write them (or recipient addresses) to logs.
-    console.warn('[email] RESEND_API_KEY not set — invite email not sent.');
-    return { sent: false };
-  }
-
-  try {
-    const { error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: input.email,
-      subject: "You've been invited to NOU / HEVACRAZ Zimbabwe",
-      html: inviteEmailHtml(input),
-    });
-
-    if (error) {
-      console.error('[email] Resend rejected invite email:', error.message);
-      return { sent: false };
-    }
-
-    return { sent: true };
-  } catch (err) {
-    console.error('[email] Failed to send invite email:', err instanceof Error ? err.message : err);
-    return { sent: false };
-  }
+  log?: EmailLogContext;
+}): Promise<SendResult> {
+  return deliver({
+    to: input.email,
+    subject: "You've been invited to NOU / HEVACRAZ Zimbabwe",
+    html: inviteEmailHtml(input),
+    label: 'invite',
+    log: input.log,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -136,13 +180,15 @@ export async function sendApprovalEmail(input: {
   email: string;
   name: string;
   role: string;
-}): Promise<{ sent: boolean }> {
+  log?: EmailLogContext;
+}): Promise<SendResult> {
   const loginUrl = `${SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/login`;
   return deliver({
     to: input.email,
     subject: 'Your NOU / HEVACRAZ ' + (roleInfo(input.role)?.label ?? input.role.replace('_', ' ')).toLowerCase() + ' application has been approved',
     html: approvalEmailHtml({ ...input, loginUrl }),
     label: 'approval',
+    log: input.log,
   });
 }
 
@@ -161,6 +207,7 @@ export interface NewApplicationAdminEmail {
   /** False when the applicant has not yet clicked their confirmation link. */
   emailConfirmed: boolean;
   reviewUrl: string;
+  log?: EmailLogContext;
 }
 
 function newApplicationAdminEmailHtml(input: NewApplicationAdminEmail): string {
@@ -185,12 +232,13 @@ function newApplicationAdminEmailHtml(input: NewApplicationAdminEmail): string {
 }
 
 /** Tells an administrator that a new application has been submitted. */
-export async function sendNewApplicationAdminEmail(input: NewApplicationAdminEmail): Promise<{ sent: boolean }> {
+export async function sendNewApplicationAdminEmail(input: NewApplicationAdminEmail): Promise<SendResult> {
   return deliver({
     to: input.to,
     subject: `New ${input.roleLabel.toLowerCase()} application: ${input.applicantName}`,
     html: newApplicationAdminEmailHtml(input),
     label: 'new-application-admin',
+    log: input.log,
   });
 }
 
@@ -214,12 +262,14 @@ export async function sendAdminNoticeEmail(input: {
   title: string;
   message: string;
   action?: string;
-}): Promise<{ sent: boolean }> {
+  log?: EmailLogContext;
+}): Promise<SendResult> {
   return deliver({
     to: input.email,
     subject: `NOU / HEVACRAZ update: ${input.title}`,
     html: adminNoticeEmailHtml(input),
     label: 'admin-notice',
+    log: input.log,
   });
 }
 
@@ -257,31 +307,15 @@ export async function sendPlatformUpdateEmail(input: {
   title: string;
   intro: string;
   sections: Array<{ heading: string; body: string }>;
-}): Promise<{ sent: boolean }> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.log('[email] RESEND_API_KEY not set — platform update not sent:', input.email);
-    return { sent: false };
-  }
-
-  try {
-    const { error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: input.email,
-      subject: `NOU / HEVACRAZ update: ${input.title}`,
-      html: platformUpdateEmailHtml(input),
-    });
-
-    if (error) {
-      console.error('[email] Resend rejected platform update:', error.message);
-      return { sent: false };
-    }
-
-    return { sent: true };
-  } catch (err) {
-    console.error('[email] Failed to send platform update:', err instanceof Error ? err.message : err);
-    return { sent: false };
-  }
+  log?: EmailLogContext;
+}): Promise<SendResult> {
+  return deliver({
+    to: input.email,
+    subject: `NOU / HEVACRAZ update: ${input.title}`,
+    html: platformUpdateEmailHtml(input),
+    label: 'platform-update',
+    log: input.log ?? { label: input.title },
+  });
 }
 
 function contactNotificationHtml(input: {
@@ -349,13 +383,14 @@ function applicationReceivedEmailHtml(input: { name: string; role?: string }): s
   `, 'Your NOU / HEVACRAZ application is now in review.');
 }
 
-export async function sendApplicationReceivedEmail(input: { email: string; name: string; role?: string }): Promise<{ sent: boolean }> {
+export async function sendApplicationReceivedEmail(input: { email: string; name: string; role?: string; log?: EmailLogContext }): Promise<SendResult> {
   const label = roleInfo(input.role ?? 'technician')?.label.toLowerCase() ?? 'registry';
   return deliver({
     to: input.email,
     subject: `NOU / HEVACRAZ received your ${label} application`,
     html: applicationReceivedEmailHtml(input),
     label: 'application-received',
+    log: input.log,
   });
 }
 
@@ -382,12 +417,14 @@ export async function sendVerificationEmail(input: {
   role: string;
   verifyUrl: string;
   hours: number;
-}): Promise<{ sent: boolean }> {
+  log?: EmailLogContext;
+}): Promise<SendResult> {
   return deliver({
     to: input.email,
     subject: 'Confirm your email for your NOU / HEVACRAZ application',
     html: verificationEmailHtml(input),
     label: 'verification',
+    log: input.log,
   });
 }
 
@@ -413,12 +450,14 @@ export async function sendApplicationRejectedEmail(input: {
   name: string;
   role?: string;
   applicantMessage?: string;
-}): Promise<{ sent: boolean }> {
+  log?: EmailLogContext;
+}): Promise<SendResult> {
   return deliver({
     to: input.email,
     subject: 'Update on your NOU / HEVACRAZ ' + (roleInfo(input.role)?.label.toLowerCase() ?? input.role?.replace('_', ' ') ?? '') + ' application',
     html: applicationRejectedEmailHtml(input),
     label: 'rejection',
+    log: input.log,
   });
 }
 
@@ -445,29 +484,15 @@ export async function sendMembershipConfirmationEmail(input: {
   name: string;
   membershipNumber: string;
   expiryDate: string;
-}): Promise<{ sent: boolean }> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.log('[email] RESEND_API_KEY not set — membership confirmation not sent:', input.email);
-    return { sent: false };
-  }
-
-  try {
-    const { error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: input.email,
-      subject: 'Your NOU / HEVACRAZ membership is active',
-      html: membershipConfirmationEmailHtml(input),
-    });
-    if (error) {
-      console.error('[email] Resend rejected membership confirmation:', error.message);
-      return { sent: false };
-    }
-    return { sent: true };
-  } catch (err) {
-    console.error('[email] Failed to send membership confirmation:', err instanceof Error ? err.message : err);
-    return { sent: false };
-  }
+  log?: EmailLogContext;
+}): Promise<SendResult> {
+  return deliver({
+    to: input.email,
+    subject: 'Your NOU / HEVACRAZ membership is active',
+    html: membershipConfirmationEmailHtml(input),
+    label: 'membership-confirmation',
+    log: input.log ?? { label: input.name },
+  });
 }
 
 function certificateEmailHtml(input: { name: string; certificateNumber: string }): string {
@@ -491,30 +516,16 @@ export async function sendCertificateEmail(input: {
   certificateNumber: string;
   pdfBase64: string;
   fileName: string;
-}): Promise<{ sent: boolean }> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.log('[email] RESEND_API_KEY not set — certificate not sent:', input.email);
-    return { sent: false };
-  }
-
-  try {
-    const { error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: input.email,
-      subject: `Your NOU / HEVACRAZ certificate — ${input.certificateNumber}`,
-      html: certificateEmailHtml(input),
-      attachments: [{ filename: input.fileName, content: input.pdfBase64, contentType: 'application/pdf' }],
-    });
-    if (error) {
-      console.error('[email] Resend rejected certificate email:', error.message);
-      return { sent: false };
-    }
-    return { sent: true };
-  } catch (err) {
-    console.error('[email] Failed to send certificate email:', err instanceof Error ? err.message : err);
-    return { sent: false };
-  }
+  log?: EmailLogContext;
+}): Promise<SendResult> {
+  return deliver({
+    to: input.email,
+    subject: `Your NOU / HEVACRAZ certificate — ${input.certificateNumber}`,
+    html: certificateEmailHtml(input),
+    label: 'certificate',
+    attachments: [{ filename: input.fileName, content: input.pdfBase64, contentType: 'application/pdf' }],
+    log: input.log ?? { label: input.certificateNumber },
+  });
 }
 
 export async function sendContactEmails(input: {
@@ -522,79 +533,42 @@ export async function sendContactEmails(input: {
   email: string;
   subject: string;
   message: string;
-}): Promise<{ sent: boolean }> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.log('[email] RESEND_API_KEY not set — contact email not sent:', input.email);
-    return { sent: false };
-  }
+}): Promise<SendResult> {
+  const notification = await deliver({
+    to: CONTACT_TO_ADDRESS,
+    replyTo: input.email,
+    subject: `NOU / HEVACRAZ website enquiry: ${input.subject}`,
+    html: contactNotificationHtml(input),
+    label: 'contact-notification',
+    log: { label: input.name },
+  });
+  if (!notification.sent) return notification;
 
-  try {
-    const notification = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: CONTACT_TO_ADDRESS,
-      replyTo: input.email,
-      subject: `NOU / HEVACRAZ website enquiry: ${input.subject}`,
-      html: contactNotificationHtml(input),
-    });
-
-    if (notification.error) {
-      console.error('[email] Resend rejected contact notification:', notification.error.message);
-      return { sent: false };
-    }
-
-    const confirmation = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: input.email,
-      subject: 'NOU / HEVACRAZ received your message',
-      html: contactConfirmationHtml(input),
-    });
-
-    if (confirmation.error) {
-      console.error('[email] Resend rejected contact confirmation:', confirmation.error.message);
-      return { sent: false };
-    }
-
-    return { sent: true };
-  } catch (err) {
-    console.error('[email] Failed to send contact email:', err instanceof Error ? err.message : err);
-    return { sent: false };
-  }
+  return deliver({
+    to: input.email,
+    subject: 'NOU / HEVACRAZ received your message',
+    html: contactConfirmationHtml(input),
+    label: 'contact-confirmation',
+    log: { label: input.name },
+  });
 }
 
 export async function sendPasswordResetEmail(input: {
   email: string;
   resetUrl: string;
-}): Promise<{ sent: boolean }> {
-  const resend = getResendClient();
-  if (!resend) return { sent: false };
-
-  try {
-    const { error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: input.email,
-      subject: 'Reset your NOU / HEVACRAZ password',
-      html: emailShell(`
-        <p style="color: ${BRAND.green}; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 10px;">Account security</p>
-        <p style="color: ${BRAND.ink}; font-size: 22px; font-weight: 750; margin: 0 0 12px;">Reset your password</p>
-        <p style="color: ${BRAND.ink}; font-size: 14px; line-height: 1.7; margin: 0;">
-          We received a request to reset the password for your HEVACRAZ Compliance Platform account.
-          Use the secure link below within 30 minutes. If you didn't request this, you can ignore this email.
-        </p>
-        <a href="${escapeHtml(input.resetUrl)}"
-           style="display: inline-block; margin-top: 18px; background: ${BRAND.amber}; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 22px; border-radius: 4px;">
-          Reset password
-        </a>
-      `, 'A password reset was requested for your HEVACRAZ account.'),
-    });
-
-    if (error) {
-      console.error('[email] Resend rejected password reset email:', error.message);
-      return { sent: false };
-    }
-    return { sent: true };
-  } catch (err) {
-    console.error('[email] Failed to send password reset email:', err instanceof Error ? err.message : err);
-    return { sent: false };
-  }
+  log?: EmailLogContext;
+}): Promise<SendResult> {
+  return deliver({
+    to: input.email,
+    subject: 'Reset your NOU / HEVACRAZ password',
+    html: emailShell(`
+      ${eyebrow('Account security')}
+      ${heading('Reset your password')}
+      ${paragraph("We received a request to reset the password for your HEVACRAZ Compliance Platform account. Use the secure link below within 30 minutes.")}
+      ${button('Reset password', input.resetUrl)}
+      ${smallPrint("If you didn't request this, you can ignore this email and your password will stay the same.")}
+    `, 'A password reset was requested for your HEVACRAZ account.'),
+    label: 'password-reset',
+    log: input.log,
+  });
 }

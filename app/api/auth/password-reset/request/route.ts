@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       const { token } = await issuePasswordResetToken(user.id);
       const resetUrl = new URL('/reset-password', SITE_URL);
       resetUrl.searchParams.set('token', token);
-      const result = await sendPasswordResetEmail({ email, resetUrl: resetUrl.toString() });
+      const result = await sendPasswordResetEmail({ email, resetUrl: resetUrl.toString(), log: { entityType: 'user', entityId: user.id } });
       if (!result.sent) console.error('[auth/password-reset] Email provider did not send reset email.');
     }
   } catch (error) {

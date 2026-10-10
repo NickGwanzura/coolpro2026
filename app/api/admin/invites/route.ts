@@ -106,7 +106,10 @@ export async function POST(req: Request) {
   }
 
   const url = inviteUrl(token);
-  const emailResult = await sendInviteEmail({ email, inviteUrl: url, role, invitedBy: session.name });
+  const emailResult = await sendInviteEmail({
+    email, inviteUrl: url, role, invitedBy: session.name,
+    log: { entityType: 'invite', entityId: invite.id, label: role.replace('_', ' ') },
+  });
 
   return NextResponse.json({ invite, inviteUrl: url, emailSent: emailResult.sent }, { status: 201 });
 }

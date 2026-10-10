@@ -655,17 +655,22 @@ export interface AuditLogEntry {
   createdAt: string;
 }
 
-export type EmailLogStatus = 'sent' | 'failed';
+export type EmailLogStatus = 'sent' | 'failed' | 'delivered' | 'bounced' | 'complained' | 'delayed';
 
 export interface EmailLogEntry {
   id: string;
   emailType: string;
   recipientEmail: string;
+  subject?: string;
   relatedEntityType?: string;
   relatedEntityId?: string;
+  relatedLabel?: string;
   status: EmailLogStatus;
   errorMessage?: string;
   sentAt: string;
+  statusUpdatedAt?: string;
+  /** True when this row can be sent again from the log. */
+  canResend?: boolean;
 }
 
 // Technician Registry Types

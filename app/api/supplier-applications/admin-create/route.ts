@@ -5,7 +5,6 @@ import { db } from '@/db/client';
 import { invites, users } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { sendInviteEmail } from '@/lib/server/email';
-import { logEmail } from '@/lib/server/email-log';
 import { SITE_URL } from '@/lib/site-url';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -55,11 +54,10 @@ export async function POST(req: Request) {
   });
 
   const inviteUrl = `${SITE_URL}/accept-invite?token=${token}`;
-  const emailResult = await sendInviteEmail({ email, inviteUrl, role: 'vendor', invitedBy: session.name });
-  await logEmail({
-    emailType: 'account_activation', recipientEmail: email, relatedEntityType: 'supplier_invite',
-    relatedEntityId: email, sent: emailResult.sent,
-  }).catch(() => {});
+  const emailResult = await sendInviteEmail({
+    email, inviteUrl, role: 'vendor', invitedBy: session.name,
+    log: { type: 'account_activation', entityType: 'supplier_invite', label: email },
+  });
 
   return NextResponse.json({
     inviteUrl,

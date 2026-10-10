@@ -25,6 +25,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const [replacement] = await db.update(invites).set({ token, expiresAt, invitedBy: session.email })
     .where(eq(invites.id, invite.id)).returning();
   const inviteUrl = `${SITE_URL}/accept-invite?token=${token}`;
-  const emailResult = await sendInviteEmail({ email: invite.email, inviteUrl, role: 'vendor', invitedBy: session.name });
+  const emailResult = await sendInviteEmail({
+    email: invite.email, inviteUrl, role: 'vendor', invitedBy: session.name,
+    log: { type: 'invite', entityType: 'supplier_invite', label: invite.email },
+  });
   return NextResponse.json({ invite: replacement, inviteUrl, emailSent: emailResult.sent });
 }

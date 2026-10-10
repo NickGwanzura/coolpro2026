@@ -4,7 +4,6 @@ import { db } from '@/db/client';
 import { technicians } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { sendCertificateEmail } from '@/lib/server/email';
-import { logEmail } from '@/lib/server/email-log';
 
 const MAX_PDF_BASE64_LENGTH = 8 * 1024 * 1024; // ~6MB decoded, generous for a single-page certificate
 
@@ -34,15 +33,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     certificateNumber: body.certificateNumber,
     pdfBase64: body.pdfBase64,
     fileName: `${row.name.replace(/\s+/g, '-')}-certificate.pdf`,
+    log: { type: 'certificate_sent', entityType: 'technician', entityId: row.id, label: row.name },
   });
 
-  await logEmail({
-    emailType: 'certificate_sent',
-    recipientEmail: row.email,
-    relatedEntityType: 'technician',
-    relatedEntityId: row.id,
-    sent: result.sent,
-  }).catch(() => {});
 
   if (!result.sent) return NextResponse.json({ error: 'Failed to send certificate email' }, { status: 502 });
   return NextResponse.json({ sent: true });
