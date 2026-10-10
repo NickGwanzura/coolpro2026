@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Camera, Clock, LoaderCircle, ScanText, Wrench } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { Camera, Clock, LoaderCircle, RotateCcw, RotateCw, ScanText, Wrench } from 'lucide-react';
 import { extractNameplateData } from '@/lib/refrigerantIntelligence';
 import { createOcrScan, useOcrScans } from '@/lib/api';
 import { RefrigerantRiskBadge } from '@/components/RefrigerantRiskBadge';
+import { cropImage, enhanceForOcr, readBarcodes, rotateImage, type CropRect } from '@/lib/nameplateImage';
+import { LOW_CONFIDENCE, fieldConfidence, flattenWords, reconcileSerial, type FieldConfidence, type FieldKey } from '@/lib/nameplateScan';
 import type { OcrScanRecord } from '@/types/index';
 
 function formatScanDate(iso: string) {
@@ -16,41 +18,14 @@ interface OcrNameplateScannerProps {
     onUseRefrigerant?: (refrigerantCode: string) => void;
 }
 
-async function enhanceForOcr(file: File): Promise<Blob> {
-    // Greyscale + contrast stretch + upscale small images; fall back to the original on any failure.
-    try {
-        const bitmap = await createImageBitmap(file);
-        const scale = bitmap.width < 1600 ? 2 : 1;
-        const canvas = document.createElement('canvas');
-        canvas.width = bitmap.width * scale;
-        canvas.height = bitmap.height * scale;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return file;
-        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const d = img.data;
-        let min = 255;
-        let max = 0;
-        for (let i = 0; i < d.length; i += 4) {
-            const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-            d[i] = d[i + 1] = d[i + 2] = g;
-            if (g < min) min = g;
-            if (g > max) max = g;
-        }
-        const range = Math.max(1, max - min);
-        for (let i = 0; i < d.length; i += 4) {
-            const v = ((d[i] - min) / range) * 255;
-            d[i] = d[i + 1] = d[i + 2] = v;
-        }
-        ctx.putImageData(img, 0, 0);
-        return await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b ?? file), 'image/png'));
-    } catch {
-        return file;
-    }
-}
-
 export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerProps = {}) {
     const [preview, setPreview] = useState<string>('');
+    const [source, setSource] = useState<Blob | null>(null);
+    const [crop, setCrop] = useState<CropRect | null>(null);
+    const [confidence, setConfidence] = useState<FieldConfidence>({});
+    const [serialSuggestions, setSerialSuggestions] = useState<string[]>([]);
+    const [serialNote, setSerialNote] = useState('');
+    const dragStart = useRef<{ x: number; y: number } | null>(null);
     const [result, setResult] = useState<OcrScanRecord | null>(null);
     const [isScanning, setIsScanning] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -70,8 +45,18 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
         };
     }, [result]);
 
-    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const stageImage = (blob: Blob) => {
+        setSource(blob);
+        setCrop(null);
+        setPreview((previous) => {
+            if (previous) URL.revokeObjectURL(previous);
+            return URL.createObjectURL(blob);
+        });
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
+        event.target.value = '';
 
         if (!file) {
             return;
@@ -86,20 +71,80 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
         }
 
         setError('');
+        setResult(null);
+        setConfirmed(false);
+        stageImage(file);
+    };
+
+    const rotate = async (turns: 1 | -1) => {
+        if (!source || isScanning) return;
+        stageImage(await rotateImage(source, turns));
+        setResult(null);
+    };
+
+    const pointerFraction = (event: React.PointerEvent<HTMLDivElement>) => {
+        const box = event.currentTarget.getBoundingClientRect();
+        return {
+            x: Math.min(1, Math.max(0, (event.clientX - box.left) / box.width)),
+            y: Math.min(1, Math.max(0, (event.clientY - box.top) / box.height)),
+        };
+    };
+
+    const onCropDown = (event: React.PointerEvent<HTMLDivElement>) => {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        dragStart.current = pointerFraction(event);
+        setCrop(null);
+    };
+
+    const onCropMove = (event: React.PointerEvent<HTMLDivElement>) => {
+        const start = dragStart.current;
+        if (!start) return;
+        const now = pointerFraction(event);
+        setCrop({ x: Math.min(start.x, now.x), y: Math.min(start.y, now.y), w: Math.abs(now.x - start.x), h: Math.abs(now.y - start.y) });
+    };
+
+    const onCropUp = () => {
+        dragStart.current = null;
+        // A click or tiny drag means "no crop".
+        setCrop((current) => (current && current.w > 0.05 && current.h > 0.05 ? current : null));
+    };
+
+    const runScan = async () => {
+        if (!source) return;
+        setError('');
         setIsScanning(true);
         setResult(null);
         setConfirmed(false);
-
-        const previewUrl = URL.createObjectURL(file);
-        setPreview(previewUrl);
+        setConfidence({});
+        setSerialSuggestions([]);
+        setSerialNote('');
 
         try {
+            const region = await cropImage(source, crop);
             const { createWorker } = await import('tesseract.js');
             const worker = await createWorker('eng');
-            const scan = await worker.recognize(await enhanceForOcr(file));
+            const scan = await worker.recognize(await enhanceForOcr(region), {}, { text: true, blocks: true });
             await worker.terminate();
 
             const parsed = await extractNameplateData(scan.data.text);
+            const words = flattenWords(scan.data.blocks);
+
+            // Barcodes are far more reliable than OCR for serials; use them to confirm or fix the OCR value.
+            const barcodes = await readBarcodes(region);
+            const decision = reconcileSerial(parsed.serialNumber, parsed.model, barcodes);
+            if (decision.source === 'barcode') {
+                parsed.serialNumber = decision.serial;
+                setSerialNote('Serial read from the barcode.');
+            }
+            setSerialSuggestions(decision.suggestions);
+
+            const next: FieldConfidence = {
+                manufacturer: fieldConfidence(parsed.manufacturer, words),
+                model: fieldConfidence(parsed.model, words),
+                serialNumber: decision.source === 'barcode' ? 100 : fieldConfidence(parsed.serialNumber, words),
+                refrigerantCode: fieldConfidence(parsed.refrigerantCode, words),
+            };
+            setConfidence(next);
             setResult(parsed);
         } catch (scanError) {
             console.error(scanError);
@@ -109,7 +154,10 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
         }
     };
 
-    const updateResult = (key: 'manufacturer' | 'model' | 'serialNumber' | 'refrigerantCode', value: string) => {
+    const updateResult = (key: FieldKey, value: string) => {
+        // A hand-edited value is one the user vouches for.
+        setConfidence((current) => ({ ...current, [key]: 100 }));
+        setSerialNote('');
         setResult((current) => current ? {
             ...current,
             [key]: value || undefined,
@@ -167,10 +215,42 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
             <div className="mt-5 grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
                 <div className="overflow-hidden border border-gray-200 bg-gray-50">
                     {preview ? (
-                        <img src={preview} alt="Nameplate preview" className="h-full w-full object-cover" />
+                        <div className="p-3">
+                            <div className="mb-3 flex flex-wrap items-center gap-2">
+                                <button type="button" onClick={() => rotate(-1)} disabled={isScanning} className="inline-flex items-center gap-1.5 border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-50">
+                                    <RotateCcw className="h-3.5 w-3.5" /> Rotate left
+                                </button>
+                                <button type="button" onClick={() => rotate(1)} disabled={isScanning} className="inline-flex items-center gap-1.5 border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-50">
+                                    <RotateCw className="h-3.5 w-3.5" /> Rotate right
+                                </button>
+                                {crop && (
+                                    <button type="button" onClick={() => setCrop(null)} className="border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">
+                                        Clear crop
+                                    </button>
+                                )}
+                                <button type="button" onClick={runScan} disabled={isScanning} className="ml-auto inline-flex items-center gap-2 bg-[#D97706] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#b45309] disabled:opacity-60">
+                                    {isScanning ? 'Scanning…' : result ? 'Scan again' : 'Scan nameplate'}
+                                </button>
+                            </div>
+                            <p className="mb-2 text-xs text-gray-500">Drag on the image to crop to the plate (recommended), and rotate it upright first.</p>
+                            <div
+                                className="relative inline-block max-w-full cursor-crosshair touch-none select-none"
+                                onPointerDown={onCropDown}
+                                onPointerMove={onCropMove}
+                                onPointerUp={onCropUp}
+                            >
+                                <img src={preview} alt="Nameplate preview" draggable={false} className="block h-auto max-h-[480px] w-auto max-w-full" />
+                                {crop && (
+                                    <div
+                                        className="pointer-events-none absolute border-2 border-[#D97706] bg-[#D97706]/10 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
+                                        style={{ left: `${crop.x * 100}%`, top: `${crop.y * 100}%`, width: `${crop.w * 100}%`, height: `${crop.h * 100}%` }}
+                                    />
+                                )}
+                            </div>
+                        </div>
                     ) : (
                         <div className="flex min-h-[280px] items-center justify-center text-sm text-gray-500">
-                            Awaiting a nameplate image.
+                            Awaiting a nameplate image. Upload one, then crop and scan.
                         </div>
                     )}
                 </div>
@@ -194,10 +274,21 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
                                 <p className="text-sm text-rose-700">{error}</p>
                             ) : result ? (
                                 <div className="space-y-3 text-sm text-gray-700">
-                                    <EditableDetail label="Manufacturer" value={result.manufacturer ?? ''} onChange={(value) => updateResult('manufacturer', value)} />
-                                    <EditableDetail label="Model" value={result.model ?? ''} onChange={(value) => updateResult('model', value)} />
-                                    <EditableDetail label="Serial" value={result.serialNumber ?? ''} onChange={(value) => updateResult('serialNumber', value)} />
-                                    <EditableDetail label="Refrigerant" value={result.refrigerantCode ?? ''} onChange={(value) => updateResult('refrigerantCode', value.toUpperCase())} />
+                                    <EditableDetail label="Manufacturer" confidence={confidence.manufacturer} value={result.manufacturer ?? ''} onChange={(value) => updateResult('manufacturer', value)} />
+                                    <EditableDetail label="Model" confidence={confidence.model} value={result.model ?? ''} onChange={(value) => updateResult('model', value)} />
+                                    <EditableDetail label="Serial" confidence={confidence.serialNumber} value={result.serialNumber ?? ''} onChange={(value) => updateResult('serialNumber', value)} />
+                                    {serialNote && <p className="text-xs text-emerald-700">{serialNote}</p>}
+                                    {serialSuggestions.length > 0 && (
+                                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                                            Barcodes found:
+                                            {serialSuggestions.map((code) => (
+                                                <button key={code} type="button" onClick={() => updateResult('serialNumber', code)} className="border border-gray-300 bg-white px-2 py-1 font-mono hover:bg-gray-100">
+                                                    Use {code} as serial
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <EditableDetail label="Refrigerant" confidence={confidence.refrigerantCode} value={result.refrigerantCode ?? ''} onChange={(value) => updateResult('refrigerantCode', value.toUpperCase())} />
                                     <button type="button" onClick={confirmScan} disabled={isSaving || confirmed} className="inline-flex items-center gap-2 bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#b45309] disabled:cursor-not-allowed disabled:opacity-60">
                                         {isSaving ? 'Saving confirmed scan…' : confirmed ? 'Scan confirmed and saved' : 'Confirm and save scan'}
                                     </button>
@@ -264,10 +355,15 @@ export function OcrNameplateScanner({ onUseRefrigerant }: OcrNameplateScannerPro
     );
 }
 
-function EditableDetail({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function EditableDetail({ label, value, confidence, onChange }: { label: string; value: string; confidence?: number; onChange: (value: string) => void }) {
+    // Only flag fields that have a value; "Not detected" already says it all for empty ones.
+    const unsure = value !== '' && (confidence === undefined || confidence < LOW_CONFIDENCE);
     return (
-        <div className="flex items-center justify-between gap-3 border border-gray-200 bg-white px-4 py-3">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">{label}</span>
+        <div className={`flex items-center justify-between gap-3 border px-4 py-3 ${unsure ? 'border-amber-400 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                {label}
+                {unsure && <span className="ml-2 normal-case tracking-normal text-amber-700">check this</span>}
+            </span>
             <input value={value} onChange={(event) => onChange(event.target.value)} placeholder="Not detected" className="min-w-0 flex-1 bg-transparent text-right text-sm font-medium text-gray-900 outline-none focus:ring-1 focus:ring-[#D97706]" />
         </div>
     );
