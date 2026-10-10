@@ -176,6 +176,13 @@
       "when": 1791616484590,
       "tag": "0024_application_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791618483933,
+      "tag": "0025_dashboards_notifications_progress_quota",
+      "breakpoints": true
     }
   ]
 }

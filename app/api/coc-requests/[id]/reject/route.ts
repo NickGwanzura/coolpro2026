@@ -1,3 +1,5 @@
+import { notifyUser } from '@/lib/server/notifications';
+import { notificationTemplates } from '@/lib/notification-templates';
 import { NextResponse } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
@@ -40,5 +42,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
   if (!updated) return NextResponse.json({ error: 'COC request is no longer pending review' }, { status: 409 });
 
+  await notifyUser(updated.technicianId, notificationTemplates.cocDecision(false, updated.location));
   return NextResponse.json(toCocRequest(updated));
 }

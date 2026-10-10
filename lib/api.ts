@@ -538,6 +538,29 @@ export type RegistrationApplicationInput = {
   formStartedAt?: number;
 };
 
+export interface NotificationEntry {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  link: string | null;
+  createdAt: string;
+  read: boolean;
+}
+
+/** The signed-in user's notifications; refreshes every minute and when the tab regains focus. */
+export function useNotifications(enabled = true) {
+  return useSWR<{ items: NotificationEntry[]; unread: number }>(enabled ? '/api/notifications' : null, fetcher, {
+    refreshInterval: 60_000,
+    revalidateOnFocus: true,
+  });
+}
+
+export async function markNotificationsRead(input: { all: true } | { ids: string[] }): Promise<void> {
+  await post('/api/notifications/read', input);
+  await mutate('/api/notifications');
+}
+
 export interface AdminDashboardSummary {
   technicians: { total: number; active: number };
   regionsWithTechnicians: number;

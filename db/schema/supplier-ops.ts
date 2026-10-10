@@ -54,6 +54,8 @@ export const supplierApplications = pgTable('supplier_applications', {
   contactName: text('contact_name').notNull(),
   email: text('email').notNull(),
   passwordHash: text('password_hash'),
+  // Annual import quota in kg, set by an administrator. Null means no quota has been set yet.
+  importQuotaKg: numeric('import_quota_kg', { precision: 12, scale: 3 }),
   phone: text('phone').notNull().default(''),
   province: text('province').notNull().default(''),
   city: text('city').notNull().default(''),

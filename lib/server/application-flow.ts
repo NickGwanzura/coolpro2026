@@ -25,6 +25,8 @@ import {
 } from '@/lib/server/email';
 import { logEmail } from '@/lib/server/email-log';
 import { notifyAdminsOfNewApplication } from '@/lib/server/notify-admins';
+import { notifyUserByEmail } from '@/lib/server/notifications';
+import { notificationTemplates } from '@/lib/notification-templates';
 import { VERIFICATION_TTL_HOURS, type VerificationState } from '@/lib/server/verification-token';
 
 export interface ApplicationIdentity {
@@ -202,6 +204,7 @@ export async function afterApplicationApproved(identity: ApplicationIdentity, re
   await sendAndLog('application_approved', identity, () =>
     sendApprovalEmail({ email: identity.email, name: identity.name, role: identity.role }),
   );
+  await notifyUserByEmail(identity.email, notificationTemplates.welcome(APPLICANT_ROLES[identity.role].label));
   await recordAuditEvent({
     entityType: identity.entityType,
     entityId: identity.entityId,

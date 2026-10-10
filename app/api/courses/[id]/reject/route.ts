@@ -1,3 +1,5 @@
+import { notifyUser } from '@/lib/server/notifications';
+import { notificationTemplates } from '@/lib/notification-templates';
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
@@ -29,5 +31,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .where(eq(courses.id, id))
     .returning();
 
+  await notifyUser(updated.lecturerId, notificationTemplates.courseDecision('rejected', updated.title, updated.rejectionReason ?? undefined));
   return NextResponse.json(toManagedCourse(updated));
 }

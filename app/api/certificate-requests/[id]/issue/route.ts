@@ -1,3 +1,5 @@
+import { notifyRegistryTechnician, notifyUserByEmail } from '@/lib/server/notifications';
+import { notificationTemplates } from '@/lib/notification-templates';
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { eq } from 'drizzle-orm';
@@ -58,5 +60,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     notes: updated.certificateNumber ?? undefined,
   });
 
+  const issued = notificationTemplates.certificateRequest('issued', updated.courseTitle, updated.technicianName);
+  await notifyUserByEmail(updated.trainerEmail, issued);
+  await notifyRegistryTechnician(updated.technicianId, issued);
   return NextResponse.json(toTrainerCertificateRequest(updated));
 }

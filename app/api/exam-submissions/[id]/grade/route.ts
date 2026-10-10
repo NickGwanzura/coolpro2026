@@ -1,3 +1,5 @@
+import { notifyUser } from '@/lib/server/notifications';
+import { notificationTemplates } from '@/lib/notification-templates';
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
@@ -66,5 +68,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     performedByRole: session.role,
   });
 
+  await notifyUser(updated.studentId, notificationTemplates.examGraded(updated.courseTitle, passed, score));
   return NextResponse.json(toExamSubmission(updated));
 }

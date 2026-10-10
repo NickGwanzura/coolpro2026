@@ -33,6 +33,8 @@ export const supplierReorders = pgTable('supplier_reorders', {
   gasType: text('gas_type').notNull(),
   quantityKg: numeric('quantity_kg', { precision: 10, scale: 3 }).notNull(),
   purpose: text('purpose').notNull(),
+  // 'purchase' (new stock) or 'recovery' (reclaimed refrigerant returned). Replaces guessing from the purpose text.
+  reorderType: text('reorder_type').notNull().default('purchase'),
   supplierNotes: text('supplier_notes').notNull().default(''),
   status: reorderStatusEnum('status').notNull().default('pending_hevacraz'),
   hevacrazReviewerId: uuid('hevacraz_reviewer_id'),

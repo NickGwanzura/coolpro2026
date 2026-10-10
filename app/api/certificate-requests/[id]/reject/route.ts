@@ -1,3 +1,5 @@
+import { notifyUserByEmail } from '@/lib/server/notifications';
+import { notificationTemplates } from '@/lib/notification-templates';
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
@@ -34,5 +36,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     performedBy: session.name,
     performedByRole: session.role,
   });
+  await notifyUserByEmail(updated.trainerEmail, notificationTemplates.certificateRequest('rejected', updated.courseTitle, updated.technicianName));
   return NextResponse.json(toTrainerCertificateRequest(updated));
 }

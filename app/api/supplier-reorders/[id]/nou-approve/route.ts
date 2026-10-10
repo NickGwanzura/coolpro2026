@@ -1,3 +1,5 @@
+import { notifyUser } from '@/lib/server/notifications';
+import { notificationTemplates } from '@/lib/notification-templates';
 import { NextResponse } from 'next/server';
 import { and, eq, isNotNull, ne } from 'drizzle-orm';
 import { db } from '@/db/client';
@@ -51,5 +53,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   if (!updated) return NextResponse.json({ error: 'A different admin must review the HEVACRAZ-approved reorder before this action' }, { status: 409 });
 
+  await notifyUser(updated.vendorId, notificationTemplates.reorderDecision({ approved: true, stage: 'nou', gasType: updated.gasType, quantityKg: Number(updated.quantityKg), reason: updated.rejectionReason ?? undefined }));
   return NextResponse.json(toSupplierReorder(updated));
 }

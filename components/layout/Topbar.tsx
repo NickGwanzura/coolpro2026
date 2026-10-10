@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { logout } from '@/lib/auth';
 import { useClientSession } from '@/lib/useClientSession';
-import { Menu, Bell, LogOut, User, ChevronDown } from 'lucide-react';
+import { Menu, LogOut, User, ChevronDown } from 'lucide-react';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 export function Topbar({ onMenuClick, title }: { onMenuClick: () => void; title?: string }) {
     const session = useClientSession();
@@ -25,10 +26,7 @@ export function Topbar({ onMenuClick, title }: { onMenuClick: () => void; title?
             </div>
 
             <div className="flex items-center gap-2">
-                <button className="relative p-2 text-[#78716C] hover:text-[#1C1917] hover:bg-[#F5F5F4] transition-colors">
-                    <Bell className="h-4 w-4" />
-                    <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[#D97706]" />
-                </button>
+                {session && <NotificationBell />}
 
                 {session && (
                     <div className="relative">

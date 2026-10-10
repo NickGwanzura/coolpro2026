@@ -26,3 +26,4 @@ export * from './audit';
 export * from './email-log';
 export * from './contractors';
 export * from './registration-applications';
+export * from './notifications';
