@@ -41,7 +41,7 @@ export function ApplicationSubmittedNotice({
   }
 
   const steps = [
-    { title: 'Confirm your email', body: `Open the message we sent to ${email} and click “Confirm my email”.` },
+    { title: 'Confirm your email', body: `Open the message we sent to ${email} and click “Confirm my email”. You can then upload your supporting documents.` },
     { title: 'We review your application', body: `A reviewer checks ${info.reviewFocus}, usually within ${info.reviewTime}.` },
     { title: 'You hear from us', body: 'We email you the decision. If approved, you can log in straight away.' },
   ];

@@ -1,4 +1,10 @@
-import { pgEnum, pgTable, text, timestamp, uuid, jsonb, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { customType, pgEnum, pgTable, text, timestamp, uuid, jsonb, integer, uniqueIndex, index } from 'drizzle-orm/pg-core';
+
+const bytea = customType<{ data: Buffer; default: false }>({
+  dataType() {
+    return 'bytea';
+  },
+});
 
 export const registrationApplicantRoleEnum = pgEnum('registration_applicant_role', [
   'trainer',
@@ -56,4 +62,21 @@ export const emailVerifications = pgTable('email_verifications', {
 }, (table) => [
   uniqueIndex('email_verifications_token_hash_idx').on(table.tokenHash),
   index('email_verifications_entity_idx').on(table.entityType, table.entityId),
+]);
+
+// Proof documents an applicant uploads after confirming their email (ID, certificates, licences).
+// Small files stored in the database, so they work without external object storage. Only an
+// administrator can read them back. entityType/entityId is a soft reference to whichever
+// application table the applicant used.
+export const applicationDocuments = pgTable('application_documents', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  entityType: text('entity_type').notNull(),
+  entityId: uuid('entity_id').notNull(),
+  fileName: text('file_name').notNull(),
+  fileType: text('file_type').notNull(),
+  sizeBytes: integer('size_bytes').notNull(),
+  data: bytea('data').notNull(),
+  uploadedAt: timestamp('uploaded_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('application_documents_entity_idx').on(table.entityType, table.entityId),
 ]);

@@ -36,12 +36,21 @@ function oneOf<T extends string>(value: unknown, options: readonly T[]): T | nul
   return typeof value === 'string' && (options as readonly string[]).includes(value) ? (value as T) : null;
 }
 
-/** Validates a public trainer, lecturer or contractor registration. */
-export function validateRegistrationApplication(body: unknown): Validated<RegistrationApplicationInput> {
+/** A person needs at least this long to read and fill in the form; scripts post instantly. */
+export const MIN_FORM_FILL_MS = 4000;
+
+/** Validates a public trainer, lecturer or contractor registration. `now` is injectable for tests. */
+export function validateRegistrationApplication(body: unknown, now: number = Date.now()): Validated<RegistrationApplicationInput> {
   const raw = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
 
   // Hidden field a person never fills in; bots usually do.
   if (text(raw.website) !== '') return { ok: false, error: 'Could not submit this application.' };
+
+  // The form records when it was opened. Missing, in the future, or just moments ago means a script.
+  const startedAt = typeof raw.formStartedAt === 'number' ? raw.formStartedAt : Number.NaN;
+  if (!Number.isFinite(startedAt) || startedAt > now || now - startedAt < MIN_FORM_FILL_MS) {
+    return { ok: false, error: 'That was too quick. Please take a moment to check your details, then submit again.' };
+  }
 
   if (!isRegistrationApplicationRole(raw.role)) return { ok: false, error: 'Choose a valid role to apply for.' };
   const role = raw.role;

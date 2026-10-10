@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { GraduationCap, ArrowLeft, Upload, ArrowRight, Loader2 } from 'lucide-react';
+import { GraduationCap, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { createStudentApplication } from '@/lib/api';
 import { SELF_SIGNUP_OPEN } from '@/lib/signup-config';
 import { ApplicationSubmittedNotice } from '@/components/marketing/ApplicationSubmittedNotice';
@@ -53,7 +53,6 @@ function JoinStudentForm() {
     confirmPassword: '',
     agree: false,
   });
-  const [idFile, setIdFile] = useState<File | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +79,6 @@ function JoinStudentForm() {
         fieldOfStudy: form.fieldOfStudy,
         studentIdNumber: form.studentId.trim(),
         enrolmentYear: Number(form.enrolmentYear),
-        idDocumentName: idFile?.name,
       });
       setApplication(record);
     } catch (err) {
@@ -123,7 +121,7 @@ function JoinStudentForm() {
               </h1>
               <p className="mt-4 text-gray-600 leading-relaxed">
                 The $7/year Student plan is for currently-enrolled Polytechnic students in Zimbabwe.
-                Upload a valid student ID below; our team verifies within two working days.
+                After you confirm your email you can upload your student ID; our team verifies within two working days.
               </p>
             </div>
           </div>
@@ -320,28 +318,9 @@ function JoinStudentForm() {
                       />
                     </div>
                   </div>
-                  <div>
-                    <label htmlFor="idUpload" className="block text-sm font-medium mb-2" style={{ color: '#1C1917' }}>
-                      Student ID document
-                    </label>
-                    <label
-                      htmlFor="idUpload"
-                      className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed cursor-pointer transition-colors hover:bg-white rounded-lg"
-                      style={{ borderColor: '#E5E0DB', backgroundColor: '#FAFAF9' }}
-                    >
-                      <Upload className="h-6 w-6 text-gray-400 mb-2" />
-                      <span className="text-sm font-medium" style={{ color: '#1C1917' }}>
-                        {idFile ? idFile.name : 'Click to upload (JPG, PNG, or PDF)'}
-                      </span>
-                      <span className="mt-1 text-xs text-gray-500">Max 5MB</span>
-                      <input
-                        id="idUpload"
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.pdf"
-                        className="sr-only"
-                        onChange={(e) => setIdFile(e.target.files?.[0] ?? null)}
-                      />
-                    </label>
+                  <div className="rounded-lg border p-4 text-sm leading-6" style={{ borderColor: '#E5E0DB', backgroundColor: '#FAFAF9', color: '#44403C' }}>
+                    <strong style={{ color: '#1C1917' }}>Your student ID comes next.</strong> After you submit, we email you a link. When you
+                    confirm your email you can upload your student ID or enrolment letter (PDF, JPG or PNG, up to 5 MB).
                   </div>
                 </fieldset>
 

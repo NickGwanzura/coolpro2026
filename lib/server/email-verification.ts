@@ -102,3 +102,20 @@ export async function latestPendingForEmail(email: string): Promise<Array<{ enti
     .limit(5);
   return rows.map((row) => ({ entityType: row.entityType as ApplicationEntityType, entityId: row.entityId }));
 }
+
+/**
+ * Finds the application a confirmation-link token belongs to, for letting that applicant upload
+ * documents. The token may already have been used to confirm the email, and still works while the
+ * application is open. Unknown or expired-and-unused tokens return null.
+ */
+export async function lookupVerificationToken(token: string): Promise<{ entityType: ApplicationEntityType; entityId: string } | null> {
+  if (!token || token.length > 200) return null;
+  const [row] = await db
+    .select()
+    .from(emailVerifications)
+    .where(eq(emailVerifications.tokenHash, hashVerificationToken(token)))
+    .limit(1);
+  const state = evaluateVerification(row);
+  if (!row || state === 'invalid' || state === 'expired') return null;
+  return { entityType: row.entityType as ApplicationEntityType, entityId: row.entityId };
+}

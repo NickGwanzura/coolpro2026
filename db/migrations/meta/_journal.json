@@ -169,6 +169,13 @@
       "when": 1791533145368,
       "tag": "0023_self_registration",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791616484590,
+      "tag": "0024_application_documents",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { ACCOUNT_EXISTS_MESSAGE, accountExistsFor } from '@/lib/server/applicant-lookup';
 import { NextResponse } from 'next/server';
 import { and, eq, or } from 'drizzle-orm';
 import { db } from '@/db/client';
@@ -109,6 +110,10 @@ export async function POST(req: Request) {
   const email = String(body.email).trim().toLowerCase();
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+  }
+
+  if (await accountExistsFor(email)) {
+    return NextResponse.json({ error: ACCOUNT_EXISTS_MESSAGE }, { status: 409 });
   }
 
   const dupes = await db

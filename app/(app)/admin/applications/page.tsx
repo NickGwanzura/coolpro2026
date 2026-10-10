@@ -31,6 +31,7 @@ import {
   type RejectionNotes,
 } from '@/lib/api';
 import { APPLICANT_ROLES } from '@/lib/application-roles';
+import { ApplicationDocuments } from '@/components/admin/ApplicationDocuments';
 import type {
   ApplicationStatus,
   RegistrationApplication,
@@ -40,6 +41,31 @@ import type {
 import type { SupplierApplicationRecord } from '@/lib/api';
 
 type Lane = 'students' | 'technicians' | 'professionals' | 'suppliers';
+type StatusFilter = 'open' | 'approved' | 'rejected' | 'all';
+
+const STATUS_FILTERS: Array<{ id: StatusFilter; label: string }> = [
+  { id: 'open', label: 'Needs action' },
+  { id: 'approved', label: 'Approved' },
+  { id: 'rejected', label: 'Rejected' },
+  { id: 'all', label: 'All' },
+];
+
+/** Narrows a lane's applications by status and by a search over name and email. */
+function filterApplications<T extends { status: ApplicationStatus; email: string }>(
+  apps: T[],
+  filter: StatusFilter,
+  search: string,
+  nameOf: (app: T) => string,
+): T[] {
+  const needle = search.trim().toLowerCase();
+  return apps.filter((app) => {
+    const statusOk =
+      filter === 'all' ||
+      (filter === 'open' ? app.status === 'submitted' || app.status === 'under-review' : app.status === filter);
+    const searchOk = !needle || `${nameOf(app)} ${app.email}`.toLowerCase().includes(needle);
+    return statusOk && searchOk;
+  });
+}
 
 const LANE_META: Record<Lane, { label: string; icon: React.ComponentType<{ className?: string }>; accent: string }> = {
   students: { label: 'Students', icon: GraduationCap, accent: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
@@ -150,6 +176,8 @@ export default function ApplicationsAdminPage() {
   const [active, setActive] = useState<Lane>('students');
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
+  const [search, setSearch] = useState('');
   const [rejectTarget, setRejectTarget] = useState<{
     lane: Lane;
     id: string;
@@ -273,13 +301,41 @@ export default function ApplicationsAdminPage() {
         })}
       </div>
 
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
+          {STATUS_FILTERS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setStatusFilter(option.id)}
+              aria-pressed={statusFilter === option.id}
+              className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${
+                statusFilter === option.id
+                  ? 'border-gray-900 bg-gray-900 text-white'
+                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search name or email"
+          aria-label="Search applications by name or email"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:w-64"
+        />
+      </div>
+
       {active === 'students' && (
         <LaneSection
           loading={studentsResp.data === undefined}
           error={studentsResp.error}
-          empty="No student applications yet."
+          empty="No student applications match."
         >
-          {(studentsResp.data ?? []).map((app) => (
+          {filterApplications(studentsResp.data ?? [], statusFilter, search, (a) => `${a.firstName} ${a.lastName}`).map((app) => (
             <StudentRow
               key={app.id}
               app={app}
@@ -301,9 +357,9 @@ export default function ApplicationsAdminPage() {
         <LaneSection
           loading={techsResp.data === undefined}
           error={techsResp.error}
-          empty="No technician applications yet."
+          empty="No technician applications match."
         >
-          {(techsResp.data ?? []).map((app) => (
+          {filterApplications(techsResp.data ?? [], statusFilter, search, (a) => a.name).map((app) => (
             <TechnicianRow
               key={app.id}
               app={app}
@@ -321,9 +377,9 @@ export default function ApplicationsAdminPage() {
         <LaneSection
           loading={professionalsResp.data === undefined}
           error={professionalsResp.error}
-          empty="No trainer, lecturer or contractor applications yet."
+          empty="No trainer, lecturer or contractor applications match."
         >
-          {(professionalsResp.data ?? []).map((app) => (
+          {filterApplications(professionalsResp.data ?? [], statusFilter, search, (a) => `${a.firstName} ${a.lastName}`).map((app) => (
             <ProfessionalRow
               key={app.id}
               app={app}
@@ -345,9 +401,9 @@ export default function ApplicationsAdminPage() {
         <LaneSection
           loading={suppliersResp.data === undefined}
           error={suppliersResp.error}
-          empty="No supplier applications yet."
+          empty="No supplier applications match."
         >
-          {(suppliersResp.data ?? []).map((app) => (
+          {filterApplications(suppliersResp.data ?? [], statusFilter, search, (a) => `${a.companyName} ${a.contactName}`).map((app) => (
             <SupplierRow
               key={app.id}
               app={app}
@@ -487,6 +543,7 @@ function StudentRow({
             {app.idDocumentName ? ` • ${app.idDocumentName}` : ''}
           </p>
           <p className="text-[11px] text-gray-400">Submitted {formatDate(app.submittedAt)}</p>
+          <ApplicationDocuments entityType="student_application" entityId={app.id} />
           {app.reviewNote && app.status === 'rejected' && (
             <div className="mt-1 border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
               <span className="font-semibold">Reason:</span> {app.reviewNote}
@@ -548,6 +605,7 @@ function TechnicianRow({
             </p>
           )}
           <p className="text-[11px] text-gray-400">Submitted {formatDate(app.submittedAt)}</p>
+          <ApplicationDocuments entityType="technician_application" entityId={app.id} />
           {app.reviewNote && app.status === 'rejected' && (
             <div className="mt-1 border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
               <span className="font-semibold">Reason:</span> {app.reviewNote}
@@ -602,6 +660,7 @@ function SupplierRow({
             </div>
           )}
           <p className="text-[11px] text-gray-400">Submitted {formatDate(app.submittedAt)}</p>
+          <ApplicationDocuments entityType="supplier_application" entityId={app.id} />
           {app.reviewNote && app.status === 'rejected' && (
             <div className="mt-1 border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
               <span className="font-semibold">Reason:</span> {app.reviewNote}
@@ -653,6 +712,7 @@ function ProfessionalRow({
             </p>
           )}
           <p className="text-[11px] text-gray-400">Submitted {formatDate(app.submittedAt)}</p>
+          <ApplicationDocuments entityType="registration_application" entityId={app.id} />
           {app.reviewNote && app.status === 'rejected' && (
             <div className="mt-1 border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
               <span className="font-semibold">Reason:</span> {app.reviewNote}

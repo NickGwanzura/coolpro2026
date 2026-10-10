@@ -5,6 +5,7 @@ import { users } from '@/db/schema/index';
 import { signSession, sessionCookie } from '@/lib/server/auth';
 import { verifyPassword } from '@/lib/server/password';
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
+import { applicantLoginStateFor } from '@/lib/server/applicant-lookup';
 import type { UserSession } from '@/lib/session-types';
 
 const LOGIN_RATE_LIMIT = 30;
@@ -61,6 +62,14 @@ export async function POST(req: Request) {
     NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
 
   if (!user || !user.passwordHash) {
+    // No account yet. If this is someone whose application is still being processed (they know the
+    // password they chose), tell them so instead of a bare "invalid password".
+    if (!user) {
+      const applicantState = await applicantLoginStateFor(email, password).catch(() => null);
+      if (applicantState) {
+        return NextResponse.json({ error: applicantState.message, code: applicantState.code }, { status: 403 });
+      }
+    }
     return invalidCredentials();
   }
 

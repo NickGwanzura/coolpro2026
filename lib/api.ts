@@ -534,6 +534,8 @@ export type RegistrationApplicationInput = {
   idDocumentName?: string;
   /** Hidden honeypot field; always sent empty by the real form. */
   website?: string;
+  /** When the form was opened (ms since epoch), so the server can spot instant bot posts. */
+  formStartedAt?: number;
 };
 
 /** Live count of applications waiting for an admin; refreshes every minute. */

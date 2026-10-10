@@ -41,7 +41,9 @@ describe('verification email', () => {
     expect(email.html).toContain('a trainer or assessor');
     expect(email.html).toContain('48 hours');
     expect(email.subject).toMatch(/Confirm your email/);
+    expect(send.mock.calls.at(-1)?.[0].replyTo).toBe('info@hevacraz.co.zw');
     expect(email.html).toContain('We received your application');
+    expect(email.html).toContain('upload your ID or certificates');
   });
 });
 

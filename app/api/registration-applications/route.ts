@@ -1,7 +1,8 @@
+import { ACCOUNT_EXISTS_MESSAGE, accountExistsFor } from '@/lib/server/applicant-lookup';
 import { NextResponse } from 'next/server';
 import { and, desc, eq, or } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { registrationApplications, users } from '@/db/schema/index';
+import { registrationApplications } from '@/db/schema/index';
 import { requireRole } from '@/lib/server/auth';
 import { hashPassword } from '@/lib/server/password';
 import { checkRateLimit, getClientIp } from '@/lib/server/rate-limit';
@@ -40,12 +41,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Registration for this role is currently closed.' }, { status: 403 });
   }
 
-  const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, input.email)).limit(1);
-  if (existingUser) {
-    return NextResponse.json(
-      { error: 'An account with this email already exists. Log in, or use "Forgot password" on the login page.' },
-      { status: 409 },
-    );
+  if (await accountExistsFor(input.email)) {
+    return NextResponse.json({ error: ACCOUNT_EXISTS_MESSAGE }, { status: 409 });
   }
 
   const [duplicate] = await db

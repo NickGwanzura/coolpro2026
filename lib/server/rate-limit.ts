@@ -33,10 +33,20 @@ export function checkRateLimit(key: string, limit: number, windowMs: number): bo
   return true;
 }
 
+/**
+ * The visitor's address, for rate limiting. Behind the reverse proxy the proxy sets X-Real-IP, or
+ * appends the connecting address to the END of X-Forwarded-For. Anything a visitor sends themselves
+ * sits earlier in that list, so only the last entry is trusted. If neither header yields a valid
+ * address, everyone shares one bucket rather than being able to choose their own.
+ */
 export function getClientIp(req: Request): string {
-  // X-Forwarded-For can contain a client-supplied value before the proxy-appended
-  // address. Trust the single-hop value set by the ingress instead; otherwise use
-  // one shared fallback bucket rather than allowing arbitrary rate-limit identities.
   const realIp = req.headers.get('x-real-ip')?.trim();
-  return realIp && isIP(realIp) ? realIp : 'unknown';
+  if (realIp && isIP(realIp)) return realIp;
+
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    const last = forwarded.split(',').map((part) => part.trim()).filter(Boolean).at(-1);
+    if (last && isIP(last)) return last;
+  }
+  return 'unknown';
 }

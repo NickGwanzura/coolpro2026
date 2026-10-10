@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { CheckCircle, Loader2, MailWarning } from 'lucide-react';
 import { APPLICANT_ROLES, isApplicantRole } from '@/lib/application-roles';
 import { resendApplicationVerification } from '@/lib/api';
+import { ApplicationDocumentsPanel } from '@/components/marketing/ApplicationDocumentsPanel';
 
 type View =
   | { kind: 'checking' }
@@ -14,7 +15,8 @@ type View =
 
 export function VerifyEmailClient() {
   const token = useSearchParams().get('token') ?? '';
-  const [view, setView] = useState<View>({ kind: 'checking' });
+  // With no token in the link there is nothing to check, so start on the problem screen.
+  const [view, setView] = useState<View>(() => (token ? { kind: 'checking' } : { kind: 'problem', expired: false }));
   const [email, setEmail] = useState('');
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle');
   const started = useRef(false);
@@ -22,12 +24,8 @@ export function VerifyEmailClient() {
   useEffect(() => {
     // The link is confirmed by a button-less POST from this page rather than a GET, so email
     // scanners that merely open links do not confirm an address on the applicant's behalf.
-    if (started.current) return;
+    if (started.current || !token) return;
     started.current = true;
-    if (!token) {
-      setView({ kind: 'problem', expired: false });
-      return;
-    }
     fetch('/api/applications/verify-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -59,7 +57,7 @@ export function VerifyEmailClient() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#FAFAF9] px-4 py-24">
-      <div className="w-full max-w-md border border-[#E5E0DB] bg-white p-8 text-center shadow-sm">
+      <div className="w-full max-w-lg border border-[#E5E0DB] bg-white p-8 text-center shadow-sm">
         {view.kind === 'checking' && (
           <>
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
@@ -78,6 +76,7 @@ export function VerifyEmailClient() {
                 ? 'Your application is with our reviewers. We will email you the decision.'
                 : `Thank you. Your application is now in the review queue${info ? `, usually reviewed within ${info.reviewTime}` : ''}. We will email you the decision, and we have sent you a message confirming we received it.`}
             </p>
+            <ApplicationDocumentsPanel token={token} />
             <Link href="/" className="mt-6 inline-flex items-center justify-center bg-[#1C1917] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#2C2420]">
               Return home
             </Link>

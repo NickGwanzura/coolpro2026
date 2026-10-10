@@ -50,6 +50,7 @@ export function RegistrationApplicationForm({
   accentTint: string;
 }) {
   const copy = COPY[role];
+  const [openedAt] = useState(() => Date.now());
   const [done, setDone] = useState<{ id: string; name: string; email: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +120,7 @@ export function RegistrationApplicationForm({
         experienceSummary: form.experienceSummary.trim(),
         details: role === 'contractor' ? contractor : undefined,
         website: form.website,
+        formStartedAt: openedAt,
       });
       setDone({ id: record.id, name: form.firstName.trim(), email: form.email.trim().toLowerCase() });
     } catch (err) {

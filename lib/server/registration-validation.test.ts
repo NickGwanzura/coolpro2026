@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { validateRegistrationApplication } from './registration-validation';
 
+const NOW = Date.parse('2026-10-10T08:00:00Z');
 const base = {
   role: 'trainer',
+  formStartedAt: NOW - 60_000,
   firstName: ' Tendai ',
   lastName: 'Moyo',
   email: ' Tendai@Example.com ',
@@ -29,7 +31,7 @@ const contractor = {
 
 describe('validateRegistrationApplication', () => {
   it('accepts a trainer and cleans up the values', () => {
-    const result = validateRegistrationApplication(base);
+    const result = validateRegistrationApplication(base, NOW);
     expect(result).toMatchObject({
       ok: true,
       value: { role: 'trainer', firstName: 'Tendai', email: 'tendai@example.com', organisation: 'Harare Polytechnic', details: null },
@@ -37,11 +39,11 @@ describe('validateRegistrationApplication', () => {
   });
 
   it('accepts a lecturer', () => {
-    expect(validateRegistrationApplication({ ...base, role: 'lecturer' }).ok).toBe(true);
+    expect(validateRegistrationApplication({ ...base, role: 'lecturer' }, NOW).ok).toBe(true);
   });
 
   it('accepts a contractor and drops unknown services', () => {
-    const result = validateRegistrationApplication(contractor);
+    const result = validateRegistrationApplication(contractor, NOW);
     expect(result.ok).toBe(true);
     expect(result.ok && result.value.details).toMatchObject({
       tradeSpecialization: 'Installation',
@@ -51,39 +53,47 @@ describe('validateRegistrationApplication', () => {
 
   it('never accepts an administrator or other unlisted role', () => {
     for (const role of ['org_admin', 'vendor', 'student', 'technician', '', undefined]) {
-      expect(validateRegistrationApplication({ ...base, role }).ok).toBe(false);
+      expect(validateRegistrationApplication({ ...base, role }, NOW).ok).toBe(false);
     }
   });
 
   it('requires the basics', () => {
     for (const field of ['firstName', 'lastName', 'email', 'phone', 'region', 'organisation']) {
-      expect(validateRegistrationApplication({ ...base, [field]: '' }).ok).toBe(false);
+      expect(validateRegistrationApplication({ ...base, [field]: '' }, NOW).ok).toBe(false);
     }
-    expect(validateRegistrationApplication({ ...base, email: 'not-an-email' }).ok).toBe(false);
-    expect(validateRegistrationApplication({ ...base, phone: '123' }).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...base, email: 'not-an-email' }, NOW).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...base, phone: '123' }, NOW).ok).toBe(false);
   });
 
   it('enforces password strength and a meaningful summary', () => {
-    expect(validateRegistrationApplication({ ...base, password: 'short' }).ok).toBe(false);
-    expect(validateRegistrationApplication({ ...base, password: 'x'.repeat(73) }).ok).toBe(false);
-    expect(validateRegistrationApplication({ ...base, experienceSummary: 'too short' }).ok).toBe(false);
-    expect(validateRegistrationApplication({ ...base, experienceSummary: 'x'.repeat(3001) }).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...base, password: 'short' }, NOW).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...base, password: 'x'.repeat(73) }, NOW).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...base, experienceSummary: 'too short' }, NOW).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...base, experienceSummary: 'x'.repeat(3001) }, NOW).ok).toBe(false);
   });
 
   it('requires the contractor questions', () => {
     for (const field of ['tradeSpecialization', 'yearsInOperation', 'teamSize', 'hasSafetyCertification']) {
       const details = { ...contractor.details, [field]: 'not an option' };
-      expect(validateRegistrationApplication({ ...contractor, details }).ok).toBe(false);
+      expect(validateRegistrationApplication({ ...contractor, details }, NOW).ok).toBe(false);
     }
-    expect(validateRegistrationApplication({ ...contractor, details: undefined }).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...contractor, details: undefined }, NOW).ok).toBe(false);
   });
 
   it('rejects submissions that fill the hidden honeypot field', () => {
-    expect(validateRegistrationApplication({ ...base, website: 'http://spam.example' }).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...base, website: 'http://spam.example' }, NOW).ok).toBe(false);
+  });
+
+  it('rejects a form submitted too quickly, or with no start time', () => {
+    expect(validateRegistrationApplication({ ...base, formStartedAt: NOW - 500 }, NOW).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...base, formStartedAt: undefined }, NOW).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...base, formStartedAt: 'yesterday' }, NOW).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...base, formStartedAt: NOW + 60_000 }, NOW).ok).toBe(false);
+    expect(validateRegistrationApplication({ ...base, formStartedAt: NOW - 5_000 }, NOW).ok).toBe(true);
   });
 
   it('handles junk bodies without throwing', () => {
-    expect(validateRegistrationApplication(null).ok).toBe(false);
-    expect(validateRegistrationApplication('x').ok).toBe(false);
+    expect(validateRegistrationApplication(null, NOW).ok).toBe(false);
+    expect(validateRegistrationApplication('x', NOW).ok).toBe(false);
   });
 });

@@ -39,6 +39,8 @@ async function deliver(email: OutgoingEmail): Promise<{ sent: boolean }> {
       to: email.to,
       subject: email.subject,
       html: email.html,
+      // Mail is sent from a no-reply address; replies go to the team's real inbox instead.
+      replyTo: process.env.EMAIL_REPLY_TO ?? CONTACT_TO_ADDRESS,
     });
     if (error) {
       console.error(`[email] Resend rejected ${email.label} email:`, error.message);
@@ -367,7 +369,7 @@ function verificationEmailHtml(input: { name: string; role: string; verifyUrl: s
     ${button('Confirm my email', input.verifyUrl)}
     ${stepList([
       { title: 'Application submitted', body: 'Done. An administrator has been told.' },
-      { title: 'Confirm your email', body: 'Click the button above. It takes a few seconds.' },
+      { title: 'Confirm your email and add your documents', body: 'Click the button above. On the next page you can upload your ID or certificates.' },
       { title: 'Review and decision', body: info ? `We check ${info.reviewFocus}, usually within ${info.reviewTime}, then email you.` : 'We review your application and email you the decision.' },
     ])}
     ${smallPrint(`This link works for ${input.hours} hours. Your application is not reviewed until you confirm. If you didn't apply, you can ignore this email and nothing will happen.`)}
