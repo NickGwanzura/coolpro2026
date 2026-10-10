@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { BookOpen, CheckCircle2, ChevronDown, ChevronUp, Clock, Download, FileText } from 'lucide-react';
-import { useCourses, getCourseMaterialDownloadUrl, enrollInCourse, type ManagedCourse } from '@/lib/platformStore';
+import { useCourses, getCourseMaterialDownloadUrl, enrollInCourse, useEnrollments, type ManagedCourse } from '@/lib/platformStore';
+import { saveCourseProgress, useCourseProgress, type CourseProgressEntry } from '@/lib/api';
+import { progressPercent, sanitizeCompletedModules } from '@/lib/course-progress';
 
 function totalMinutes(course: ManagedCourse) {
   return course.modules.reduce((sum, m) => sum + m.minutes, 0);
@@ -48,23 +50,27 @@ function readProgress(course: ManagedCourse): CourseProgress {
   }
 }
 
-function CourseCard({ course }: { course: ManagedCourse }) {
+function CourseCard({ course, saved, enrolled }: { course: ManagedCourse; saved?: CourseProgressEntry; enrolled: boolean }) {
   const [expanded, setExpanded] = useState(false);
-  const [progress, setProgress] = useState<CourseProgress>(() => readProgress(course));
+  // Progress used to live only in this browser. Read it once so nobody loses work they already did.
+  const [legacy] = useState<CourseProgress>(() => readProgress(course));
+  // What the learner just ticked, shown straight away while it saves.
+  const [pending, setPending] = useState<number[] | null>(null);
   const [error, setError] = useState('');
   const curriculumId = `course-curriculum-${course.id}`;
-  const { started, completedModules } = progress;
-  const completionPercent = course.modules.length === 0
-    ? 0
-    : Math.round((completedModules.length / course.modules.length) * 100);
+  const savedModules = saved ? sanitizeCompletedModules(saved.completedModules, course.modules.length) : null;
+  const shown = pending ?? savedModules ?? legacy.completedModules;
+  const started = enrolled || Boolean(saved) || legacy.started || pending !== null;
+  const completionPercent = progressPercent(shown.length, course.modules.length);
 
-  function saveProgress(nextStarted: boolean, nextCompletedModules: number[]) {
-    const nextProgress = {
-      started: nextStarted,
-      completedModules: nextCompletedModules,
-    } satisfies CourseProgress;
-    setProgress(nextProgress);
-    window.localStorage.setItem(progressKey(course.id), JSON.stringify(nextProgress));
+  async function persist(next: number[]) {
+    setPending(next);
+    try {
+      await saveCourseProgress(course.id, next);
+      window.localStorage.removeItem(progressKey(course.id));
+    } catch (err) {
+      setError(err instanceof Error ? `Your progress was not saved: ${err.message}` : 'Your progress was not saved.');
+    }
   }
 
   async function handleStartCourse() {
@@ -76,15 +82,16 @@ function CourseCard({ course }: { course: ManagedCourse }) {
       setError(err instanceof Error ? err.message : 'Could not enrol in this course');
       return;
     }
-    saveProgress(true, completedModules);
+    // Carry over any progress that was only saved in this browser before.
+    if (!saved && legacy.completedModules.length > 0) await persist(legacy.completedModules);
+    else if (!saved) await persist([]);
     setExpanded(true);
   }
 
   function toggleModuleComplete(index: number) {
-    const nextCompletedModules = completedModules.includes(index)
-      ? completedModules.filter(item => item !== index)
-      : [...completedModules, index].sort((a, b) => a - b);
-    saveProgress(true, nextCompletedModules);
+    const base = shown;
+    const next = base.includes(index) ? base.filter((item) => item !== index) : [...base, index].sort((a, b) => a - b);
+    void persist(next);
   }
 
   async function handleDownload(r2Key: string) {
@@ -121,9 +128,9 @@ function CourseCard({ course }: { course: ManagedCourse }) {
           <span>Pass mark {course.passMark}%</span>
         </div>
 
-        <div className="mb-4 rounded-lg bg-gray-50 px-3 py-2.5" aria-label={`${completedModules.length} of ${course.modules.length} modules completed`}>
+        <div className="mb-4 rounded-lg bg-gray-50 px-3 py-2.5" aria-label={`${shown.length} of ${course.modules.length} modules completed`}>
           <div className="mb-1.5 flex items-center justify-between gap-3 text-xs font-medium text-gray-600">
-            <span>{completedModules.length}/{course.modules.length} modules complete</span>
+            <span>{shown.length}/{course.modules.length} modules complete</span>
             <span>{completionPercent}%</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
@@ -172,11 +179,11 @@ function CourseCard({ course }: { course: ManagedCourse }) {
                   <button
                     type="button"
                     onClick={() => toggleModuleComplete(i)}
-                    aria-pressed={completedModules.includes(i)}
-                    className={`mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${completedModules.includes(i) ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+                    aria-pressed={shown.includes(i)}
+                    className={`mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${shown.includes(i) ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
                   >
                     <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                    {completedModules.includes(i) ? 'Completed' : 'Mark complete'}
+                    {shown.includes(i) ? 'Completed' : 'Mark complete'}
                   </button>
                   {(mod.attachments ?? []).length > 0 && (
                     <div className="mt-3 space-y-2 border-t border-gray-100 pt-3">
@@ -213,6 +220,8 @@ function CourseCard({ course }: { course: ManagedCourse }) {
 
 export default function LMS() {
   const { data: courses, error, isLoading } = useCourses();
+  const { data: progress } = useCourseProgress();
+  const { data: enrollments } = useEnrollments();
 
   if (isLoading) {
     return <p className="text-sm text-gray-500">Loading courses…</p>;
@@ -229,7 +238,12 @@ export default function LMS() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {courses.map(course => (
-        <CourseCard key={course.id} course={course} />
+        <CourseCard
+          key={course.id}
+          course={course}
+          saved={progress?.find((entry) => entry.courseId === course.id)}
+          enrolled={(enrollments ?? []).some((entry) => entry.courseId === course.id)}
+        />
       ))}
     </div>
   );

@@ -16,6 +16,10 @@ import {
     useAdminDashboardSummary,
     useAdminActionQueue,
     useEnrollments,
+    useCourseProgress,
+    useMyStanding,
+    useTrainerCourseStats,
+    useVerifications,
     type AdminActionItem,
 } from '@/lib/api';
 import {
@@ -59,6 +63,18 @@ import { BRAND as colors } from '@/constants/colors';
 import { rangeMsFor, type SimpleDateRange } from '@/lib/dateRange';
 import { Drilldown } from '@/components/ui/Drilldown';
 import { isFieldWorkerRole } from '@/lib/field-worker';
+import { gettingStartedChecklist } from '@/lib/membership-status';
+import { monthlyComplianceStatus } from '@/lib/dashboard-stats';
+import {
+    ContractorOnboardingBanner,
+    GettingStartedChecklist,
+    MonthlyCompliancePrompt,
+    MyCoursesPanel,
+    ReadyForCertificatePanel,
+    RecentBuyerChecksPanel,
+    StandingPanel,
+    type LearnerCourse,
+} from '@/components/dashboard/DashboardPanels';
 
 const EMPTY_ADMIN_SUMMARY: AdminSummary = {
     technicians: { total: 0, active: 0 },
@@ -169,6 +185,10 @@ export default function DashboardPage() {
     const sessionsQ = useTrainingSessions(isTrainerOrLecturer);
     const certRequestsQ = useCertificateRequests(isTrainerOrLecturer);
     const enrollmentsQ = useEnrollments(isStudent);
+    const progressQ = useCourseProgress(isStudent);
+    const standingQ = useMyStanding(isTechnician);
+    const trainerStatsQ = useTrainerCourseStats(isTrainerOrLecturer);
+    const verificationsQ = useVerifications(isVendor);
 
     const plannerJobs = jobsQ.data ?? [];
     const cocRequests = cocQ.data ?? [];
@@ -197,7 +217,7 @@ export default function DashboardPage() {
         [summaryQ, 'registry summary'], [queueQ, 'the approvals queue'], [jobsQ, 'planner jobs'], [gasLogsQ, 'refrigerant logs'],
         [cocQ, 'COC requests'], [reordersQ, 'reorders'], [complianceQ, 'compliance certificates'], [ledgerQ, 'the ledger'],
         [coursesQ, 'courses'], [submissionsQ, 'exam submissions'], [sessionsQ, 'training sessions'],
-        [certRequestsQ, 'certificate requests'], [enrollmentsQ, 'enrolments'],
+        [certRequestsQ, 'certificate requests'], [enrollmentsQ, 'enrolments'], [progressQ, 'course progress'],
     ].filter(([query]) => (query as { error?: unknown }).error).map(([, name]) => name as string);
 
     const statsNow = nowMs || 0;
@@ -421,6 +441,29 @@ export default function DashboardPage() {
     });
 
     const displayCerts = certificateRecords.slice(0, 5);
+    const learnerCourses: LearnerCourse[] = managedCourses
+        .filter((course) => course.status === 'approved')
+        .map((course) => ({
+            id: course.id,
+            title: course.title,
+            moduleCount: course.modules.length,
+            completedModules: progressQ.data?.find((entry) => entry.courseId === course.id)?.completedModules.length ?? 0,
+            enrolled: (enrollmentsQ.data ?? []).some((entry) => entry.courseId === course.id),
+            submissions: examSubmissions.filter((submission) => submission.courseId === course.id),
+        }));
+    const checklist = gettingStartedChecklist({
+        jobs: plannerJobs.length,
+        gasLogs: refrigerantLogs.length,
+        cocRequests: cocRequests.length,
+        hasMembership: Boolean(standingQ.data?.membership || standingQ.data?.technician),
+        isContractor: session.role === 'contractor',
+    });
+    const monthly = monthlyComplianceStatus(complianceApps, statsNow);
+    const recentBuyerChecks = (verificationsQ.data ?? [])
+        .slice()
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5);
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -547,6 +590,7 @@ export default function DashboardPage() {
             {/* ── Vendor-only sections ── */}
             {isVendor && (
                 <>
+                    {!complianceQ.isLoading && !complianceQ.error && <MonthlyCompliancePrompt month={monthly.month} submitted={monthly.submitted} />}
                     {/* Reorder Queue */}
                     <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
@@ -635,6 +679,8 @@ export default function DashboardPage() {
                             </div>
                         )}
                     </div>
+
+                    <RecentBuyerChecksPanel checks={verificationsQ.isLoading ? undefined : recentBuyerChecks} />
                 </>
             )}
 
@@ -703,7 +749,19 @@ export default function DashboardPage() {
                                         };
                                         return (
                                             <div key={course.id} className="px-6 py-4 hover:bg-[#FAFAF9] flex items-center justify-between gap-4">
-                                                <p className="text-sm font-semibold text-[#1C1917] truncate">{course.title}</p>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-[#1C1917] truncate">{course.title}</p>
+                                                    {(() => {
+                                                        const stat = trainerStatsQ.data?.courses.find((entry) => entry.courseId === course.id);
+                                                        if (!stat || course.status !== 'approved') return null;
+                                                        return (
+                                                            <p className="mt-0.5 text-xs text-[#78716C]">
+                                                                {stat.enrolled} enrolled
+                                                                {stat.passRate !== null ? ` · ${stat.passRate}% pass rate (${stat.learnersPassed}/${stat.learnersGraded})` : ' · no graded exams yet'}
+                                                            </p>
+                                                        );
+                                                    })()}
+                                                </div>
                                                 <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shrink-0 ${statusColors[course.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
                                                     {course.status.replace('_', ' ')}
                                                 </span>
@@ -738,10 +796,16 @@ export default function DashboardPage() {
                             </div>
                         </div>
                     </div>
+
+                    <ReadyForCertificatePanel items={trainerStatsQ.isLoading ? undefined : trainerStatsQ.data?.readyForCertificate ?? []} />
                 </>
             )}
 
             {/* ── Student-only sections ── */}
+            {isStudent && (
+                <MyCoursesPanel courses={learnerCourses} loading={coursesQ.isLoading || enrollmentsQ.isLoading || progressQ.isLoading} />
+            )}
+
             {isStudent && (
                 <div className="rounded-lg overflow-hidden bg-white border border-[#E7E5E4]">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7E5E4]">
@@ -779,6 +843,11 @@ export default function DashboardPage() {
             {/* ── Technician-only sections ── */}
             {isTechnician && (
                 <>
+                    {standingQ.data?.contractorOnboarding === 'invited' && <ContractorOnboardingBanner />}
+                    {nowMs > 0 && !jobsQ.isLoading && !cocQ.isLoading && !gasLogsQ.isLoading && (
+                        <GettingStartedChecklist items={checklist} storageKey={`coolpro_checklist_${session.id}`} />
+                    )}
+                    <StandingPanel standing={standingQ.data} now={statsNow} />
                     {/* Upcoming Schedule + Certifications */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Upcoming Scheduled Jobs */}

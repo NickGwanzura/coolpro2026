@@ -71,9 +71,9 @@ async function post<T>(url: string, body?: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-async function patch<T>(url: string, body: unknown): Promise<T> {
+async function sendJson<T>(method: 'PATCH' | 'PUT', url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
-    method: 'PATCH',
+    method,
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     body: JSON.stringify(body),
@@ -84,6 +84,9 @@ async function patch<T>(url: string, body: unknown): Promise<T> {
   }
   return res.json() as Promise<T>;
 }
+
+const patch = <T,>(url: string, body: unknown) => sendJson<T>('PATCH', url, body);
+const put = <T,>(url: string, body: unknown) => sendJson<T>('PUT', url, body);
 
 async function del<T>(url: string): Promise<T> {
   const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
@@ -270,8 +273,8 @@ export async function nouRejectReorder(id: string, reason: string): Promise<Supp
 // Technician verifications
 // ---------------------------------------------------------------------------
 
-export function useVerifications() {
-  return useSWR<TechnicianVerification[]>('/api/technician-verifications', fetcher);
+export function useVerifications(enabled = true) {
+  return useSWR<TechnicianVerification[]>(enabled ? '/api/technician-verifications' : null, fetcher);
 }
 
 export interface VerifyTechnicianResult {
@@ -537,6 +540,58 @@ export type RegistrationApplicationInput = {
   /** When the form was opened (ms since epoch), so the server can spot instant bot posts. */
   formStartedAt?: number;
 };
+
+export interface MyStanding {
+  technician: {
+    registrationNumber: string;
+    status: string;
+    expiryDate: string;
+    certifications: Array<{ name: string; expiryDate: string | null; status: string }>;
+  } | null;
+  membership: { membershipNumber: string; status: string; expiryDate: string } | null;
+  /** For contractors: where their onboarding stands, or null if they have none to complete. */
+  contractorOnboarding: string | null;
+}
+
+/** A technician's or contractor's own registration, membership and certificate standing. */
+export function useMyStanding(enabled = true) {
+  return useSWR<MyStanding>(enabled ? '/api/me/standing' : null, fetcher);
+}
+
+export interface TrainerCourseStats {
+  courses: Array<{
+    courseId: string;
+    enrolled: number;
+    submissions: number;
+    pendingGrading: number;
+    learnersGraded: number;
+    learnersPassed: number;
+    passRate: number | null;
+  }>;
+  readyForCertificate: Array<{ submissionId: string; studentName: string; courseTitle: string; score: number }>;
+}
+
+/** Enrolments, pass rates and learners ready for a certificate, for a trainer's courses. */
+export function useTrainerCourseStats(enabled = true) {
+  return useSWR<TrainerCourseStats>(enabled ? '/api/courses/stats' : null, fetcher);
+}
+
+export interface CourseProgressEntry {
+  courseId: string;
+  completedModules: number[];
+  moduleCount: number;
+  updatedAt: string;
+}
+
+/** The learner's saved progress on every course. */
+export function useCourseProgress(enabled = true) {
+  return useSWR<CourseProgressEntry[]>(enabled ? '/api/course-progress' : null, fetcher);
+}
+
+export async function saveCourseProgress(courseId: string, completedModules: number[]): Promise<void> {
+  await put(`/api/courses/${courseId}/progress`, { completedModules });
+  await mutate('/api/course-progress');
+}
 
 export interface NotificationEntry {
   id: string;
