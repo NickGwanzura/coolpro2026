@@ -3,7 +3,6 @@
 import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import {
-    useTechnicians,
     useReorders,
     usePlannerJobs,
     useGasLogs,
@@ -14,8 +13,22 @@ import {
     useExamSubmissions,
     useTrainingSessions,
     useCertificateRequests,
-    useApplicationCounts,
+    useAdminDashboardSummary,
+    useAdminActionQueue,
+    useEnrollments,
+    type AdminActionItem,
 } from '@/lib/api';
+import {
+    adminCards,
+    combineStates,
+    maskCards,
+    studentCards,
+    technicianCards,
+    trainerCards,
+    vendorCards,
+    type AdminSummary,
+    type StatCard,
+} from '@/lib/dashboard-stats';
 import { ZIMBABWE_PROVINCES } from '@/constants/registry';
 import {            ClipboardCheck,
     Award,
@@ -47,6 +60,77 @@ import { rangeMsFor, type SimpleDateRange } from '@/lib/dateRange';
 import { Drilldown } from '@/components/ui/Drilldown';
 import { isFieldWorkerRole } from '@/lib/field-worker';
 
+const EMPTY_ADMIN_SUMMARY: AdminSummary = {
+    technicians: { total: 0, active: 0 },
+    regionsWithTechnicians: 0,
+    reorders: { pendingReviews: 0, volumeKgInPeriod: 0 },
+};
+
+/** Icon and colour for each card, by its label. */
+const STAT_STYLE: Record<string, { icon: typeof Users; color: string }> = {
+    'Jobs Completed': { icon: ClipboardCheck, color: 'blue' },
+    'Pending COCs': { icon: Clock, color: 'amber' },
+    'Refrigerant Recovered': { icon: Droplets, color: 'emerald' },
+    'COCs on Record': { icon: Award, color: 'purple' },
+    'Pending Reorders': { icon: Package, color: 'amber' },
+    'Approved Volume': { icon: Droplets, color: 'blue' },
+    'Compliance Certificates': { icon: ShieldCheck, color: 'emerald' },
+    'Ledger Value': { icon: Receipt, color: 'purple' },
+    'Approved Courses': { icon: BookOpen, color: 'blue' },
+    'Needs Your Attention': { icon: AlertTriangle, color: 'red' },
+    'Pending Grading': { icon: ClipboardCheck, color: 'amber' },
+    'Certificate Requests': { icon: Award, color: 'purple' },
+    'My Courses': { icon: BookOpen, color: 'blue' },
+    'Exams Passed': { icon: Award, color: 'emerald' },
+    'Awaiting Grading': { icon: Clock, color: 'amber' },
+    'Available Courses': { icon: GraduationCap, color: 'purple' },
+    'Active Techs': { icon: Users, color: 'blue' },
+    'Total Technicians': { icon: Wrench, color: 'emerald' },
+    'Pending Reorder Reviews': { icon: Package, color: 'amber' },
+    'Provinces': { icon: MapPin, color: 'purple' },
+    'Refrigerant Reordered': { icon: Droplets, color: 'red' },
+};
+
+/** Everything waiting on an administrator, with a link to each. */
+function ActionQueuePanel({ items, total, loading, failed }: { items?: AdminActionItem[]; total?: number; loading: boolean; failed: boolean }) {
+    if (failed) return null; // the page-level banner already says it could not load
+    if (loading || !items) {
+        return <div className="h-20 animate-pulse rounded-lg border border-[#E7E5E4] bg-[#FAFAF9]" aria-label="Loading items that need your action" />;
+    }
+    if (items.length === 0) {
+        return (
+            <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+                <CheckCircle2 className="h-5 w-5" />
+                You are all caught up. Nothing is waiting for your action.
+            </div>
+        );
+    }
+    return (
+        <section aria-labelledby="needs-action-title" className="rounded-lg border border-amber-300 bg-amber-50 p-5">
+            <h2 id="needs-action-title" className="text-sm font-semibold text-amber-900">
+                Needs your action <span className="ml-1 rounded-full bg-amber-200 px-2 py-0.5 text-xs">{total}</span>
+            </h2>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {items.map((item) => (
+                    <li key={item.key}>
+                        <Link
+                            href={item.href}
+                            className="flex items-center gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2.5 transition hover:border-amber-400"
+                        >
+                            <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-amber-500 px-2 text-sm font-bold text-white">{item.count}</span>
+                            <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-medium text-[#1C1917]">{item.label}</span>
+                                {item.hint && <span className="block text-xs text-[#78716C]">{item.hint}</span>}
+                            </span>
+                            <ArrowRight className="h-4 w-4 shrink-0 text-[#A8A29E]" />
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+        </section>
+    );
+}
+
 export default function DashboardPage() {
     const { user: session, isLoading } = useAuth();
     const [dateRange, setDateRange] = useState('today');
@@ -67,245 +151,65 @@ export default function DashboardPage() {
     const isTrainerOrLecturer = session?.role === 'trainer' || session?.role === 'lecturer';
     const isStudent = session?.role === 'student';
 
-    const { data: applicationCounts } = useApplicationCounts(isAdmin);
-    const { data: technicians = [] } = useTechnicians(undefined, isAdmin);
-    const { data: reorders = [] } = useReorders(isAdmin || isVendor);
-    const { data: plannerJobs = [] } = usePlannerJobs(isTechnician || isAdmin);
-    const { data: gasLogsData } = useGasLogs(undefined, undefined, 50, isTechnician || isAdmin || isTrainerOrLecturer);
-    const { data: cocRequests = [] } = useCocRequests(isTechnician || isAdmin);
-    const { data: complianceApps = [] } = useSupplierComplianceApplications(isVendor);
-    const { data: vendorLedger = [] } = useSupplierLedger(undefined, isVendor);
-    const { data: managedCourses = [] } = useCourses(isTrainerOrLecturer || isStudent);
-    const { data: examSubmissions = [] } = useExamSubmissions(isTrainerOrLecturer);
-    const { data: trainingSessions = [] } = useTrainingSessions(isTrainerOrLecturer);
-    const { data: certRequests = [] } = useCertificateRequests(isTrainerOrLecturer);
+    const periodRange = dateRange as SimpleDateRange;
+    // Refrigerant logs are fetched from the start of the chosen period, rounded to the hour so the
+    // request stays the same between minute ticks.
+    const logsFrom = nowMs > 0 ? new Date(Math.floor((nowMs - rangeMsFor(periodRange)) / 3_600_000) * 3_600_000).toISOString() : undefined;
+
+    const summaryQ = useAdminDashboardSummary(dateRange, regionFilter, isAdmin);
+    const queueQ = useAdminActionQueue(isAdmin);
+    const jobsQ = usePlannerJobs(isTechnician);
+    const gasLogsQ = useGasLogs(logsFrom, undefined, 1000, isTechnician && nowMs > 0);
+    const cocQ = useCocRequests(isTechnician);
+    const reordersQ = useReorders(isVendor);
+    const complianceQ = useSupplierComplianceApplications(isVendor);
+    const ledgerQ = useSupplierLedger(undefined, isVendor);
+    const coursesQ = useCourses(isTrainerOrLecturer || isStudent);
+    const submissionsQ = useExamSubmissions(isTrainerOrLecturer || isStudent);
+    const sessionsQ = useTrainingSessions(isTrainerOrLecturer);
+    const certRequestsQ = useCertificateRequests(isTrainerOrLecturer);
+    const enrollmentsQ = useEnrollments(isStudent);
+
+    const plannerJobs = jobsQ.data ?? [];
+    const cocRequests = cocQ.data ?? [];
+    const reorders = reordersQ.data ?? [];
+    const complianceApps = complianceQ.data ?? [];
+    const vendorLedger = ledgerQ.data ?? [];
+    const managedCourses = coursesQ.data ?? [];
+    const examSubmissions = submissionsQ.data ?? [];
+    const trainingSessions = sessionsQ.data ?? [];
+    const certRequests = certRequestsQ.data ?? [];
 
     // Derive refrigerant logs from Gas Logs API (DB-backed) rather than localStorage
-    const refrigerantLogs = useMemo(() => (gasLogsData ?? []) as RefrigerantLog[], [gasLogsData]);
+    const refrigerantLogs = useMemo(() => (gasLogsQ.data ?? []) as RefrigerantLog[], [gasLogsQ.data]);
 
     // Derive certificate records from CoC request data (DB-backed)
-    const certificateRecords = useMemo(() => (cocRequests ?? []) as unknown as CertificateRecord[], [cocRequests]);
+    const certificateRecords = useMemo(() => (cocQ.data ?? []) as unknown as CertificateRecord[], [cocQ.data]);
 
-    // Technician KPIs — computed from real DB data
-    const technicianStats = useMemo(() => {
-        const rangeMs = rangeMsFor(dateRange as SimpleDateRange);
-        const rangeStart = nowMs - rangeMs;
-                const jobsInRange = plannerJobs.filter(j => {
-                    const scheduledAt = new Date(j.scheduledDate).getTime();
-                    return scheduledAt >= rangeStart && scheduledAt <= nowMs;
-                });
-        const jobsCompletedInRange = jobsInRange.filter(j => j.status === 'completed').length;
+    // Which data sources each role's cards depend on, so a failure shows as a failure and not a zero.
+    const cardSources = isAdmin ? [summaryQ]
+        : isVendor ? [reordersQ, complianceQ, ledgerQ]
+        : isTrainerOrLecturer ? [coursesQ, submissionsQ, certRequestsQ]
+        : isStudent ? [coursesQ, submissionsQ, enrollmentsQ]
+        : [jobsQ, cocQ, gasLogsQ];
+    const cardState = combineStates(cardSources);
+    const failedSources = [
+        [summaryQ, 'registry summary'], [queueQ, 'the approvals queue'], [jobsQ, 'planner jobs'], [gasLogsQ, 'refrigerant logs'],
+        [cocQ, 'COC requests'], [reordersQ, 'reorders'], [complianceQ, 'compliance certificates'], [ledgerQ, 'the ledger'],
+        [coursesQ, 'courses'], [submissionsQ, 'exam submissions'], [sessionsQ, 'training sessions'],
+        [certRequestsQ, 'certificate requests'], [enrollmentsQ, 'enrolments'],
+    ].filter(([query]) => (query as { error?: unknown }).error).map(([, name]) => name as string);
 
-        const pendingCocs = cocRequests.filter(c => c.status === 'submitted').length;
-        const approvedCocs = cocRequests.filter(c => c.status === 'approved').length;
-
-        const validCerts = certificateRecords.filter(c => {
-            const expiry = new Date(c.expiryDate).getTime();
-            return expiry > nowMs + 30 * 24 * 60 * 60 * 1000;
-        }).length;
-        const expiringCerts = certificateRecords.filter(c => {
-            const expiry = new Date(c.expiryDate).getTime();
-            return expiry > nowMs && expiry <= nowMs + 30 * 24 * 60 * 60 * 1000;
-        }).length;
-
-        return [
-            {
-                label: 'Jobs Completed',
-                value: String(jobsCompletedInRange),
-                icon: ClipboardCheck,
-                color: 'blue',
-                trend: dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : 'This month'
-            },
-            {
-                label: 'Pending COCs',
-                value: String(pendingCocs),
-                icon: Clock,
-                color: 'amber',
-                trend: `${approvedCocs} approved`
-            },
-            {
-                label: 'Refrigerant Recovered',
-                value: `${refrigerantLogs.filter(l => l.actionType === 'Recovery').reduce((sum, l) => sum + l.amount, 0).toFixed(1)} kg`,
-                icon: Droplets,
-                color: 'emerald',
-                trend: 'Recent recovery logs'
-            },
-            {
-                label: 'Certifications',
-                value: String(validCerts + expiringCerts),
-                icon: Award,
-                color: 'purple',
-                trend: expiringCerts > 0 ? `${expiringCerts} expiring soon` : `${validCerts} active`
-            },
-        ];
-    }, [plannerJobs, cocRequests, certificateRecords, dateRange, refrigerantLogs, nowMs]);
-
-    // Vendor KPIs — computed from the vendor's own reorders, compliance applications, and ledger
-    const vendorStats = useMemo(() => {
-        const pendingReorders = reorders.filter(r => r.status === 'pending_hevacraz' || r.status === 'pending_nou').length;
-        const approvedReorders = reorders.filter(r => r.status === 'approved');
-        const approvedKg = approvedReorders.reduce((sum, r) => sum + r.quantityKg, 0);
-        const pendingCompliance = complianceApps.filter(a => a.status === 'submitted' || a.status === 'under-review').length;
-        const approvedCompliance = complianceApps.filter(a => a.status === 'approved').length;
-        const ledgerTotalUsd = vendorLedger.reduce((sum, entry) => sum + entry.totalValueUsd, 0);
-
-        return [
-            {
-                label: 'Pending Reorders',
-                value: String(pendingReorders),
-                icon: Package,
-                color: 'amber',
-                trend: 'Awaiting HEVACRAZ or NOU review'
-            },
-            {
-                label: 'Approved Volume',
-                value: `${approvedKg.toLocaleString()} kg`,
-                icon: Droplets,
-                color: 'blue',
-                trend: `${approvedReorders.length} approved reorders`
-            },
-            {
-                label: 'Compliance Certificates',
-                value: String(approvedCompliance),
-                icon: ShieldCheck,
-                color: 'emerald',
-                trend: pendingCompliance > 0 ? `${pendingCompliance} pending review` : 'All up to date'
-            },
-            {
-                label: 'Ledger Value',
-                value: `$${ledgerTotalUsd.toLocaleString()}`,
-                icon: Receipt,
-                color: 'purple',
-                trend: `${vendorLedger.length} logged transactions`
-            },
-        ];
-    }, [reorders, complianceApps, vendorLedger]);
-
-    // Trainer / Lecturer KPIs — computed from the trainer's own courses, sessions, and submissions
-    const trainerStats = useMemo(() => {
-        const approvedCourses = managedCourses.filter(c => c.status === 'approved').length;
-        const pendingCourses = managedCourses.filter(c => c.status === 'pending_nou' || c.status === 'draft').length;
-        const pendingGrading = examSubmissions.filter(s => s.status === 'pending').length;
-        const upcomingSessions = trainingSessions.filter(s => s.status === 'scheduled' || s.status === 'open').length;
-        const pendingCertRequests = certRequests.filter(r => r.status === 'submitted-for-admin-approval').length;
-
-        return [
-            {
-                label: 'Approved Courses',
-                value: String(approvedCourses),
-                icon: BookOpen,
-                color: 'blue',
-                trend: pendingCourses > 0 ? `${pendingCourses} awaiting approval` : 'All courses approved'
-            },
-            {
-                label: 'Pending Grading',
-                value: String(pendingGrading),
-                icon: ClipboardCheck,
-                color: 'amber',
-                trend: `${examSubmissions.length} total submissions`
-            },
-            {
-                label: 'Upcoming Sessions',
-                value: String(upcomingSessions),
-                icon: GraduationCap,
-                color: 'emerald',
-                trend: `${trainingSessions.length} sessions scheduled`
-            },
-            {
-                label: 'Certificate Requests',
-                value: String(pendingCertRequests),
-                icon: Award,
-                color: 'purple',
-                trend: 'Awaiting admin approval'
-            },
-        ];
-    }, [managedCourses, examSubmissions, trainingSessions, certRequests]);
-
-    // Student KPIs — computed from available/approved courses and certification records
-    const studentStats = useMemo(() => {
-        const availableCourses = managedCourses.filter(c => c.status === 'approved').length;
-
-        return [
-            {
-                label: 'Available Courses',
-                value: String(availableCourses),
-                icon: BookOpen,
-                color: 'blue',
-                trend: 'Open for enrollment'
-            },
-        ];
-    }, [managedCourses]);
-
-    const adminMetrics = useMemo(() => {
-        const rangeMs = rangeMsFor(dateRange as SimpleDateRange);
-        const rangeStart = nowMs - rangeMs;
-
-        const regionFilteredTechs = regionFilter === 'all'
-            ? technicians
-            : technicians.filter(tech => tech.province === regionFilter);
-
-        const activeTechs = regionFilteredTechs.filter(tech => tech.status === 'active').length;
-        const totalTechs = regionFilteredTechs.length;
-        const regions = regionFilter === 'all'
-            ? new Set(technicians.map(tech => tech.province)).size
-            : 1;
-
-        const reordersInRange = reorders.filter(reorder => {
-            const created = new Date(reorder.createdAt).getTime();
-            return created >= rangeStart;
-        });
-        const totalRefrigerantKg = reordersInRange.reduce((sum, reorder) => sum + reorder.quantityKg, 0);
-        const pendingReorderReviews = reorders.filter(
-            reorder => reorder.status === 'pending_hevacraz' || reorder.status === 'pending_nou'
-        ).length;
-
-        return {
-            activeTechs,
-            totalTechs,
-            totalRefrigerantKg,
-            pendingReorderReviews,
-            regions,
-        };
-    }, [dateRange, regionFilter, technicians, reorders, nowMs]);
-
-    // Admin KPIs
-    const adminStats = [
-        {
-            label: 'Active Techs',
-            value: String(adminMetrics.activeTechs),
-            icon: Users,
-            color: 'blue',
-            trend: regionFilter === 'all' ? 'All registered regions' : `${regionFilter} only`
-        },
-        {
-            label: 'Total Technicians',
-            value: String(adminMetrics.totalTechs),
-            icon: Wrench,
-            color: 'emerald',
-            trend: regionFilter === 'all' ? 'Across the registry' : `Filtered to ${regionFilter}`
-        },
-        {
-            label: 'Pending Reorder Reviews',
-            value: String(adminMetrics.pendingReorderReviews),
-            icon: Award,
-            color: 'amber',
-            trend: 'Awaiting HEVACRAZ or NOU review'
-        },
-        {
-            label: 'Regions',
-            value: String(adminMetrics.regions),
-            icon: MapPin,
-            color: 'purple',
-            trend: regionFilter === 'all' ? 'Provinces with registered technicians' : 'Selected region'
-        },
-        {
-            label: 'Refrigerant Volume',
-            value: `${adminMetrics.totalRefrigerantKg.toLocaleString()} kg`,
-            icon: Droplets,
-            color: 'red',
-            trend: dateRange === 'today' ? 'Reorders in last 24 hours' : dateRange === 'week' ? 'Reorders in last 7 days' : 'Reorders in last 30 days'
-        },
-    ];
+    const statsNow = nowMs || 0;
+    const statCards: StatCard[] = maskCards(
+        isAdmin ? adminCards(summaryQ.data ?? EMPTY_ADMIN_SUMMARY, periodRange, regionFilter)
+        : isVendor ? vendorCards({ reorders, complianceApps, ledger: vendorLedger, range: periodRange, now: statsNow })
+        : isTrainerOrLecturer ? trainerCards({ courses: managedCourses, submissions: examSubmissions, certRequests })
+        : isStudent ? studentCards({ courses: managedCourses, enrolledCourseIds: (enrollmentsQ.data ?? []).map((e) => e.courseId), submissions: examSubmissions })
+        : technicianCards({ jobs: plannerJobs, cocRequests, gasLogs: refrigerantLogs, range: periodRange, now: statsNow }),
+        // Until the clock has ticked once, "now" is unknown, so show loading rather than wrong numbers.
+        nowMs === 0 && cardState === 'ready' ? 'loading' : cardState,
+    );
 
     if (isLoading) {
         return (
@@ -329,11 +233,6 @@ export default function DashboardPage() {
         );
     }
 
-    const stats = isAdmin ? adminStats
-        : isVendor ? vendorStats
-        : isTrainerOrLecturer ? trainerStats
-        : isStudent ? studentStats
-        : technicianStats;
     type QuickAction = {
         href: string;
         title: string;
@@ -505,7 +404,7 @@ export default function DashboardPage() {
         .filter(job => job.status === 'scheduled' && new Date(job.scheduledDate) >= today)
         .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
         .slice(0, 4);
-    const recentLogs = refrigerantLogs
+    const recentLogs = [...refrigerantLogs]
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 5);
 
@@ -522,27 +421,6 @@ export default function DashboardPage() {
     });
 
     const displayCerts = certificateRecords.slice(0, 5);
-    const statDefinitions: Record<string, string> = {
-        'Jobs Completed': 'Counts planner jobs marked completed whose scheduled date falls within the selected date range.',
-        'Pending COCs': 'Counts submitted Certificates of Compliance requests. Approved requests are shown separately in the status context.',
-        'Refrigerant Recovered': 'Adds recovery entries from the latest 50 gas-log records loaded for this dashboard; use the gas-log module for a full filtered audit.',
-        'Certifications': 'Combines certificates valid beyond the next 30 days with certificates expiring within 30 days.',
-        'Pending Reorders': 'Counts vendor reorder requests awaiting either HEVACRAZ or NOU review.',
-        'Approved Volume': 'Adds quantities on approved vendor reorders; the approved reorder count is shown in the status context.',
-        'Compliance Certificates': 'Counts approved compliance applications. Pending applications are reported separately.',
-        'Ledger Value': 'Adds the values of ledger transactions currently returned for this vendor.',
-        'Approved Courses': 'Counts courses with approved status in the lecturer or trainer course list.',
-        'Pending Grading': 'Counts exam submissions currently marked pending; total loaded submissions is shown in the status context.',
-        'Upcoming Sessions': 'Counts training sessions marked scheduled or open; it is a status count, not a date-filtered calendar forecast.',
-        'Certificate Requests': 'Counts certificate requests awaiting administrator approval.',
-        'Available Courses': 'Counts approved courses available in the course catalogue.',
-        'Active Techs': 'Counts technicians marked active after applying the selected province filter.',
-        'Total Technicians': 'Counts technicians in the registry after applying the selected province filter, regardless of status.',
-        'Pending Reorder Reviews': 'Counts reorders awaiting HEVACRAZ or NOU review across the loaded reorder records.',
-        'Regions': 'Counts provinces represented in the technician registry; when a province is selected the dashboard reports that selected region.',
-        'Refrigerant Volume': 'Adds reorder quantities created within the selected time window. This is reorder volume, not confirmed consumption.',
-    };
-
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -588,29 +466,19 @@ export default function DashboardPage() {
             </div>
 
             {/* KPI Cards */}
-            {isAdmin && applicationCounts && (applicationCounts.total.awaitingReview > 0 || applicationCounts.total.awaitingEmail > 0) && (
-                <Link
-                    href="/admin/applications"
-                    className="flex flex-col gap-1 rounded-lg border border-amber-300 bg-amber-50 p-4 transition hover:bg-amber-100 sm:flex-row sm:items-center sm:justify-between"
-                >
-                    <span className="text-sm font-semibold text-amber-900">
-                        {applicationCounts.total.awaitingReview > 0
-                            ? `${applicationCounts.total.awaitingReview} registration application${applicationCounts.total.awaitingReview === 1 ? ' is' : 's are'} waiting for your review`
-                            : 'No applications are ready for review yet'}
-                    </span>
-                    <span className="text-xs text-amber-800">
-                        {applicationCounts.total.awaitingEmail > 0
-                            ? `${applicationCounts.total.awaitingEmail} more waiting for the applicant to confirm their email. `
-                            : ''}
-                        Review applications
-                        <ArrowRight className="ml-1 inline h-3 w-3" />
-                    </span>
-                </Link>
+            {failedSources.length > 0 && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                    Some figures could not be loaded ({failedSources.join(', ')}). They are shown as a dash, not as zero.{' '}
+                    <button type="button" onClick={() => window.location.reload()} className="font-semibold underline">Refresh the page</button> to try again.
+                </div>
             )}
 
+            {isAdmin && <ActionQueuePanel items={queueQ.data?.items} total={queueQ.data?.total} loading={queueQ.isLoading} failed={Boolean(queueQ.error)} />}
+
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 ${isAdmin ? 'xl:grid-cols-5' : 'lg:grid-cols-4'}`}>
-                {stats.map((stat, index) => {
-                    const Icon = stat.icon;
+                {statCards.map((stat) => {
+                    const style = STAT_STYLE[stat.label] ?? { icon: TrendingUp, color: 'blue' };
+                    const Icon = style.icon;
                     const colorClasses: Record<string, string> = {
                         blue: 'bg-blue-50 text-blue-600',
                         amber: 'bg-amber-50 text-amber-600',
@@ -620,22 +488,18 @@ export default function DashboardPage() {
                     };
 
                     return (
-                        <div
-                            key={index}
-                            className="rounded-lg bg-white p-6 border border-[#E7E5E4]"
-                        >
+                        <div key={stat.label} className="rounded-lg bg-white p-6 border border-[#E7E5E4]">
                             <div className="flex items-center justify-between">
-                                <div className={`p-2.5 ${colorClasses[stat.color]}`}>
+                                <div className={`p-2.5 ${colorClasses[style.color]}`}>
                                     <Icon className="h-5 w-5" />
                                 </div>
-                                <TrendingUp className="h-4 w-4 text-emerald-500" />
                             </div>
                             <div className="mt-4">
-                                <p className="text-3xl font-bold text-[#1C1917]">{stat.value}</p>
+                                <p className="text-3xl font-bold text-[#1C1917]" aria-live="polite">{stat.value}</p>
                                 <p className="text-sm text-[#78716C] mt-1">{stat.label}</p>
-                                <p className="text-xs text-[#A8A29E] mt-2">{stat.trend}</p>
+                                <p className="text-xs text-[#A8A29E] mt-2">{stat.note}</p>
                                 <Drilldown label="How this is counted" className="mt-2 border-t border-[#F1F0EE] pt-1">
-                                    <p>{statDefinitions[stat.label] ?? stat.trend}</p>
+                                    <p>{stat.definition}</p>
                                 </Drilldown>
                             </div>
                         </div>

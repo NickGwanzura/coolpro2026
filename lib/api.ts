@@ -538,6 +538,31 @@ export type RegistrationApplicationInput = {
   formStartedAt?: number;
 };
 
+export interface AdminDashboardSummary {
+  technicians: { total: number; active: number };
+  regionsWithTechnicians: number;
+  reorders: { pendingReviews: number; volumeKgInPeriod: number };
+}
+
+/** The admin dashboard's headline figures, counted in the database. */
+export function useAdminDashboardSummary(range: string, province: string, enabled = true) {
+  const params = new URLSearchParams({ range, province });
+  return useSWR<AdminDashboardSummary>(enabled ? `/api/admin/dashboard-summary?${params}` : null, fetcher);
+}
+
+export interface AdminActionItem {
+  key: string;
+  count: number;
+  label: string;
+  hint?: string;
+  href: string;
+}
+
+/** Everything waiting on an administrator. Refreshes every minute. */
+export function useAdminActionQueue(enabled = true) {
+  return useSWR<{ items: AdminActionItem[]; total: number }>(enabled ? '/api/admin/action-queue' : null, fetcher, { refreshInterval: 60_000 });
+}
+
 /** Live count of applications waiting for an admin; refreshes every minute. */
 export function useApplicationCounts(enabled = true) {
   return useSWR<ApplicationCounts>(enabled ? '/api/admin/application-counts' : null, fetcher, { refreshInterval: 60_000 });
