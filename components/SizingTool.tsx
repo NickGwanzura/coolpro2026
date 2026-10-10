@@ -5,6 +5,7 @@ import { ChevronRight, ChevronLeft, Calculator, Thermometer, Shield, Sparkles, D
 import { useAuth } from '../lib/auth';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
 import { calculateCoolingLoads } from '@/lib/sizing-calculations';
+import EquipmentSelectionPanel from './EquipmentSelectionPanel';
 
 // HEVACRAZ brand palette (mirrors tailwind.config hevac-* colors) for PDF export
 const PDF_BRAND = {
@@ -590,7 +591,7 @@ const SizingTool: React.FC = () => {
     Product: ${inputs.productMass}kg, ${inputs.productTemp}C entering to ${inputs.productTargetTempC}C, estimated product energy ${results.productEnergyKjKg.toFixed(1)} kJ/kg.
     Ambient: ${inputs.ambientTemp}C / ${inputs.ambientRH}% RH; room: ${roomTempC}C / ${inputs.holdRH}% RH; infiltration airflow ${inputs.infiltrationAirflowM3h} m3/h.
     Calculated preliminary average load: ${results.total.toFixed(2)}kW (subtotal ${results.subtotal.toFixed(2)} kW plus explicit ${inputs.designMarginPct}% design margin).
-    Do not select or verify compressor, evaporator, expansion device, or line sizes from this information. Identify missing design inputs and explain that manufacturer selection at specified evaporating/condensing conditions is required.
+    Do not select or verify compressor, evaporator, expansion device, or line sizes from this information (the app shows separate indicative sizes). Identify missing design inputs and explain that manufacturer selection at specified evaporating/condensing conditions is required.
     Please provide:
     1. Check the arithmetic and assumptions in this preliminary load breakdown.
     2. List missing data and uncertainty that could materially change the result.
@@ -1367,7 +1368,7 @@ const SizingTool: React.FC = () => {
                     <p className="text-sm font-semibold text-emerald-900">Engineering handoff</p>
                     <button type="button" onClick={saveSizingCase} disabled={sizingInputIssues.length > 0} className="inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"><Save className="h-3.5 w-3.5" /> {savedAt ? 'Case saved locally' : 'Save sizing case'}</button>
                   </div>
-                  <p className="text-xs leading-5 text-emerald-900">No compressor, evaporator, expansion device or pipe size is inferred from cooling kW alone. A designer still needs the selected refrigerant, evaporating/condensing conditions, duty schedule, line route/elevation and manufacturer performance data.</p>
+                  <EquipmentSelectionPanel loadKw={results.total} roomTempC={roomTempC} ambientTempC={inputs.ambientTemp} />
                 </div>
                 
                 {/* Calculation Formula */}
