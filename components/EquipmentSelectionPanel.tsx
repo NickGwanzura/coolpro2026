@@ -18,7 +18,7 @@ interface Props {
   sel: EquipmentSelection | null;
 }
 
-const fieldClass = 'mt-1 w-full border border-emerald-200 bg-white px-2 py-1.5 text-sm text-gray-900';
+const fieldClass = 'mt-1 w-full border border-emerald-200 bg-white px-3 py-2.5 text-base text-gray-900 sm:text-sm';
 
 const Row = ({ label, value, note }: { label: string; value: string; note?: string }) => (
   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-b border-emerald-100 py-2 last:border-b-0">
@@ -52,7 +52,7 @@ const EquipmentSelectionPanel: React.FC<Props> = ({ loadKw, roomTempC, ambientTe
   return (
     <div className="mt-4 space-y-3">
       <p className="text-sm font-semibold text-emerald-900">Indicative equipment and pipe sizes</p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs font-semibold text-gray-700">Refrigerant
           <select className={fieldClass} value={refrigerant} onChange={(e) => setRefrigerant(e.target.value as SelectableRefrigerant)}>
             {SELECTABLE_REFRIGERANTS.map((r) => <option key={r} value={r}>{r}</option>)}

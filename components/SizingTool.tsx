@@ -620,6 +620,26 @@ const SizingTool: React.FC = () => {
     [equipmentSettings, results.total, roomTempC, inputs.ambientTemp],
   );
 
+  const liveEstimate = (
+    <div className="border border-blue-200 bg-blue-50 px-4 py-3 lg:p-4" aria-live="polite">
+      <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Live estimate</p>
+      {sizingInputsValid ? (
+        <>
+          <p className="mt-1 text-2xl font-bold text-blue-900 lg:text-3xl">{results.total.toFixed(2)} kW</p>
+          <p className="text-xs text-blue-800">Preliminary average load, including {results.safetyPct.toFixed(0)}% margin</p>
+          {equipment && (
+            <p className="mt-2 hidden text-xs text-blue-900 lg:block">
+              Compressor {equipment.compressor.sweptVolumeM3h.toFixed(0)} m³/h · suction {equipment.lines.suction.size} · liquid {equipment.lines.liquid.size}
+              <span className="block text-blue-700">{equipmentSettings.refrigerant}, see Summary step for details</span>
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="mt-1 text-sm text-rose-800">Correct the highlighted inputs to see an estimate.</p>
+      )}
+    </div>
+  );
+
   const handleAiConsult = async () => {
     if (!sizingInputsValid) return;
     setIsLoadingAi(true);
@@ -724,7 +744,7 @@ const SizingTool: React.FC = () => {
 
       <div role="note" className="flex gap-3 border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
         <Info className="mt-0.5 h-5 w-5 shrink-0" />
-        <p><strong>Preliminary load estimate only.</strong> Results depend on entered U-values, airflow, humidity and product data. This tool does not select refrigeration equipment or replace a site survey and qualified design review.</p>
+        <p><strong>Preliminary load estimate only.</strong> Results depend on entered U-values, airflow, humidity and product data. Equipment and pipe sizes are indicative only and do not replace manufacturer selection, a site survey or a qualified design review.</p>
       </div>
 
       {activeCalculator === 'wizard' ? (
@@ -736,6 +756,7 @@ const SizingTool: React.FC = () => {
         </div>
       )}
       {/* Step Indicator */}
+      <p className="text-center text-sm font-semibold text-blue-700 sm:hidden" aria-live="polite">Step {step} of {steps.length}: {steps[step - 1].label}</p>
       <div className="flex items-center justify-center">
         <div className="flex items-center gap-2">
           {steps.map((s, i) => (
@@ -757,6 +778,8 @@ const SizingTool: React.FC = () => {
           ))}
         </div>
       </div>
+
+      <div className="sticky top-14 z-20 lg:hidden">{liveEstimate}</div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Form */}
@@ -821,7 +844,7 @@ const SizingTool: React.FC = () => {
                     Processing Mode
                     <span className="ml-2 text-xs font-normal text-gray-400">Freezing · Blast Freezing · Holding</span>
                   </label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {(Object.keys(ProcessingModeLabels) as ProcessingMode[]).map((mode) => (
                       <button
                         key={mode}
@@ -852,7 +875,7 @@ const SizingTool: React.FC = () => {
                             {mode === 'BLASTING' ? '❄️' : mode === 'FREEZING' ? '🧊' : '📦'}
                           </span>
                           <span className="font-semibold">{ProcessingModeLabels[mode]}</span>
-                          <span className="text-[10px] opacity-70 leading-tight mt-0.5">{ProcessingModeDescriptions[mode]}</span>
+                          <span className="text-xs opacity-70 leading-tight mt-0.5">{ProcessingModeDescriptions[mode]}</span>
                         </div>
                       </button>
                     ))}
@@ -867,7 +890,7 @@ const SizingTool: React.FC = () => {
                       <h4 className="text-sm font-bold text-blue-900">Blast Freezing Parameters</h4>
                     </div>
                     <HelpNote>Blast-air temperature and cycle duration feed this load estimate. Air velocity is recorded for process context only; this tool does not calculate product core freezing time.</HelpNote>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2">
                       <div className="space-y-2">
                         <label className="text-xs font-semibold text-blue-800 uppercase tracking-wide">
                           Air Temperature
@@ -885,7 +908,7 @@ const SizingTool: React.FC = () => {
                           />
                           <span className="text-sm font-bold text-blue-800 w-16 text-right">{inputs.blastAirTemp}°C</span>
                         </div>
-                        <div className="flex justify-between text-[10px] text-blue-500">
+                        <div className="flex justify-between text-xs text-blue-500">
                           <span>{inputs.blastPharmaMode ? '-120°C' : '-65°C'}</span>
                           <span>{inputs.blastPharmaMode ? '(pharma range)' : '(industrial)'}</span>
                           <span>-25°C</span>
@@ -925,7 +948,7 @@ const SizingTool: React.FC = () => {
                             className="flex-1 accent-blue-600" />
                           <span className="text-sm font-bold text-blue-800 w-16 text-right">{inputs.blastCycleDurationMinutes} min</span>
                         </div>
-                        <div className="flex justify-between text-[10px] text-blue-500">
+                        <div className="flex justify-between text-xs text-blue-500">
                           <span>30 min</span>
                           <span>240 min</span>
                         </div>
@@ -975,7 +998,7 @@ const SizingTool: React.FC = () => {
                       <h4 className="text-sm font-bold text-emerald-900">Holding / Storage Parameters</h4>
                     </div>
                     <HelpNote>Room humidity feeds the infiltration enthalpy calculation. Enter airflow directly in the Conditions step; door recovery time and air velocity are not used as airflow proxies.</HelpNote>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2">
                       <div className="space-y-2">
                         <label className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
                           Target Air Temperature
@@ -990,7 +1013,7 @@ const SizingTool: React.FC = () => {
                           onChange={(e) => setInputs({ ...inputs, holdTargetTemp: Number(e.target.value) })}
                           className="w-full border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500"
                         />
-                        <div className="text-[10px] text-amber-700 bg-amber-50 px-2 py-1">
+                        <div className="text-xs text-amber-700 bg-amber-50 px-2 py-1">
                           ⚠️ Max allowable: 4°C — above this enters the Danger Zone
                         </div>
                       </div>
@@ -1014,7 +1037,7 @@ const SizingTool: React.FC = () => {
                         <div className="flex gap-2">
                           <button
                             onClick={() => setInputs({ ...inputs, holdRH: 65, holdRHPreset: 'general' })}
-                            className={`px-2 py-1 text-[10px] font-semibold border transition-all ${
+                            className={`px-2 py-1 text-xs font-semibold border transition-all ${
                               inputs.holdRHPreset === 'general'
                                 ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
                                 : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
@@ -1024,7 +1047,7 @@ const SizingTool: React.FC = () => {
                           </button>
                           <button
                             onClick={() => setInputs({ ...inputs, holdRH: 88, holdRHPreset: 'meat-produce' })}
-                            className={`px-2 py-1 text-[10px] font-semibold border transition-all ${
+                            className={`px-2 py-1 text-xs font-semibold border transition-all ${
                               inputs.holdRHPreset === 'meat-produce'
                                 ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
                                 : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
@@ -1041,7 +1064,7 @@ const SizingTool: React.FC = () => {
                         </label>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <span className="text-[10px] text-emerald-600 block">Cycles per day</span>
+                            <span className="text-xs text-emerald-600 block">Cycles per day</span>
                             <input
                               type="number"
                               min="1"
@@ -1053,7 +1076,7 @@ const SizingTool: React.FC = () => {
                             />
                           </div>
                           <div>
-                            <span className="text-[10px] text-emerald-600 block">Duration (min)</span>
+                            <span className="text-xs text-emerald-600 block">Duration (min)</span>
                             <input
                               type="number"
                               min="5"
@@ -1080,7 +1103,7 @@ const SizingTool: React.FC = () => {
                           onChange={(e) => setInputs({ ...inputs, holdAirVelocity: Number(e.target.value) })}
                           className="w-full border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500"
                         />
-                        <div className="text-[10px] text-emerald-600">High airflow dries out uncovered products</div>
+                        <div className="text-xs text-emerald-600">High airflow dries out uncovered products</div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
@@ -1099,7 +1122,7 @@ const SizingTool: React.FC = () => {
                           />
                           <span className="text-sm font-bold text-emerald-800 w-16 text-right">{inputs.holdRecoveryTimeSec}s</span>
                         </div>
-                        <div className="flex justify-between text-[10px] text-emerald-500">
+                        <div className="flex justify-between text-xs text-emerald-500">
                           <span>30s</span>
                           <span>90s (standard)</span>
                           <span>180s</span>
@@ -1118,7 +1141,7 @@ const SizingTool: React.FC = () => {
                             <span className="text-xs text-emerald-700">Wall/fan clearance</span>
                             <span className="text-sm font-bold text-emerald-900">{inputs.holdAirflowClearanceCm} cm</span>
                           </div>
-                          <div className="text-[10px] text-emerald-600 px-1">
+                          <div className="text-xs text-emerald-600 px-1">
                             15 cm min from floor · 5-10 cm from back wall
                           </div>
                         </div>
@@ -1139,7 +1162,7 @@ const SizingTool: React.FC = () => {
                       <h4 className="text-sm font-bold text-cyan-900">Freezing Parameters</h4>
                     </div>
                     <HelpNote>Storage setpoint affects envelope load. The rate, air velocity and thickness controls are not used to predict freezing time; no time estimate is presented.</HelpNote>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2">
                       <div className="space-y-2">
                         <label className="text-xs font-semibold text-cyan-800 uppercase tracking-wide">
                           Storage Temperature
@@ -1157,7 +1180,7 @@ const SizingTool: React.FC = () => {
                           />
                           <span className="text-sm font-bold text-cyan-800 w-16 text-right">{inputs.freezeStorageTemp}°C</span>
                         </div>
-                        <div className="flex justify-between text-[10px] text-cyan-500">
+                        <div className="flex justify-between text-xs text-cyan-500">
                           <span>{inputs.freezeBioStorage ? '-80°C' : '-30°C'}</span>
                           <span>{inputs.freezeBioStorage ? '(biological storage)' : '(standard)'}</span>
                           <span>-15°C</span>
@@ -1175,7 +1198,7 @@ const SizingTool: React.FC = () => {
                             }}
                             className="w-4 h-4 rounded border-cyan-300 text-cyan-600 focus:ring-cyan-500"
                           />
-                          <span className="text-[10px] font-semibold text-cyan-800">
+                          <span className="text-xs font-semibold text-cyan-800">
                             Biological / medical storage
                             <span className="ml-1 font-normal text-cyan-500">(down to -80°C)</span>
                           </span>
@@ -1198,12 +1221,12 @@ const SizingTool: React.FC = () => {
                           />
                           <span className="text-sm font-bold text-cyan-800 w-16 text-right">{inputs.freezeRateCHour}°C/hr</span>
                         </div>
-                        <div className="flex justify-between text-[10px] text-cyan-500">
+                        <div className="flex justify-between text-xs text-cyan-500">
                           <span>1°C/hr (slow)</span>
                           <span>5-30°C/hr (blast)</span>
                           <span>30°C/hr</span>
                         </div>
-                        <div className="text-[10px] text-amber-700 bg-amber-50 px-2 py-1 mt-1">
+                        <div className="text-xs text-amber-700 bg-amber-50 px-2 py-1 mt-1">
                           ⚠️ Critical zone (-1°C to -5°C): pass through as fast as possible to prevent large ice crystals
                         </div>
                       </div>
@@ -1239,7 +1262,7 @@ const SizingTool: React.FC = () => {
                           />
                           <span className="text-sm font-bold text-cyan-800 w-16 text-right">{inputs.freezeProductThicknessMm} mm</span>
                         </div>
-                        <div className="flex justify-between text-[10px] text-cyan-500">
+                        <div className="flex justify-between text-xs text-cyan-500">
                           <span>10 mm</span>
                           <span>150 mm (max block)</span>
                           <span>250 mm</span>
@@ -1429,7 +1452,7 @@ const SizingTool: React.FC = () => {
             <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
               <button 
                 onClick={() => setStep(s => Math.max(1, s-1))}
-                className={`flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors ${step === 1 ? 'invisible' : ''}`}
+                className={`flex items-center gap-2 px-2 py-3 text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors ${step === 1 ? 'invisible' : ''}`}
               >
                 <ChevronLeft className="h-4 w-4" />
                 Back
@@ -1462,6 +1485,7 @@ const SizingTool: React.FC = () => {
 
         {/* AI Advice Panel */}
         <div className="space-y-4">
+          <div className="hidden lg:block">{liveEstimate}</div>
           {aiAdvice ? (
             <div className="bg-gray-900 text-gray-50 p-6 shadow-lg">
               <h4 className="flex items-center gap-2 text-lg font-semibold mb-4">
@@ -1485,7 +1509,7 @@ const SizingTool: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="bg-white p-6 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center h-full min-h-[300px]">
+            <div className="bg-white p-6 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center min-h-[200px]">
               <div className="w-14 h-14 bg-gray-50 flex items-center justify-center text-gray-300 mb-4">
                 <Shield className="h-7 w-7" />
               </div>
