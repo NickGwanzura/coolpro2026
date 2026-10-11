@@ -223,3 +223,26 @@ export function defaultEvaporatorTd(roomTempC: number): number {
 export function suggestRefrigerant(roomTempC: number): SelectableRefrigerant {
   return roomTempC >= 0 ? 'R-134a' : 'R-404A';
 }
+
+export interface EquipmentSettings {
+  refrigerant: SelectableRefrigerant;
+  runtimeHoursPerDay: number;
+  /** Null means use the default for the room temperature. */
+  evaporatorTdK: number | null;
+  condenserTdK: number;
+}
+
+export const defaultEquipmentSettings = (roomTempC: number): EquipmentSettings => ({
+  refrigerant: suggestRefrigerant(roomTempC),
+  runtimeHoursPerDay: 18,
+  evaporatorTdK: null,
+  condenserTdK: 12,
+});
+
+/** Returns null when the load or settings are not usable. */
+export function computeSelection(settings: EquipmentSettings, loadKw: number, roomTempC: number, ambientTempC: number): EquipmentSelection | null {
+  const evaporatorTdK = settings.evaporatorTdK ?? defaultEvaporatorTd(roomTempC);
+  const valid = loadKw > 0 && settings.runtimeHoursPerDay >= 8 && settings.runtimeHoursPerDay <= 24 && evaporatorTdK > 0 && settings.condenserTdK > 0;
+  if (!valid) return null;
+  return selectEquipment({ refrigerant: settings.refrigerant, loadKw, roomTempC, ambientTempC, runtimeHoursPerDay: settings.runtimeHoursPerDay, evaporatorTdK, condenserTdK: settings.condenserTdK });
+}

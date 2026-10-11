@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth';
 import { REFRIGERANT_REFERENCE } from '@/constants/refrigerants';
 import { calculateCoolingLoads } from '@/lib/sizing-calculations';
 import EquipmentSelectionPanel from './EquipmentSelectionPanel';
+import { computeSelection, defaultEquipmentSettings, defaultEvaporatorTd, type EquipmentSettings } from '@/lib/equipment-selection';
 
 // HEVACRAZ brand palette (mirrors tailwind.config hevac-* colors) for PDF export
 const PDF_BRAND = {
@@ -329,9 +330,12 @@ const SizingTool: React.FC = () => {
     };
 
     const line = (text: string) => {
-      ensureSpace(9);
-      doc.text(text, INDENT, y);
-      y += 9;
+      const wrapped: string[] = doc.splitTextToSize(text, PAGE_WIDTH - INDENT - 15);
+      wrapped.forEach((part: string, i: number) => {
+        ensureSpace(9);
+        doc.text(part, i === 0 ? INDENT : INDENT + 4, y);
+        y += i === wrapped.length - 1 ? 9 : 6;
+      });
     };
 
     drawPageChrome();
@@ -416,8 +420,36 @@ const SizingTool: React.FC = () => {
     line(`Explicit design margin (${results.safetyPct.toFixed(0)}%): ${results.safetyMargin.toFixed(2)} kW`);
     y += 5;
 
+    // Transmission detail
+    heading('Transmission Load Breakdown');
+    line(`Wall area: ${results.wallAreaM2.toFixed(2)} m² · Ceiling and floor area: ${results.floorAreaM2.toFixed(2)} m² each`);
+    line(`Walls: ${results.wallAreaM2.toFixed(2)} m² × ${inputs.wallUValue} W/m²·K × (${inputs.ambientTemp} − ${roomTempC})°C = ${results.wallTransmission.toFixed(2)} kW`);
+    line(`Ceiling: ${results.floorAreaM2.toFixed(2)} m² × ${inputs.ceilingUValue} W/m²·K × (${inputs.ceilingBoundaryTempC} − ${roomTempC})°C = ${results.ceilingTransmission.toFixed(2)} kW`);
+    line(`Floor: ${results.floorAreaM2.toFixed(2)} m² × ${inputs.floorUValue} W/m²·K × (${inputs.floorBoundaryTempC} − ${roomTempC})°C = ${results.floorTransmission.toFixed(2)} kW`);
+    line(`Total transmission: ${results.transmission.toFixed(2)} kW (${results.subtotal ? ((results.transmission / results.subtotal) * 100).toFixed(0) : 0}% of the pre-margin subtotal)`);
+    line('A surface at or below the room temperature adds no load. U-values are user supplied and thermal bridges are not modelled.');
+    y += 5;
+
+    if (equipment) {
+      const evapTd = equipmentSettings.evaporatorTdK ?? defaultEvaporatorTd(roomTempC);
+      heading('Indicative Equipment and Line Sizes');
+      line(`Refrigerant: ${equipmentSettings.refrigerant} · ${equipmentSettings.runtimeHoursPerDay} h/day run time · evaporator TD ${evapTd} K · condenser TD ${equipmentSettings.condenserTdK} K`);
+      line(`Design point: ${equipment.evaporatingC.toFixed(0)}°C evaporating (${equipment.evaporatingBar.toFixed(1)} bar abs) / ${equipment.condensingC.toFixed(0)}°C condensing (${equipment.condensingBar.toFixed(1)} bar abs), pressure ratio ${equipment.pressureRatio.toFixed(1)}`);
+      line(`Required capacity: ${equipment.designCapacityKw.toFixed(1)} kW`);
+      line(`Compressor: ${equipment.compressor.sweptVolumeM3h.toFixed(0)} m³/h swept volume, about ${equipment.compressor.electricalKw.toFixed(1)} kW input (COP ${equipment.compressor.cop.toFixed(1)}). ${equipment.compressor.type}`);
+      line(`Condenser: ${equipment.condenser.heatRejectionKw.toFixed(1)} kW heat rejection at ${equipmentSettings.condenserTdK} K above ${inputs.ambientTemp}°C ambient`);
+      line(`Evaporator: ${equipment.evaporator.capacityKw.toFixed(1)} kW, air flow ${Math.round(equipment.evaporator.airflowM3h)} m³/h (${equipment.evaporator.airDeltaTK} K air drop)`);
+      line(`Expansion device: ${equipment.expansion.requiredKw.toFixed(1)} kW (${equipment.expansion.requiredTr.toFixed(1)} TR) needed, typical class ${equipment.expansion.nominalClassTr ?? 'above standard range'} TR. ${equipment.expansion.type}`);
+      line(`Copper lines (ACR OD): suction ${equipment.lines.suction.size} (${equipment.lines.suction.velocityMs.toFixed(1)} m/s), discharge ${equipment.lines.discharge.size} (${equipment.lines.discharge.velocityMs.toFixed(1)} m/s), liquid ${equipment.lines.liquid.size} (${equipment.lines.liquid.velocityMs.toFixed(2)} m/s)`);
+      equipment.warnings.forEach((w) => line(`Note: ${w}`));
+      y += 5;
+    }
+
     heading('Design Limitations');
-    line('No compressor, evaporator, expansion-device or line size has been selected by this report.');
+    line(equipment
+      ? 'Equipment and line sizes are indicative first-pass values from estimated refrigerant properties. Lines are sized on velocity only; check pressure drop and oil return for the real route.'
+      : 'No compressor, evaporator, expansion-device or line size has been selected by this report.');
+    line('Confirm all equipment against manufacturer selection data at the design conditions before ordering.');
     line('Packaging heat, produce respiration, freezing time and peak door/defrost coincidence are not modelled.');
     line('Use verified manufacturer assembly U-values, door/infiltration data, product properties and coincident load schedules.');
     line('The reported load is preliminary; validate the design with a qualified refrigeration engineer.');
@@ -581,6 +613,12 @@ const SizingTool: React.FC = () => {
       roomTempC,
     };
   }, [inputs, isBlasting, isHolding, roomTempC, sizingInputsValid]);
+
+  const [equipmentSettings, setEquipmentSettings] = useState<EquipmentSettings>(() => defaultEquipmentSettings(roomTempC));
+  const equipment = useMemo(
+    () => computeSelection(equipmentSettings, results.total, roomTempC, inputs.ambientTemp),
+    [equipmentSettings, results.total, roomTempC, inputs.ambientTemp],
+  );
 
   const handleAiConsult = async () => {
     if (!sizingInputsValid) return;
@@ -1368,7 +1406,7 @@ const SizingTool: React.FC = () => {
                     <p className="text-sm font-semibold text-emerald-900">Engineering handoff</p>
                     <button type="button" onClick={saveSizingCase} disabled={sizingInputIssues.length > 0} className="inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"><Save className="h-3.5 w-3.5" /> {savedAt ? 'Case saved locally' : 'Save sizing case'}</button>
                   </div>
-                  <EquipmentSelectionPanel loadKw={results.total} roomTempC={roomTempC} ambientTempC={inputs.ambientTemp} />
+                  <EquipmentSelectionPanel loadKw={results.total} roomTempC={roomTempC} ambientTempC={inputs.ambientTemp} settings={equipmentSettings} onChange={setEquipmentSettings} sel={equipment} />
                 </div>
                 
                 {/* Calculation Formula */}

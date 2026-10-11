@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import {
   SELECTABLE_REFRIGERANTS,
   defaultEvaporatorTd,
-  selectEquipment,
-  suggestRefrigerant,
+  type EquipmentSelection,
+  type EquipmentSettings,
   type SelectableRefrigerant,
 } from '@/lib/equipment-selection';
 
@@ -13,6 +13,9 @@ interface Props {
   loadKw: number;
   roomTempC: number;
   ambientTempC: number;
+  settings: EquipmentSettings;
+  onChange: (settings: EquipmentSettings) => void;
+  sel: EquipmentSelection | null;
 }
 
 const fieldClass = 'mt-1 w-full border border-emerald-200 bg-white px-2 py-1.5 text-sm text-gray-900';
@@ -34,19 +37,15 @@ const Card = ({ title, children }: { title: string; children: React.ReactNode })
   </section>
 );
 
-const EquipmentSelectionPanel: React.FC<Props> = ({ loadKw, roomTempC, ambientTempC }) => {
-  const [refrigerant, setRefrigerant] = useState<SelectableRefrigerant>(suggestRefrigerant(roomTempC));
-  const [runtime, setRuntime] = useState(18);
-  const [evapTd, setEvapTd] = useState<number | null>(null);
-  const [condTd, setCondTd] = useState(12);
-
-  const evaporatorTdK = evapTd ?? defaultEvaporatorTd(roomTempC);
-  const valid = loadKw > 0 && runtime >= 8 && runtime <= 24 && evaporatorTdK > 0 && condTd > 0;
-
-  const sel = useMemo(
-    () => (valid ? selectEquipment({ refrigerant, loadKw, roomTempC, ambientTempC, runtimeHoursPerDay: runtime, evaporatorTdK, condenserTdK: condTd }) : null),
-    [valid, refrigerant, loadKw, roomTempC, ambientTempC, runtime, evaporatorTdK, condTd],
-  );
+const EquipmentSelectionPanel: React.FC<Props> = ({ loadKw, roomTempC, ambientTempC, settings, onChange, sel }) => {
+  const refrigerant = settings.refrigerant;
+  const runtime = settings.runtimeHoursPerDay;
+  const evaporatorTdK = settings.evaporatorTdK ?? defaultEvaporatorTd(roomTempC);
+  const condTd = settings.condenserTdK;
+  const setRefrigerant = (r: SelectableRefrigerant) => onChange({ ...settings, refrigerant: r });
+  const setRuntime = (v: number) => onChange({ ...settings, runtimeHoursPerDay: v });
+  const setEvapTd = (v: number) => onChange({ ...settings, evaporatorTdK: v });
+  const setCondTd = (v: number) => onChange({ ...settings, condenserTdK: v });
 
   const num = (v: string) => (v === '' ? 0 : Number(v));
 
